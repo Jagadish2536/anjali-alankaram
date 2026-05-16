@@ -1,7 +1,17 @@
-import Link from 'next/link'
-import { ShoppingBag, Search, User, Heart } from 'lucide-react'
+'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ShoppingBag, Search, User, Heart, LogOut } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function Navbar() {
+  const { isAuthenticated, user, logout } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between">
@@ -12,17 +22,11 @@ export default function Navbar() {
             </span>
           </Link>
           <nav className="hidden md:flex gap-6">
-            <Link href="/products?category=new-arrivals" className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            <Link href="/products" className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
               New Arrivals
             </Link>
             <Link href="/products?category=sarees" className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
               Sarees
-            </Link>
-            <Link href="/products?category=kurta-sets" className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-              Kurta Sets
-            </Link>
-            <Link href="/products?category=dresses" className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-              Dresses
             </Link>
           </nav>
         </div>
@@ -31,23 +35,36 @@ export default function Navbar() {
           <button className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Search">
             <Search className="h-5 w-5" />
           </button>
-          <Link href="/wishlist" className="text-muted-foreground hover:text-foreground transition-colors">
-            <Heart className="h-5 w-5" />
-            <span className="sr-only">Wishlist</span>
-          </Link>
+          
           <Link href="/cart" className="text-muted-foreground hover:text-foreground transition-colors relative">
             <ShoppingBag className="h-5 w-5" />
-            <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-              0
-            </span>
             <span className="sr-only">Cart</span>
           </Link>
-          <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
-            <User className="h-5 w-5" />
-            <span className="sr-only">Profile</span>
-          </Link>
+
+          {mounted && isAuthenticated ? (
+            <div className="flex items-center gap-4">
+              <Link href="/profile" className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                  {user?.name?.charAt(0) || 'U'}
+                </div>
+                <span className="hidden sm:inline">{user?.name}</span>
+              </Link>
+              <button 
+                onClick={() => logout()}
+                className="text-muted-foreground hover:text-red-500 transition-colors"
+                title="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
+          ) : (
+            <Link href="/login" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <User className="h-5 w-5" />
+              <span>Login</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>
-  )
+  );
 }

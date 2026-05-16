@@ -68,7 +68,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "REDIS_HOST", valueFrom = "${var.secrets_arn}:REDIS_HOST::" },
         { name = "MSG91_AUTH_KEY", valueFrom = "${var.secrets_arn}:MSG91_AUTH_KEY::" },
         { name = "MSG91_TEMPLATE_ID", valueFrom = "${var.secrets_arn}:MSG91_TEMPLATE_ID::" },
-        { name = "GOOGLE_CLIENT_ID", valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" }
+        { name = "GOOGLE_CLIENT_ID", valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" },
+        { name = "ALLOWED_ORIGINS", valueFrom = "${var.secrets_arn}:ALLOWED_ORIGINS::" }
       ]
     }
   ])
