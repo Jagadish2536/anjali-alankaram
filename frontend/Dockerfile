@@ -15,8 +15,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Environment variables must be present at build time
-ENV NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
-ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_your_key_id
+ENV NEXT_PUBLIC_API_URL="https://anjalialankaram.com/api/v1"
+ENV NEXT_PUBLIC_RAZORPAY_KEY_ID="rzp_test_your_key_id"
 
 RUN npm run build
 
