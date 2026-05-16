@@ -19,6 +19,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 const sidebarItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/admin' },
   { name: 'Catalogue', icon: Package, href: '/admin/products' },
+  { name: 'Categories', icon: ShoppingBag, href: '/admin/categories' },
   { name: 'Orders', icon: ShoppingBag, href: '/admin/orders' },
   { name: 'Customers', icon: Users, href: '/admin/customers' },
   { name: 'Settings', icon: Settings, href: '/admin/settings' },

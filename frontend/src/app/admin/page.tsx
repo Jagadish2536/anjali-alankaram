@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { 
   TrendingUp, 
   Users, 
@@ -43,11 +44,11 @@ export default function AdminDashboard() {
       setStats({
         totalSales: ordersRes.data.data?.reduce((sum: number, o: any) => sum + Number(o.totalAmount), 0) || 0,
         totalOrders: ordersRes.data.total || 0,
-        totalCustomers: 42, // Mocked for now
+        totalCustomers: usersRes.data.total || usersRes.data.length || 1, // Actual count
         pendingOrders: ordersRes.data.data?.filter((o: any) => o.status === 'PENDING').length || 0,
-        salesGrowth: 15.4,
-        orderGrowth: 10.2,
-        customerGrowth: 5.1
+        salesGrowth: 0,
+        orderGrowth: 0,
+        customerGrowth: 0
       });
     } catch (e) {
       console.error('Failed to fetch dashboard data');
@@ -72,7 +73,7 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button className="px-4 py-2 bg-white border rounded-lg text-sm font-medium hover:bg-muted transition-colors">Download Report</button>
-          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">View Store</button>
+          <a href="/" target="_blank" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">View Store</a>
         </div>
       </div>
 
@@ -150,7 +151,7 @@ export default function AdminDashboard() {
           <div className="bg-white border rounded-2xl p-6 shadow-sm">
             <h2 className="font-outfit font-bold text-lg mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center gap-3 p-4 rounded-xl border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+              <Link href="/admin/products/new" className="flex items-center gap-3 p-4 rounded-xl border hover:border-primary hover:bg-primary/5 transition-all text-left group">
                 <div className="p-2 bg-primary/10 text-primary rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                   <Package className="w-5 h-5" />
                 </div>
@@ -158,8 +159,8 @@ export default function AdminDashboard() {
                   <p className="font-bold text-sm">Add Product</p>
                   <p className="text-xs text-muted-foreground">Upload new collection</p>
                 </div>
-              </button>
-              <button className="flex items-center gap-3 p-4 rounded-xl border hover:border-blue-500 hover:bg-blue-50 transition-all text-left group">
+              </Link>
+              <Link href="/admin/orders" className="flex items-center gap-3 p-4 rounded-xl border hover:border-blue-500 hover:bg-blue-50 transition-all text-left group">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
                   <ShoppingBag className="w-5 h-5" />
                 </div>
@@ -167,8 +168,8 @@ export default function AdminDashboard() {
                   <p className="font-bold text-sm">Manage Orders</p>
                   <p className="text-xs text-muted-foreground">Handle shipments</p>
                 </div>
-              </button>
-              <button className="flex items-center gap-3 p-4 rounded-xl border hover:border-green-500 hover:bg-green-50 transition-all text-left group">
+              </Link>
+              <Link href="/admin/products" className="flex items-center gap-3 p-4 rounded-xl border hover:border-green-500 hover:bg-green-50 transition-all text-left group">
                 <div className="p-2 bg-green-100 text-green-600 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-all">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
@@ -176,7 +177,7 @@ export default function AdminDashboard() {
                   <p className="font-bold text-sm">Bulk Update</p>
                   <p className="text-xs text-muted-foreground">Update inventory prices</p>
                 </div>
-              </button>
+              </Link>
             </div>
           </div>
         </div>

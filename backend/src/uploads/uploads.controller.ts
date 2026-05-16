@@ -1,22 +1,35 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { UploadsService } from './uploads.service';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Controller, Post, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
+import * as AWS from 'aws-sdk';
+import { v4 as uuidv4 } from 'uuid';
 
-@ApiTags('Uploads')
 @Controller('uploads')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
-export class UploadsController {
-  constructor(private readonly uploadsService: UploadsService) {}
+export default class UploadsController {
+  private s3: AWS.S3;
 
-  @Post('presigned-url')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiOperation({ summary: 'Get S3 presigned URL for upload (Admin)' })
-  async getPresignedUrl(@Body() body: { filename: string; contentType: string }) {
-    return this.uploadsService.getPresignedUrl(body.filename, body.contentType);
+  constructor(private config: ConfigService) {
+    this.s3 = new AWS.S3({
+      region: this.config.get('AWS_REGION'),
+    });
+  }
+
+  @Post()
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+    const bucket = this.config.get('AWS_S3_BUCKET');
+    const key = `products/${uuidv4()}-${file.originalname}`;
+
+    await this.s3.putObject({
+      Bucket: bucket,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    }).promise();
+
+    // Return the public URL
+    return {
+      url: `https://${bucket}.s3.${this.config.get('AWS_REGION')}.amazonaws.com/${key}`
+    };
   }
 }

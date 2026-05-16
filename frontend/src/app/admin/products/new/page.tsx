@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -16,6 +16,7 @@ import { api } from '@/lib/api';
 export default function NewProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -23,13 +24,30 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    categoryId: 'sarees', // Default to sarees category ID or slug
+    categoryId: '', // Starts empty, must select one
     basePrice: '',
     salePrice: '',
     images: [''],
     tags: ['New Arrival'],
     variants: [{ size: 'S', stock: 10, sku: '' }]
   });
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const { data } = await api.get('/categories');
+      const list = Array.isArray(data) ? data : data.data || [];
+      setCategories(list);
+      if (list.length > 0) {
+        setFormData(prev => ({ ...prev, categoryId: list[0].id }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch categories');
+    }
+  };
 
   const handleAddImage = () => {
     setFormData({ ...formData, images: [...formData.images, ''] });
@@ -77,6 +95,31 @@ export default function NewProductPage() {
       setError(err.response?.data?.message || err.message || 'Failed to create product');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const [isUploading, setIsUploading] = useState<number | null>(null);
+
+  const handleFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(index);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      
+      const { data } = await api.post('/uploads', formDataUpload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const newImages = [...formData.images];
+      newImages[index] = data.url;
+      setFormData({ ...formData, images: newImages });
+    } catch (err) {
+      alert('Upload failed. Make sure the file is an image.');
+    } finally {
+      setIsUploading(null);
     }
   };
 
@@ -144,14 +187,18 @@ export default function NewProductPage() {
                <div>
                 <label className="block text-sm font-medium mb-2">Category</label>
                 <select 
+                  required
                   className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                   value={formData.categoryId}
                   onChange={e => setFormData({ ...formData, categoryId: e.target.value })}
                 >
-                  <option value="sarees">Sarees</option>
-                  <option value="kurta-sets">Kurta Sets</option>
-                  <option value="dresses">Dresses</option>
-                  <option value="new-arrivals">New Arrivals</option>
+                  {categories.length === 0 ? (
+                    <option value="">No categories found. Create one first!</option>
+                  ) : (
+                    categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))
+                  )}
                 </select>
                </div>
                <div className="grid grid-cols-2 gap-4">
@@ -201,7 +248,7 @@ export default function NewProductPage() {
                   <ImageIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input 
                     type="url" 
-                    placeholder="Paste image URL here..."
+                    placeholder="Image URL (or upload below)"
                     className="w-full pl-10 pr-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                     value={url}
                     onChange={e => {
@@ -210,12 +257,24 @@ export default function NewProductPage() {
                       setFormData({ ...formData, images: newImages });
                     }}
                   />
+                  <div className="mt-2">
+                    <label className="inline-flex items-center gap-2 cursor-pointer bg-muted hover:bg-muted/80 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                      {isUploading === i ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      {isUploading === i ? 'Uploading...' : url ? 'Change Photo' : 'Upload from Device'}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        className="hidden" 
+                        onChange={(e) => handleFileUpload(i, e)}
+                      />
+                    </label>
+                  </div>
                 </div>
                 {formData.images.length > 1 && (
                   <button 
                     type="button" 
                     onClick={() => handleRemoveImage(i)}
-                    className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                    className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors h-fit"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
