@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'frontend/**'
+      - 'infrastructure/**'
       - '.github/workflows/deploy-frontend.yml'
 
 env:
