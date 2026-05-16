@@ -14,11 +14,24 @@ export default function AdminCustomersPage() {
   const fetchCustomers = async () => {
     try {
       const { data } = await api.get('/users');
+      // Backend might return { data: [], total: 0 } or just []
       setCustomers(Array.isArray(data) ? data : data.data || []);
     } catch (e) {
       console.error('Failed to fetch customers');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const toggleAdminRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'ADMIN' ? 'CUSTOMER' : 'ADMIN';
+    if (!confirm(`Are you sure you want to make this user a ${newRole}?`)) return;
+
+    try {
+      await api.patch(`/users/${userId}/role`, { role: newRole });
+      setCustomers(customers.map(c => c.id === userId ? { ...c, role: newRole } : c));
+    } catch (e) {
+      alert('Failed to update user role');
     }
   };
 
@@ -48,15 +61,14 @@ export default function AdminCustomersPage() {
                 <th className="px-6 py-4">Customer</th>
                 <th className="px-6 py-4">Contact</th>
                 <th className="px-6 py-4">Joined</th>
-                <th className="px-6 py-4">Role</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {isLoading ? (
-                <tr><td colSpan={5} className="p-10 text-center animate-pulse">Loading customers...</td></tr>
+                <tr><td colSpan={4} className="p-10 text-center animate-pulse">Loading customers...</td></tr>
               ) : customers.length === 0 ? (
-                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No customers found.</td></tr>
+                <tr><td colSpan={4} className="p-10 text-center text-muted-foreground">No customers found.</td></tr>
               ) : (
                 customers.map((user) => (
                   <tr key={user.id} className="hover:bg-muted/5 transition-colors">
@@ -67,7 +79,11 @@ export default function AdminCustomersPage() {
                         </div>
                         <div>
                           <p className="font-bold">{user.name || 'Unnamed User'}</p>
-                          <p className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}</p>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            user.role === 'ADMIN' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-gray-50 text-gray-700 border-gray-100'
+                          }`}>
+                            {user.role}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -84,17 +100,17 @@ export default function AdminCustomersPage() {
                         <Calendar className="w-3 h-3" /> {new Date(user.createdAt).toLocaleDateString()}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        user.role === 'ADMIN' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-gray-50 text-gray-700 border-gray-100'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => toggleAdminRole(user.id, user.role)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                            user.role === 'ADMIN' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-primary/5 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                          }`}
+                        >
+                          {user.role === 'ADMIN' ? 'Revoke Admin' : 'Make Admin'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

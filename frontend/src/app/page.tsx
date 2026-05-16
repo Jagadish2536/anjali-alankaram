@@ -35,7 +35,7 @@ export default function Home() {
             <h2 className="text-3xl font-outfit font-bold text-foreground">Shop by Category</h2>
             <p className="text-muted-foreground mt-2">Explore our wide range of collections</p>
           </div>
-          <Link href="/categories" className="text-primary font-medium hover:underline hidden md:block">
+          <Link href="/products" className="text-primary font-medium hover:underline hidden md:block">
             View All
           </Link>
         </div>
