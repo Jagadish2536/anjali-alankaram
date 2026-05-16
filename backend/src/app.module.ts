@@ -21,6 +21,7 @@ import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BannersModule } from './banners/banners.module';
 import { RedisModule } from './redis/redis.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { RedisModule } from './redis/redis.module';
     AdminModule,
     NotificationsModule,
     BannersModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

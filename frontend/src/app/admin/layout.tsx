@@ -12,7 +12,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Menu,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -31,18 +32,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isAuthenticated, logout } = useAuthStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Security Check
   useEffect(() => {
+    if (!isHydrated) return;
+    
     if (!isAuthenticated) {
       router.push('/login?returnUrl=' + pathname);
     } else if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
       router.push('/');
     }
-  }, [isAuthenticated, user, router, pathname]);
+  }, [isHydrated, isAuthenticated, user, router, pathname]);
 
-  if (!isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN')) {
-    return null; // Don't flash admin content while redirecting
+  if (!isHydrated || !isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN')) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

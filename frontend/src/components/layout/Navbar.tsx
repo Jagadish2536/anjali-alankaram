@@ -3,14 +3,26 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShoppingBag, Search, User, Heart, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { api } from '@/lib/api';
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [storeName, setStoreName] = useState('Anjali Alankaram');
 
   useEffect(() => {
     setMounted(true);
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data } = await api.get('/settings');
+      if (data.storeName) setStoreName(data.storeName);
+    } catch (e) {
+      console.error('Failed to fetch settings');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
@@ -18,7 +30,7 @@ export default function Navbar() {
         <div className="flex gap-6 md:gap-10">
           <Link href="/" className="flex items-center space-x-2">
             <span className="inline-block font-outfit text-2xl font-bold tracking-tight text-primary">
-              Anjali Alankaram
+              {storeName}
             </span>
           </Link>
           <nav className="hidden md:flex gap-6">

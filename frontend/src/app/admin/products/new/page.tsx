@@ -116,8 +116,10 @@ export default function NewProductPage() {
       const newImages = [...formData.images];
       newImages[index] = data.url;
       setFormData({ ...formData, images: newImages });
-    } catch (err) {
-      alert('Upload failed. Make sure the file is an image.');
+    } catch (err: any) {
+      console.error('Upload Error:', err);
+      const msg = err.response?.data?.message || err.message || 'Upload failed';
+      alert(`Error: ${msg}. Please try another image file.`);
     } finally {
       setIsUploading(null);
     }

@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { 
   Settings, 
   Bell, 
@@ -21,17 +22,43 @@ export default function AdminSettingsPage() {
     storeName: 'Anjali Alankaram',
     supportEmail: 'support@anjalialankaram.com',
     supportPhone: '+91 9876543210',
+    whatsappNumber: '+91 9876543210',
+    instagramUrl: 'https://instagram.com/anjalialankaram',
     currency: 'INR',
     maintenanceMode: false
   });
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data } = await api.get('/settings');
+      if (data) {
+        setFormData(prev => ({ ...prev, ...data }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch settings');
+    }
+  };
+
+  if (!isHydrated) return null;
+
   const handleSave = async () => {
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    try {
+      await api.post('/settings', formData);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (e) {
+      alert('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const sections = [
@@ -117,6 +144,26 @@ export default function AdminSettingsPage() {
                       className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                       value={formData.supportPhone}
                       onChange={e => setFormData({...formData, supportPhone: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">WhatsApp Number</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.whatsappNumber}
+                      onChange={e => setFormData({...formData, whatsappNumber: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Instagram URL</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.instagramUrl}
+                      onChange={e => setFormData({...formData, instagramUrl: e.target.value})}
                     />
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { OAuthProvider } from '@/components/providers/OAuthProvider'
+import FloatingWhatsApp from '@/components/common/FloatingWhatsApp'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' })
@@ -27,6 +28,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <FloatingWhatsApp />
         </OAuthProvider>
       </body>
     </html>

@@ -448,3 +448,13 @@ model Notification {
 
   @@map("notifications")
 }
+model StoreSettings {
+  id              String   @id @default(uuid())
+  storeName       String   @default("Anjali Alankaram")
+  supportEmail    String   @default("support@anjalialankaram.com")
+  supportPhone    String   @default("+91 9876543210")
+  whatsappNumber  String   @default("+91 9876543210")
+  instagramUrl    String   @default("https://instagram.com/anjalialankaram")
+  maintenanceMode Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
