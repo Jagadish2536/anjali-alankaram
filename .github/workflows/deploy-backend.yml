@@ -31,6 +31,7 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
+        mask-aws-account-id: 'false' # So we can see the registry ID in logs
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -42,6 +43,9 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
+        echo "DEBUG: Registry is $ECR_REGISTRY"
+        echo "DEBUG: Repository is $ECR_REPOSITORY"
+        echo "DEBUG: Full Tag is $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
         cd backend
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
