@@ -1,0 +1,12 @@
+node_modules/
+.next/
+dist/
+build/
+.env
+.env.local
+coverage/
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+*.log
+Dockerfile.local

@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    
+    /* Rose Gold */
+    --primary: 351 33% 66%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Soft Pink */
+    --secondary: 350 50% 90%;
+    --secondary-foreground: 351 33% 30%;
+    
+    /* Beige */
+    --accent: 40 40% 90%;
+    --accent-foreground: 40 40% 30%;
+    
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 351 33% 66%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+    
+    /* Matte Black + Rose Gold accents */
+    --primary: 351 33% 66%;
+    --primary-foreground: 0 0% 10%;
+    
+    --secondary: 351 20% 25%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --accent: 40 20% 25%;
+    --accent-foreground: 0 0% 98%;
+    
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+    
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+    
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 351 33% 66%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
