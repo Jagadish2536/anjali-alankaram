@@ -40,10 +40,28 @@ jobs:
     - name: Fetch Frontend Secrets from AWS
       id: fetch-secrets
       run: |
-        SECRETS=$(aws secretsmanager get-secret-value --secret-id anjali-alankaram-frontend-env --query SecretString --output text)
-        echo "NEXT_PUBLIC_API_URL=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_API_URL')" >> $GITHUB_ENV
-        echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_RAZORPAY_KEY_ID')" >> $GITHUB_ENV
-        echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_GOOGLE_CLIENT_ID')" >> $GITHUB_ENV
+        echo "Fetching secrets from ap-south-2..."
+        SECRETS=$(aws secretsmanager get-secret-value --secret-id anjali-alankaram-frontend-env --region ${{ env.AWS_REGION }} --query SecretString --output text)
+        
+        if [ -z "$SECRETS" ]; then
+          echo "Error: Could not fetch secrets from AWS"
+          exit 1
+        fi
+
+        API_URL=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_API_URL')
+        RAZORPAY_KEY=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_RAZORPAY_KEY_ID')
+        GOOGLE_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_GOOGLE_CLIENT_ID')
+
+        echo "NEXT_PUBLIC_API_URL=$API_URL" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=$RAZORPAY_KEY" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=$GOOGLE_ID" >> $GITHUB_ENV
+        
+        # Mask secrets in logs for security
+        echo "::add-mask::$API_URL"
+        echo "::add-mask::$RAZORPAY_KEY"
+        echo "::add-mask::$GOOGLE_ID"
+        
+        echo "DEBUG: Google ID starts with ${GOOGLE_ID:0:10}..."
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
