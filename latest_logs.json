@@ -1,0 +1,797 @@
+{
+    "events": [
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909538975,
+            "message": "Prisma schema loaded from prisma/schema.prisma",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008359917055662279340440307027463000778122689970176"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539000,
+            "message": "Datasource \"db\": PostgreSQL database \"anjali_alankaram\", schema \"public\" at \"anjali-alankaram-db.c9ww8iywy18f.ap-south-2.rds.amazonaws.com:5432\"",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008360474574292242606018845420419816987160339480577"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539279,
+            "message": "No migration found in prisma/migrations",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008366696482202632649875333885817885880020508016642"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539397,
+            "message": "No pending migrations to apply.",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008369327970136059263406035100574058386678213705731"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539510,
+            "message": "npm notice",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008371847954343493223821028636738867651528389492740"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539510,
+            "message": "npm notice New major version of npm available! 10.8.2 -> 11.14.1",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008371847954343493223821028636738867651528389492741"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539510,
+            "message": "npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008371847954343493223821028636738867651528389492742"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539510,
+            "message": "npm notice To update run: npm install -g npm@11.14.1",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008371847954343493223821028636738867651528389492743"
+        },
+        {
+            "logStreamName": "backend/backend/1aa053db2a974d2f8195c93f66de8b27",
+            "timestamp": 1778909539510,
+            "message": "npm notice",
+            "ingestionTime": 1778909540620,
+            "eventId": "39671008371847954343493223821028636738867651528389492744"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909630717,
+            "message": "Starting application...",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010405832021665875768805922234882112181955396829184"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634651,
+            "message": "(node:1) NOTE: The AWS SDK for JavaScript (v2) has reached end-of-support.",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010493563153276895240244723750566710836119923785729"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634651,
+            "message": "It will no longer receive updates or releases.",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010493563153276895240244723750566710836119923785730"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634651,
+            "message": "Please migrate your code to use AWS SDK for JavaScript (v3).",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010493563153276895240244723750566710836119923785731"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634651,
+            "message": "For more information, check the blog post at https://a.co/cUPnyil",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010493563153276895240244723750566710836119923785732"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634651,
+            "message": "(Use `node --trace-warnings ...` to show where the warning was created)",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010493563153276895240244723750566710836119923785733"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634674,
+            "message": "Redis connected",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010494076070416461444576979072086981748434561335302"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634942,
+            "message": "2026-05-16T05:33:54.941Z [NestFactory] \u001b[32minfo\u001b[39m: Starting Nest application...",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500052670129667651578910644584051509318164086791"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634944,
+            "message": "2026-05-16T05:33:54.944Z [InstanceLoader] \u001b[32minfo\u001b[39m: AppModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500097271620064712825193716020596806041176047624"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634944,
+            "message": "2026-05-16T05:33:54.944Z [InstanceLoader] \u001b[32minfo\u001b[39m: PrismaModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500097271620064712825193716020596806041176047625"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634945,
+            "message": "2026-05-16T05:33:54.945Z [InstanceLoader] \u001b[32minfo\u001b[39m: PassportModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500119572365263243448335251738869454402682028042"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634945,
+            "message": "2026-05-16T05:33:54.945Z [InstanceLoader] \u001b[32minfo\u001b[39m: ConfigHostModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500119572365263243448335251738869454402682028043"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634946,
+            "message": "2026-05-16T05:33:54.946Z [InstanceLoader] \u001b[32minfo\u001b[39m: WinstonModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500141873110461774071476787457142102764188008460"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634946,
+            "message": "2026-05-16T05:33:54.946Z [InstanceLoader] \u001b[32minfo\u001b[39m: DiscoveryModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500141873110461774071476787457142102764188008461"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634947,
+            "message": "2026-05-16T05:33:54.947Z [InstanceLoader] \u001b[32minfo\u001b[39m: ConfigModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500164173855660304694618323175414751125693988878"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634947,
+            "message": "2026-05-16T05:33:54.947Z [InstanceLoader] \u001b[32minfo\u001b[39m: ConfigModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500164173855660304694618323175414751125693988879"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634948,
+            "message": "2026-05-16T05:33:54.948Z [InstanceLoader] \u001b[32minfo\u001b[39m: ScheduleModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500186474600858835317759858893687399487199969296"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634948,
+            "message": "2026-05-16T05:33:54.948Z [NotificationsService] \u001b[33mwarn\u001b[39m: FIREBASE_SERVICE_ACCOUNT_BASE64 not provided, push notifications disabled",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500186474600858835317759858893687399487199969297"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634949,
+            "message": "2026-05-16T05:33:54.948Z [InstanceLoader] \u001b[32minfo\u001b[39m: RedisModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500208775346057365940901394611960047848705949714"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634949,
+            "message": "2026-05-16T05:33:54.949Z [InstanceLoader] \u001b[32minfo\u001b[39m: ShippingModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500208775346057365940901394611960047848705949715"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634949,
+            "message": "2026-05-16T05:33:54.949Z [InstanceLoader] \u001b[32minfo\u001b[39m: NotificationsModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500208775346057365940901394611960047848705949716"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634949,
+            "message": "2026-05-16T05:33:54.949Z [InstanceLoader] \u001b[32minfo\u001b[39m: JwtModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500208775346057365940901394611960047848705949717"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634949,
+            "message": "2026-05-16T05:33:54.949Z [InstanceLoader] \u001b[32minfo\u001b[39m: ThrottlerModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500208775346057365940901394611960047848705949718"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634950,
+            "message": "2026-05-16T05:33:54.950Z [InstanceLoader] \u001b[32minfo\u001b[39m: PaymentsModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500231076091255896564042930330232696210211930135"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634950,
+            "message": "2026-05-16T05:33:54.950Z [InstanceLoader] \u001b[32minfo\u001b[39m: AdminModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500231076091255896564042930330232696210211930136"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634950,
+            "message": "2026-05-16T05:33:54.950Z [InstanceLoader] \u001b[32minfo\u001b[39m: UsersModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500231076091255896564042930330232696210211930137"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634950,
+            "message": "2026-05-16T05:33:54.950Z [InstanceLoader] \u001b[32minfo\u001b[39m: CategoriesModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500231076091255896564042930330232696210211930138"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634951,
+            "message": "2026-05-16T05:33:54.951Z [InstanceLoader] \u001b[32minfo\u001b[39m: CartModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500253376836454427187184466048505344571717910555"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634951,
+            "message": "2026-05-16T05:33:54.951Z [InstanceLoader] \u001b[32minfo\u001b[39m: WishlistModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500253376836454427187184466048505344571717910556"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634951,
+            "message": "2026-05-16T05:33:54.951Z [InstanceLoader] \u001b[32minfo\u001b[39m: CouponsModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500253376836454427187184466048505344571717910557"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634951,
+            "message": "2026-05-16T05:33:54.951Z [InstanceLoader] \u001b[32minfo\u001b[39m: ReviewsModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500253376836454427187184466048505344571717910558"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634951,
+            "message": "2026-05-16T05:33:54.951Z [InstanceLoader] \u001b[32minfo\u001b[39m: BannersModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500253376836454427187184466048505344571717910559"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [InstanceLoader] \u001b[32minfo\u001b[39m: UploadsModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890976"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [InstanceLoader] \u001b[32minfo\u001b[39m: ProductsModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890977"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [InstanceLoader] \u001b[32minfo\u001b[39m: OrdersModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890978"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [InstanceLoader] \u001b[32minfo\u001b[39m: AuthModule dependencies initialized",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890979"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [RoutesResolver] \u001b[32minfo\u001b[39m: AuthController {/api/v1/auth}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890980"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/auth/otp/send, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890981"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634952,
+            "message": "2026-05-16T05:33:54.952Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/auth/otp/verify, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500275677581652957810326001766777992933223890982"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/auth/google, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871399"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/auth/refresh, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871400"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/auth/logout, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871401"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/auth/me, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871402"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RoutesResolver] \u001b[32minfo\u001b[39m: UsersController {/api/v1/users}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871403"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/users/profile, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871404"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/users/addresses, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871405"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/users/addresses, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871406"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634953,
+            "message": "2026-05-16T05:33:54.953Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/users/addresses/:id, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500297978326851488433467537485050641294729871407"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/users/addresses/:id, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851824"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RoutesResolver] \u001b[32minfo\u001b[39m: ProductsController {/api/v1/products}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851825"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851826"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/featured, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851827"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/new-arrivals, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851828"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/bestsellers, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851829"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634954,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/search, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500320279072050019056609073203323289656235851830"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.954Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/:slug, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832247"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832248"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/:id, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832249"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/products/:id, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832250"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RoutesResolver] \u001b[32minfo\u001b[39m: CategoriesController {/api/v1/categories}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832251"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/categories, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832252"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/categories, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832253"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/categories/:id, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832254"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634955,
+            "message": "2026-05-16T05:33:54.955Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/categories/:id, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500342579817248549679750608921595938017741832255"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RoutesResolver] \u001b[32minfo\u001b[39m: CartController {/api/v1/cart}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812672"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/cart, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812673"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/cart/items, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812674"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/cart/items/:itemId, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812675"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/cart/items/:itemId, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812676"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/cart, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812677"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RoutesResolver] \u001b[32minfo\u001b[39m: WishlistController {/api/v1/wishlist}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812678"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/wishlist, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812679"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634956,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/wishlist/:productId, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500364880562447080302892144639868586379247812680"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.956Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/wishlist/:productId, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793097"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RoutesResolver] \u001b[32minfo\u001b[39m: OrdersController {/api/v1/orders}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793098"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793099"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793100"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders/:id, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793101"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders/:id/cancel, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793102"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders/:id/return, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793103"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders/admin/all, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793104"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/orders/admin/:id/status, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793105"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634957,
+            "message": "2026-05-16T05:33:54.957Z [RoutesResolver] \u001b[32minfo\u001b[39m: PaymentsController {/api/v1/payments}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500387181307645610926033680358141234740753793106"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.957Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/payments/webhook, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773523"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RoutesResolver] \u001b[32minfo\u001b[39m: CouponsController {/api/v1/coupons}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773524"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/coupons, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773525"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/coupons, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773526"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/coupons/:id, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773527"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/coupons/:id, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773528"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RoutesResolver] \u001b[32minfo\u001b[39m: ReviewsController {/api/v1/reviews}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773529"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/reviews/product/:productId, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773530"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/reviews, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773531"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634958,
+            "message": "2026-05-16T05:33:54.958Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/reviews/:id, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500409482052844141549175216076413883102259773532"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.958Z [RoutesResolver] \u001b[32minfo\u001b[39m: UploadsController {/api/v1/uploads}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753949"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/uploads/presigned-url, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753950"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RoutesResolver] \u001b[32minfo\u001b[39m: AdminController {/api/v1/admin}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753951"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/admin/dashboard, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753952"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RoutesResolver] \u001b[32minfo\u001b[39m: BannersController {/api/v1/banners}:",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753953"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/banners, GET} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753954"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/banners, POST} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753955"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/banners/:id, PUT} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753956"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [RouterExplorer] \u001b[32minfo\u001b[39m: Mapped {/api/v1/banners/:id, DELETE} route",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753957"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634959,
+            "message": "2026-05-16T05:33:54.959Z [PrismaService] \u001b[32minfo\u001b[39m: Database connected",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500431782798042672172316751794686531463765753958"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634960,
+            "message": "2026-05-16T05:33:54.960Z [NestApplication] \u001b[32minfo\u001b[39m: Nest application successfully started",
+            "ingestionTime": 1778909635618,
+            "eventId": "39671010500454083543241202795458287512959179825271734375"
+        },
+        {
+            "logStreamName": "backend/backend/9ca36728df0047aab55bc29390938da1",
+            "timestamp": 1778909634961,
+            "message": 

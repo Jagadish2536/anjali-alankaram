@@ -21,7 +21,7 @@ export default function Home() {
             <Link href="/products" className="bg-primary text-primary-foreground px-8 py-3 rounded-full font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
               Shop Now
             </Link>
-            <Link href="/categories/new-arrivals" className="bg-white text-foreground px-8 py-3 rounded-full font-medium hover:bg-white/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
+            <Link href="/products" className="bg-white text-foreground px-8 py-3 rounded-full font-medium hover:bg-white/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
               New Arrivals
             </Link>
           </div>

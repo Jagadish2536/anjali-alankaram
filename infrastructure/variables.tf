@@ -42,7 +42,7 @@ variable "db_username" {
 
 variable "db_password" {
   description = "Database password. Should ideally be passed via TF_VAR_db_password"
-  default     = "TEMPORARY_PASSWORD_CHANGE_ME"
+  default     = "AnjaliAlankaram2026Secure"
   sensitive   = true
 }
 
