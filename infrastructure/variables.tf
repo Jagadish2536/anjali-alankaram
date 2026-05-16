@@ -1,6 +1,6 @@
 variable "aws_region" {
   description = "AWS region"
-  default     = "ap-south-1"
+  default     = "ap-south-2"
 }
 
 variable "project_name" {
@@ -24,7 +24,7 @@ variable "vpc_cidr" {
 
 variable "availability_zones" {
   type    = list(string)
-  default = ["ap-south-1a", "ap-south-1b"]
+  default = ["ap-south-2a", "ap-south-2b"]
 }
 
 variable "public_subnets" {

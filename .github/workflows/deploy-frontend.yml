@@ -8,7 +8,7 @@ on:
       - 'frontend/**'
 
 env:
-  AWS_REGION: ap-south-1
+  AWS_REGION: ap-south-2
   ECR_REPOSITORY: anjali-alankaram-frontend
   ECS_SERVICE: anjali-alankaram-frontend-service
   ECS_CLUSTER: anjali-alankaram-cluster
