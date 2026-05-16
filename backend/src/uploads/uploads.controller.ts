@@ -5,7 +5,7 @@ import * as AWS from 'aws-sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 @Controller('uploads')
-export default class UploadsController {
+export class UploadsController {
   private s3: AWS.S3;
 
   constructor(private config: ConfigService) {
