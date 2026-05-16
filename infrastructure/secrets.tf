@@ -16,6 +16,7 @@ resource "aws_secretsmanager_secret_version" "backend_version" {
     JWT_SECRET   = "changeme_in_aws_console"
     MSG91_AUTH_KEY = "add_your_key"
     MSG91_TEMPLATE_ID = "add_your_template"
+    GOOGLE_CLIENT_ID = "add_your_client_id"
   })
 }
 

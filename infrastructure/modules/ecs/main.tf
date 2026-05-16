@@ -65,7 +65,10 @@ resource "aws_ecs_task_definition" "backend" {
       secrets = [
         { name = "JWT_SECRET", valueFrom = "${var.secrets_arn}:JWT_SECRET::" },
         { name = "DATABASE_URL", valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
-        { name = "REDIS_HOST", valueFrom = "${var.secrets_arn}:REDIS_HOST::" }
+        { name = "REDIS_HOST", valueFrom = "${var.secrets_arn}:REDIS_HOST::" },
+        { name = "MSG91_AUTH_KEY", valueFrom = "${var.secrets_arn}:MSG91_AUTH_KEY::" },
+        { name = "MSG91_TEMPLATE_ID", valueFrom = "${var.secrets_arn}:MSG91_TEMPLATE_ID::" },
+        { name = "GOOGLE_CLIENT_ID", valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" }
       ]
     }
   ])
