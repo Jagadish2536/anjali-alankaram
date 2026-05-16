@@ -153,3 +153,26 @@ resource "aws_iam_role_policy" "ecs_exec_command" {
     }]
   })
 }
+
+resource "aws_iam_role_policy" "ecs_s3_access" {
+  name   = "${var.project_name}-ecs-s3-policy"
+  role   = aws_iam_role.ecs_task_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Effect   = "Allow"
+        Resource = [
+          "arn:aws:s3:::anjali-alankaram-assets-*",
+          "arn:aws:s3:::anjali-alankaram-assets-*/*"
+        ]
+      }
+    ]
+  })
+}

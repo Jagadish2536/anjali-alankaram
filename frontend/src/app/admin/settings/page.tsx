@@ -184,6 +184,51 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             </div>
+          ) : activeSection === 'Security' ? (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-bold mb-4">Admin Access</h3>
+                <p className="text-sm text-muted-foreground mb-6">Manage who has access to this dashboard.</p>
+                <div className="bg-muted/10 border rounded-xl p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">A</div>
+                    <div>
+                      <p className="text-sm font-bold">Admin Role</p>
+                      <p className="text-[10px] text-muted-foreground">Full access to store data</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">ACTIVE</span>
+                </div>
+              </div>
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-bold mb-4">Password Policy</h3>
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between p-4 border rounded-xl">
+                    <span className="text-sm font-medium">Require 2FA for all admins</span>
+                    <input type="checkbox" className="w-4 h-4" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          ) : activeSection === 'Notifications' ? (
+            <div className="space-y-8">
+              <h3 className="text-lg font-bold mb-4">Store Alerts</h3>
+              <div className="space-y-4">
+                {[
+                  { name: 'New Order Alert', desc: 'Get an email when a customer places an order.' },
+                  { name: 'Low Stock Warning', desc: 'Notify when a product has less than 5 items.' },
+                  { name: 'Customer Signup', desc: 'Alert when a new user registers.' }
+                ].map((item, i) => (
+                  <div key={i} className="flex justify-between items-center p-4 border rounded-xl">
+                    <div>
+                      <p className="text-sm font-bold">{item.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="w-4 h-4" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="py-20 text-center space-y-4">
               <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto text-muted-foreground">

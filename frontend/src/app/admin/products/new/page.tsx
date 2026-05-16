@@ -81,12 +81,28 @@ export default function NewProductPage() {
         throw new Error('Name and Base Price are required');
       }
 
+      const cleanVariants = formData.variants
+        .filter(v => v.size.trim() !== '')
+        .map(v => ({
+          size: v.size,
+          stock: Number(v.stock),
+          sku: v.sku || `${formData.name.substring(0, 3)}-${v.size}-${Date.now()}`.toUpperCase()
+        }));
+
       const payload = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        categoryId: formData.categoryId,
         basePrice: Number(formData.basePrice),
         salePrice: formData.salePrice ? Number(formData.salePrice) : undefined,
-        images: formData.images.filter(img => img.trim() !== '')
+        images: formData.images.filter(img => img.trim() !== ''),
+        tags: formData.tags,
+        variants: cleanVariants
       };
+
+      if (payload.variants.length === 0) {
+        throw new Error('Please add at least one size/variant');
+      }
 
       await api.post('/products', payload);
       setSuccess(true);
