@@ -72,8 +72,6 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "REDIS_PORT", valueFrom = "${var.secrets_arn}:REDIS_PORT::" },
         { name = "REDIS_PASSWORD", valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
         { name = "JWT_ACCESS_EXPIRES", valueFrom = "${var.secrets_arn}:JWT_ACCESS_EXPIRES::" },
-        { name = "AWS_ACCESS_KEY_ID", valueFrom = "${var.secrets_arn}:AWS_ACCESS_KEY_ID::" },
-        { name = "AWS_SECRET_ACCESS_KEY", valueFrom = "${var.secrets_arn}:AWS_SECRET_ACCESS_KEY::" },
         { name = "MSG91_AUTH_KEY", valueFrom = "${var.secrets_arn}:MSG91_AUTH_KEY::" },
         { name = "MSG91_TEMPLATE_ID", valueFrom = "${var.secrets_arn}:MSG91_TEMPLATE_ID::" },
         { name = "GOOGLE_CLIENT_ID", valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" },
