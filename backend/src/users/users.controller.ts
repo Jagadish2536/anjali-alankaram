@@ -15,45 +15,8 @@ import { UpdateUserAdminDto } from './dto/update-user-admin.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiOperation({ summary: 'Create a new user/customer (Admin only)' })
-  async createByAdmin(@Body() dto: CreateUserAdminDto) {
-    return this.usersService.createByAdmin(dto);
-  }
-
-  @Put(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiOperation({ summary: 'Update user details/password (Admin only)' })
-  async updateByAdmin(@Param('id') id: string, @Body() dto: UpdateUserAdminDto) {
-    return this.usersService.updateByAdmin(id, dto);
-  }
-
-  @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiOperation({ summary: 'Delete user account (Admin only)' })
-  async deleteByAdmin(@Param('id') id: string, @Req() req: any) {
-    return this.usersService.deleteByAdmin(id, req.user.id);
-  }
-
-  @Get()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiOperation({ summary: 'Get all users/customers (Admin only)' })
-  async findAll() {
-    return this.usersService.findAll();
-  }
-
-  @Patch(':id/role')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiOperation({ summary: 'Update user role (Admin only)' })
-  async updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.usersService.updateRole(id, dto.role);
-  }
+  // ── Self-service (authenticated user) ─────────────────────────────────────
+  // IMPORTANT: Static routes must come BEFORE dynamic ':id' routes in NestJS
 
   @Put('profile')
   @ApiOperation({ summary: 'Update user profile' })
@@ -83,5 +46,47 @@ export class UsersController {
   @ApiOperation({ summary: 'Delete address' })
   async deleteAddress(@Req() req: any, @Param('id') id: string) {
     return this.usersService.deleteAddress(id, req.user.id);
+  }
+
+  // ── Admin routes ───────────────────────────────────────────────────────────
+
+  @Get()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Get all users/customers (Admin only)' })
+  async findAll() {
+    return this.usersService.findAll();
+  }
+
+  @Post()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Create a new user/customer (Admin only)' })
+  async createByAdmin(@Body() dto: CreateUserAdminDto) {
+    return this.usersService.createByAdmin(dto);
+  }
+
+  @Patch(':id/role')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Update user role (Admin only)' })
+  async updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
+    return this.usersService.updateRole(id, dto.role);
+  }
+
+  @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Update user details/password (Admin only)' })
+  async updateByAdmin(@Param('id') id: string, @Body() dto: UpdateUserAdminDto) {
+    return this.usersService.updateByAdmin(id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Delete user account (Admin only)' })
+  async deleteByAdmin(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.deleteByAdmin(id, req.user.id);
   }
 }
