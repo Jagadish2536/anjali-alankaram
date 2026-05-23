@@ -130,8 +130,6 @@ model User {
   isPhoneVerified  Boolean        @default(false)
   isEmailVerified  Boolean        @default(false)
   isActive         Boolean        @default(true)
-  gender           String?
-  birthday         String?
   fcmToken         String?
   warehouseId      String?        // For WAREHOUSE_STAFF role
   warehouse        Warehouse?     @relation(fields: [warehouseId], references: [id])

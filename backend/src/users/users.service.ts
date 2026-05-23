@@ -172,8 +172,6 @@ export class UsersService {
         name: true,
         avatar: true,
         role: true,
-        gender: true,
-        birthday: true,
       }
     });
   }

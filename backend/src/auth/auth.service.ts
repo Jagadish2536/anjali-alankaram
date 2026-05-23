@@ -181,8 +181,6 @@ export class AuthService {
         role: true,
         isPhoneVerified: true,
         isEmailVerified: true,
-        gender: true,
-        birthday: true,
       },
     });
   }

@@ -122,7 +122,7 @@ export default function ProfilePage() {
 
   // Profile form
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', gender: '', birthday: '',
+    name: '', email: '', phone: '',
   });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -146,8 +146,6 @@ export default function ProfilePage() {
       name: user?.name || '',
       email: user?.email || '',
       phone: user?.phone?.replace('+91', '') || '',
-      gender: (user as any)?.gender || '',
-      birthday: (user as any)?.birthday || '',
     });
   }, [isAuthenticated, user]);
 
@@ -180,8 +178,6 @@ export default function ProfilePage() {
       const { data } = await api.put('/users/profile', {
         name: form.name || undefined,
         email: form.email || undefined,
-        gender: form.gender || undefined,
-        birthday: form.birthday || undefined,
       });
       setUser({ ...user!, ...data });
       setSaveMsg({ ok: true, text: 'Details saved successfully!' });
@@ -347,33 +343,8 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Full Name */}
-                <div className="mb-4">
-                  <FloatInput label="Full Name" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} />
-                </div>
-
-                {/* Gender */}
-                <div className="grid grid-cols-2 border border-gray-200 rounded-sm mb-4 overflow-hidden">
-                  {['Male', 'Female'].map(g => (
-                    <button key={g} onClick={() => setForm(p => ({ ...p, gender: g }))}
-                      className={`py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
-                        form.gender === g
-                          ? 'bg-gray-50 text-primary font-bold'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } ${g === 'Male' ? 'border-r border-gray-200' : ''}`}>
-                      {form.gender === g && <Check className="w-3.5 h-3.5 text-primary" />}
-                      {g}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Birthday */}
                 <div className="mb-6">
-                  <FloatInput
-                    label="Birthday (dd/mm/yyyy)"
-                    value={form.birthday}
-                    onChange={v => setForm(p => ({ ...p, birthday: v }))}
-                    placeholder="DD/MM/YYYY"
-                  />
+                  <FloatInput label="Full Name" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} />
                 </div>
 
                 {/* Save */}
