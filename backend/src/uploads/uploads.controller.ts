@@ -12,10 +12,11 @@ export class UploadsController {
   private s3: AWS.S3;
 
   constructor(private config: ConfigService) {
-    const awsAccessKey = this.config.get('AWS_ACCESS_KEY_ID');
-    // Only initialize S3 if not in local upload driver mode and access key is configured
+    // Only initialize S3 if not in local upload driver mode
     const uploadDriver = this.config.get('UPLOAD_DRIVER') || 's3';
-    if (uploadDriver !== 'local' && awsAccessKey && awsAccessKey !== 'your_access_key') {
+    if (uploadDriver !== 'local') {
+      // When running on ECS, AWS.S3 automatically uses the IAM Task Role credentials
+      // so explicit access keys are not required.
       this.s3 = new AWS.S3({
         region: this.config.get('AWS_REGION'),
       });
@@ -26,8 +27,7 @@ export class UploadsController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
     const uploadDriver = this.config.get('UPLOAD_DRIVER') || 's3';
-    const awsAccessKey = this.config.get('AWS_ACCESS_KEY_ID');
-    const isLocal = uploadDriver === 'local' || !awsAccessKey || awsAccessKey === 'your_access_key';
+    const isLocal = uploadDriver === 'local';
 
     if (isLocal) {
       const uploadDir = path.join(process.cwd(), 'uploads', 'products');
