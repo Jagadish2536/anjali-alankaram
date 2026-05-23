@@ -62,7 +62,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "PORT", value = "3000" },
         { name = "NODE_ENV", value = "production" },
         { name = "AWS_S3_BUCKET", value = var.s3_bucket_name },
-        { name = "AWS_REGION", value = var.aws_region }
+        { name = "AWS_REGION", value = var.aws_region },
+        { name = "UPLOAD_DRIVER", value = "s3" }
       ]
       secrets = [
         { name = "JWT_SECRET", valueFrom = "${var.secrets_arn}:JWT_SECRET::" },

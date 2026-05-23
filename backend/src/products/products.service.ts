@@ -53,9 +53,18 @@ export class ProductsService {
     }
 
     if (minPrice || maxPrice) {
-      where.basePrice = {};
-      if (minPrice) where.basePrice.gte = minPrice;
-      if (maxPrice) where.basePrice.lte = maxPrice;
+      const priceCondition: any = {};
+      if (minPrice) priceCondition.gte = minPrice;
+      if (maxPrice) priceCondition.lte = maxPrice;
+
+      // Match products where the effective price (salePrice if set, else basePrice) is in range
+      if (!where.AND) where.AND = [];
+      where.AND.push({
+        OR: [
+          { salePrice: { not: null, ...priceCondition } },
+          { salePrice: null, basePrice: priceCondition },
+        ],
+      });
     }
     if (size || color) {
       where.variants = {
@@ -70,12 +79,15 @@ export class ProductsService {
 
     // Full-text search across name, description, material
     if (search && search.trim()) {
-      where.OR = [
-        { name: { contains: search.trim(), mode: 'insensitive' } },
-        { description: { contains: search.trim(), mode: 'insensitive' } },
-        { material: { contains: search.trim(), mode: 'insensitive' } },
-        { tags: { has: search.trim() } },
-      ];
+      if (!where.AND) where.AND = [];
+      where.AND.push({
+        OR: [
+          { name: { contains: search.trim(), mode: 'insensitive' } },
+          { description: { contains: search.trim(), mode: 'insensitive' } },
+          { material: { contains: search.trim(), mode: 'insensitive' } },
+          { tags: { has: search.trim() } },
+        ],
+      });
     }
 
     const [products, total] = await Promise.all([
