@@ -13,6 +13,75 @@ import {
   X, Ruler, Send, Trash2, ThumbsUp
 } from 'lucide-react';
 
+// ── Image Lightbox Modal ──────────────────────────────────────────────────
+function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; initialIndex: number; onClose: () => void }) {
+  const [current, setCurrent] = useState(initialIndex);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setCurrent(c => (c + 1) % images.length);
+      if (e.key === 'ArrowLeft') setCurrent(c => (c - 1 + images.length) % images.length);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [images.length, onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center" onClick={onClose}>
+      {/* Close button */}
+      <button className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors" onClick={onClose}>
+        <X className="w-6 h-6 text-white" />
+      </button>
+
+      {/* Counter */}
+      <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium">
+        {current + 1} / {images.length}
+      </div>
+
+      {/* Main image */}
+      <div className="relative w-full max-w-3xl max-h-[80vh] flex items-center justify-center px-16" onClick={e => e.stopPropagation()}>
+        {images.length > 1 && (
+          <button
+            className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors"
+            onClick={() => setCurrent(c => (c - 1 + images.length) % images.length)}
+          >
+            <span className="text-white text-xl">‹</span>
+          </button>
+        )}
+        <div className="relative w-full" style={{ aspectRatio: '3/4', maxHeight: '80vh' }}>
+          <Image src={images[current]} alt={`Image ${current + 1}`} fill className="object-contain" priority />
+        </div>
+        {images.length > 1 && (
+          <button
+            className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors"
+            onClick={() => setCurrent(c => (c + 1) % images.length)}
+          >
+            <span className="text-white text-xl">›</span>
+          </button>
+        )}
+      </div>
+
+      {/* Thumbnail strip */}
+      {images.length > 1 && (
+        <div className="flex gap-2 mt-4 px-4 overflow-x-auto" onClick={e => e.stopPropagation()}>
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`relative shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                current === i ? 'border-white scale-110' : 'border-white/20 opacity-60 hover:opacity-100'
+              }`}
+            >
+              <Image src={img} alt="" fill className="object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Size Guide Modal ────────────────────────────────────────────────────────
 function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () => void }) {
   return (
@@ -155,6 +224,9 @@ export default function ProductDetailPage() {
 
   // Size guide modal
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+
+  // Lightbox
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Reviews
   const [reviews, setReviews] = useState<any[]>([]);
@@ -304,17 +376,27 @@ export default function ProductDetailPage() {
       {showSizeGuide && sizeGuide.length > 0 && (
         <SizeGuideModal sizeGuide={sizeGuide} onClose={() => setShowSizeGuide(false)} />
       )}
+      {lightboxOpen && allImages.length > 0 && (
+        <ImageLightbox images={allImages} initialIndex={activeImage} onClose={() => setLightboxOpen(false)} />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
 
         {/* ── Images ──────────────────────────────────────────────────── */}
         <div className="space-y-4 sticky top-6 self-start">
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl bg-accent/20 group">
+          <div
+            className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl bg-accent/20 group cursor-zoom-in"
+            onClick={() => allImages.length > 0 && setLightboxOpen(true)}
+            title="Click to view full image"
+          >
             {allImages[activeImage] && (
               <Image src={allImages[activeImage]} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" priority />
             )}
+            <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              🔍 Click to zoom
+            </div>
             <button
-              onClick={handleWishlist}
+              onClick={(e) => { e.stopPropagation(); handleWishlist(); }}
               disabled={wishlistLoading}
               className={`absolute top-4 right-4 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all backdrop-blur-sm ${isWishlisted ? 'bg-red-500 text-white scale-110' : 'bg-white/80 text-gray-600 hover:bg-red-50 hover:text-red-500'}`}
             >
