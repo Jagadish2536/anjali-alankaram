@@ -186,7 +186,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     setError('');
     
     try {
-      await api.post('/auth/otp/send', { phone: `+91${phone}` });
+      await api.post('/auth/otp/send', { phone });
       setStep('OTP');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
@@ -208,7 +208,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     
     try {
       const { data } = await api.post('/auth/otp/verify', { 
-        phone: `+91${phone}`, 
+        phone, 
         code: otp 
       });
       

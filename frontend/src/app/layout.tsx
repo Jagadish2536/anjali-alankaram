@@ -13,6 +13,18 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' })
 export const metadata: Metadata = {
   title: 'Anjali Alankaram | Premium Women\'s Fashion',
   description: 'Discover the latest trends in women\'s fashion with Anjali Alankaram. Shop elegant ethnic and western wear.',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
+  openGraph: {
+    title: 'Anjali Alankaram | Premium Women\'s Fashion',
+    description: 'Discover the latest trends in women\'s fashion with Anjali Alankaram. Shop elegant ethnic and western wear.',
+    images: [{ url: '/favicon.png', width: 200, height: 200, alt: 'Anjali Alankaram Logo' }],
+    type: 'website',
+    siteName: 'Anjali Alankaram',
+  },
 }
 
 export default function RootLayout({

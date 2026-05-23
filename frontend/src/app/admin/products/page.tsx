@@ -26,7 +26,7 @@ interface EditFormData {
   codAvailable: boolean;
   returnEnabled: boolean;
   replaceEnabled: boolean;
-  returnDays: number;
+  returnDays: string;
   sizeGuide: SizeRow[];
 }
 
@@ -38,7 +38,7 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: 14, sizeGuide: [] });
+  const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
   const [editVariants, setEditVariants] = useState<{ id?: string; size: string; stock: number; sku: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
@@ -96,7 +96,7 @@ export default function AdminProductsPage() {
       codAvailable: product.codAvailable !== false,
       returnEnabled: product.returnEnabled !== false,
       replaceEnabled: product.replaceEnabled !== false,
-      returnDays: product.returnDays || 14,
+      returnDays: String(product.returnDays ?? 0),
       sizeGuide: product.sizeGuide || [],
     });
     setEditVariants(product.variants?.length > 0
@@ -127,7 +127,7 @@ export default function AdminProductsPage() {
         codAvailable: editForm.codAvailable,
         returnEnabled: editForm.returnEnabled,
         replaceEnabled: editForm.replaceEnabled,
-        returnDays: editForm.returnDays,
+        returnDays: Number(editForm.returnDays) || 0,
         sizeGuide: editForm.sizeGuide.length > 0 ? editForm.sizeGuide : null,
         variants: editVariants.filter(v => v.size.trim() !== '').map(v => ({
           ...(v.id ? { id: v.id } : {}),
@@ -374,7 +374,7 @@ export default function AdminProductsPage() {
                       type="number" min={0} max={90}
                       className="w-32 px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
                       value={editForm.returnDays}
-                      onChange={e => setEditForm({ ...editForm, returnDays: parseInt(e.target.value) || 0 })}
+                      onChange={e => setEditForm({ ...editForm, returnDays: e.target.value })}
                     />
                     <span className="ml-2 text-sm text-muted-foreground">days (0 = no returns)</span>
                   </div>

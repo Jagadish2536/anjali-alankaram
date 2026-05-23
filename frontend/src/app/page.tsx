@@ -44,8 +44,13 @@ export default function Home() {
       {/* Hero Section */}
       <section className="w-full relative h-[70vh] bg-accent/20 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-           {/* Placeholder for hero image */}
-           <div className="w-full h-full bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070')] bg-cover bg-center opacity-60"></div>
+          <Image
+            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070"
+            alt="Hero background - women's fashion collection"
+            fill
+            className="object-cover object-center opacity-60"
+            priority
+          />
         </div>
         <div className="z-10 text-center px-4 max-w-3xl">
           <h1 className="text-5xl md:text-7xl font-outfit font-bold text-foreground mb-6 tracking-tight">

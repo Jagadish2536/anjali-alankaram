@@ -135,6 +135,16 @@ export class CreateProductDto {
   @Min(0)
   returnDays?: number;
 
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  returnEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  replaceEnabled?: boolean;
+
   @ApiPropertyOptional({ description: 'Size guide rows as JSON array' })
   @IsOptional()
   sizeGuide?: any;
