@@ -3,8 +3,8 @@ const path = require('path');
 const AWS = require('aws-sdk');
 
 // Configuration
-const REGION = 'ap-south-2'; // From variables.tf default
-const PROJECT_NAME = 'anjali-alankaram'; // From variables.tf default
+const REGION = 'ap-south-2'; 
+const PROJECT_NAME = 'anjali-alankaram'; 
 
 // Initialize AWS Secrets Manager
 const secretsManager = new AWS.SecretsManager({ region: REGION });
@@ -26,47 +26,42 @@ function parseEnv(filePath) {
     
     if (key) {
       const trimmedKey = key.trim();
-      if (trimmedKey === 'AWS_ACCESS_KEY_ID' || trimmedKey === 'AWS_SECRET_ACCESS_KEY') {
-        env[trimmedKey] = ''; // Force empty so production uses IAM Task Role
-      } else {
-        env[trimmedKey] = value || '';
+      // Skip these keys entirely so we don't overwrite production endpoints with localhost
+      if (trimmedKey === 'AWS_ACCESS_KEY_ID' || trimmedKey === 'AWS_SECRET_ACCESS_KEY' || 
+          trimmedKey === 'DATABASE_URL' || trimmedKey === 'REDIS_HOST' || 
+          trimmedKey === 'REDIS_PORT' || trimmedKey === 'REDIS_PASSWORD') {
+        return;
       }
+      env[trimmedKey] = value || '';
     }
   });
-
-  // ECS requires all these keys to be present in Secrets Manager or it fails to start
-  const REQUIRED_BACKEND_KEYS = [
-    "JWT_SECRET", "DATABASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD",
-    "JWT_ACCESS_EXPIRES", 
-    "MSG91_AUTH_KEY", "MSG91_TEMPLATE_ID", "GOOGLE_CLIENT_ID", "RAZORPAY_KEY_ID",
-    "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SHIPROCKET_EMAIL",
-    "SHIPROCKET_PASSWORD", "FIREBASE_SERVICE_ACCOUNT_BASE64", "RATE_LIMIT_REQUESTS",
-    "ALLOWED_ORIGINS"
-  ];
-  
-  if (filePath.includes('.env') && !filePath.includes('frontend')) {
-    REQUIRED_BACKEND_KEYS.forEach(reqKey => {
-      if (!(reqKey in env)) env[reqKey] = '';
-    });
-  }
 
   return env;
 }
 
-async function updateSecret(secretName, envVars) {
-  if (Object.keys(envVars).length === 0) {
-    console.log(`Skipping ${secretName} as no valid variables were found.`);
-    return;
-  }
-  
+async function updateSecret(secretName, localEnvVars) {
   try {
+    // First, fetch the existing secrets from AWS to preserve infrastructure variables
+    let existingEnv = {};
+    try {
+      const data = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+      if ('SecretString' in data) {
+        existingEnv = JSON.parse(data.SecretString);
+      }
+    } catch (err) {
+      console.log(`Could not fetch existing secret ${secretName}, creating a new payload...`);
+    }
+
+    // Merge local variables INTO the existing AWS variables
+    const finalEnv = { ...existingEnv, ...localEnvVars };
+    
     const params = {
       SecretId: secretName,
-      SecretString: JSON.stringify(envVars)
+      SecretString: JSON.stringify(finalEnv)
     };
     
     await secretsManager.putSecretValue(params).promise();
-    console.log(`✅ Successfully updated secret: ${secretName}`);
+    console.log(`✅ Successfully synced local changes to secret: ${secretName}`);
   } catch (error) {
     console.error(`❌ Failed to update secret ${secretName}:`, error.message);
   }

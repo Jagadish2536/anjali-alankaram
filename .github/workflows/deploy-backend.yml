@@ -89,7 +89,7 @@ jobs:
           --task-definition ${{ steps.register-task-def.outputs.task_definition_arn }} \
           --launch-type FARGATE \
           --network-configuration "$NETWORK_CONFIG" \
-          --overrides '{"containerOverrides": [{"name": "${{ env.CONTAINER_NAME }}", "command": ["sh", "-c", "node prisma/migrate.js && npx prisma db push --accept-data-loss"]}]}' \
+          --overrides '{"containerOverrides": [{"name": "${{ env.CONTAINER_NAME }}", "command": ["sh", "-c", "node prisma/migrate.js && npx prisma migrate deploy"]}]}' \
           --started-by "GitHubActions-Migration" \
           --query 'tasks[0].taskArn' \
           --output text)
