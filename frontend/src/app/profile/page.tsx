@@ -124,6 +124,10 @@ export default function ProfilePage() {
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
   });
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ password: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -147,6 +151,10 @@ export default function ProfilePage() {
       email: user?.email || '',
       phone: user?.phone?.replace('+91', '') || '',
     });
+    setIsEditingPhone(false);
+    setIsEditingEmail(false);
+    setIsEditingPassword(false);
+    setPasswordForm({ password: '', confirmPassword: '' });
   }, [isAuthenticated, user]);
 
   useEffect(() => {
@@ -175,14 +183,31 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true); setSaveMsg(null);
     try {
-      const { data } = await api.put('/users/profile', {
+      const payload: any = {
         name: form.name || undefined,
         email: form.email || undefined,
-      });
+        phone: form.phone || undefined,
+      };
+
+      if (isEditingPassword) {
+        if (!passwordForm.password) {
+          throw new Error('Please enter a password');
+        }
+        if (passwordForm.password !== passwordForm.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        payload.password = passwordForm.password;
+      }
+
+      const { data } = await api.put('/users/profile', payload);
       setUser({ ...user!, ...data });
       setSaveMsg({ ok: true, text: 'Details saved successfully!' });
+      setIsEditingPhone(false);
+      setIsEditingEmail(false);
+      setIsEditingPassword(false);
+      setPasswordForm({ password: '', confirmPassword: '' });
     } catch (e: any) {
-      setSaveMsg({ ok: false, text: e.response?.data?.message || 'Failed to save.' });
+      setSaveMsg({ ok: false, text: e.message || e.response?.data?.message || 'Failed to save.' });
     } finally {
       setSaving(false);
       setTimeout(() => setSaveMsg(null), 4000);
@@ -319,33 +344,131 @@ export default function ProfilePage() {
 
                 {/* Mobile */}
                 <div className="border border-gray-200 rounded-sm p-4 flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">Mobile Number*</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">{form.phone ? `+91 ${form.phone}` : 'Not set'}</span>
-                      {user?.phone && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                  {isEditingPhone ? (
+                    <div className="flex-1 mr-4">
+                      <FloatInput label="Mobile Number" value={form.phone} onChange={v => setForm(p => ({ ...p, phone: v }))} />
                     </div>
-                  </div>
-                  <button className="border border-gray-300 px-6 py-2 text-xs font-black tracking-widest hover:border-gray-500 transition-colors">
-                    CHANGE
+                  ) : (
+                    <div>
+                      <p className="text-[10px] text-gray-400 mb-0.5">Mobile Number*</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{form.phone ? `+91 ${form.phone}` : 'Not set'}</span>
+                        {user?.phone && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (isEditingPhone) {
+                        setForm(p => ({ ...p, phone: user?.phone?.replace('+91', '') || '' }));
+                      }
+                      setIsEditingPhone(!isEditingPhone);
+                    }}
+                    type="button"
+                    className="border border-gray-300 px-6 py-2 text-xs font-black tracking-widest hover:border-gray-500 transition-colors shrink-0">
+                    {isEditingPhone ? 'CANCEL' : 'CHANGE'}
                   </button>
                 </div>
 
                 {/* Email */}
                 <div className="border border-gray-200 rounded-sm p-4 flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">Email</p>
-                    <span className="text-sm font-semibold">{form.email || 'Not set'}</span>
-                  </div>
-                  <button className="border border-gray-300 px-6 py-2 text-xs font-black tracking-widest hover:border-gray-500 transition-colors">
-                    CHANGE
+                  {isEditingEmail ? (
+                    <div className="flex-1 mr-4">
+                      <FloatInput label="Email" value={form.email} onChange={v => setForm(p => ({ ...p, email: v }))} />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-[10px] text-gray-400 mb-0.5">Email</p>
+                      <span className="text-sm font-semibold">{form.email || 'Not set'}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (isEditingEmail) {
+                        setForm(p => ({ ...p, email: user?.email || '' }));
+                      }
+                      setIsEditingEmail(!isEditingEmail);
+                    }}
+                    type="button"
+                    className="border border-gray-300 px-6 py-2 text-xs font-black tracking-widest hover:border-gray-500 transition-colors shrink-0">
+                    {isEditingEmail ? 'CANCEL' : 'CHANGE'}
                   </button>
                 </div>
 
                 {/* Full Name */}
-                <div className="mb-6">
+                <div className="mb-4">
                   <FloatInput label="Full Name" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} />
                 </div>
+
+                {/* Password Section */}
+                {user?.hasPassword ? (
+                  <div className="border border-gray-200 rounded-sm p-4 flex items-center justify-between mb-6">
+                    {isEditingPassword ? (
+                      <div className="flex-1 mr-4 space-y-3">
+                        <FloatInput
+                          label="New Password"
+                          type="password"
+                          value={passwordForm.password}
+                          onChange={v => setPasswordForm(p => ({ ...p, password: v }))}
+                        />
+                        <FloatInput
+                          label="Confirm New Password"
+                          type="password"
+                          value={passwordForm.confirmPassword}
+                          onChange={v => setPasswordForm(p => ({ ...p, confirmPassword: v }))}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">Password</p>
+                        <span className="text-sm font-semibold">••••••••</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        setIsEditingPassword(!isEditingPassword);
+                        setPasswordForm({ password: '', confirmPassword: '' });
+                      }}
+                      type="button"
+                      className="border border-gray-300 px-6 py-2 text-xs font-black tracking-widest hover:border-gray-500 transition-colors shrink-0">
+                      {isEditingPassword ? 'CANCEL' : 'CHANGE'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border border-amber-200 rounded-sm p-4 flex items-center justify-between mb-6 bg-amber-50/20">
+                    {isEditingPassword ? (
+                      <div className="flex-1 mr-4 space-y-3">
+                        <p className="text-xs text-amber-700 font-medium">Set a password to also log in with your email or phone number.</p>
+                        <FloatInput
+                          label="Set Password"
+                          type="password"
+                          value={passwordForm.password}
+                          onChange={v => setPasswordForm(p => ({ ...p, password: v }))}
+                        />
+                        <FloatInput
+                          label="Confirm Password"
+                          type="password"
+                          value={passwordForm.confirmPassword}
+                          onChange={v => setPasswordForm(p => ({ ...p, confirmPassword: v }))}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] text-amber-600 mb-0.5">Password</p>
+                        <span className="text-sm font-medium text-gray-500">Not set (Google SSO / OTP login)</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        setIsEditingPassword(!isEditingPassword);
+                        setPasswordForm({ password: '', confirmPassword: '' });
+                      }}
+                      type="button"
+                      className="border border-amber-300 text-amber-800 bg-amber-50 px-6 py-2 text-xs font-black tracking-widest hover:bg-amber-100 transition-colors shrink-0">
+                      {isEditingPassword ? 'CANCEL' : 'SET PASSWORD'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Save */}
                 <button onClick={handleSave} disabled={saving}

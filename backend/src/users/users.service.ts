@@ -162,9 +162,40 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: any) {
-    return this.prisma.user.update({
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const updateData: any = {};
+
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.avatar !== undefined) updateData.avatar = dto.avatar;
+
+    if (dto.email !== undefined) {
+      const email = dto.email?.trim().toLowerCase() || null;
+      if (email && email !== user.email) {
+        const existing = await this.prisma.user.findUnique({ where: { email } });
+        if (existing) throw new ConflictException('Email is already registered');
+      }
+      updateData.email = email;
+    }
+
+    if (dto.phone !== undefined) {
+      const phone = dto.phone?.trim() || null;
+      const formattedPhone = phone ? (phone.startsWith('+91') ? phone : `+91${phone}`) : null;
+      if (formattedPhone && formattedPhone !== user.phone) {
+        const existing = await this.prisma.user.findUnique({ where: { phone: formattedPhone } });
+        if (existing) throw new ConflictException('Phone number is already registered');
+      }
+      updateData.phone = formattedPhone;
+    }
+
+    if (dto.password !== undefined && dto.password !== '') {
+      updateData.password = await bcrypt.hash(dto.password, 10);
+    }
+
+    const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: dto,
+      data: updateData,
       select: {
         id: true,
         email: true,
@@ -172,8 +203,19 @@ export class UsersService {
         name: true,
         avatar: true,
         role: true,
+        password: true,
       }
     });
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      name: updatedUser.name,
+      avatar: updatedUser.avatar,
+      role: updatedUser.role,
+      hasPassword: !!updatedUser.password,
+    };
   }
 
   async getAddresses(userId: string) {

@@ -8,6 +8,7 @@ interface User {
   phone: string;
   role: string;
   avatar?: string;
+  hasPassword?: boolean;
 }
 
 interface AuthState {

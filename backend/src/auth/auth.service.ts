@@ -170,19 +170,21 @@ export class AuthService {
   }
 
   async validateUser(userId: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId, isActive: true },
-      select: {
-        id: true,
-        email: true,
-        phone: true,
-        name: true,
-        avatar: true,
-        role: true,
-        isPhoneVerified: true,
-        isEmailVerified: true,
-      },
     });
+    if (!user) return null;
+    return {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      isPhoneVerified: user.isPhoneVerified,
+      isEmailVerified: user.isEmailVerified,
+      hasPassword: !!user.password,
+    };
   }
 
   // ── Register with Email & Password ─────────────────────
@@ -417,6 +419,7 @@ export class AuthService {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        hasPassword: !!user.password,
       },
     };
   }
