@@ -15,11 +15,11 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name        = "${var.project_name}-tg-front"
-  port        = 4000
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
+  name                 = "${var.project_name}-tg-front"
+  port                 = 4000
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "ip"
   deregistration_delay = 30
 
   health_check {
@@ -32,11 +32,11 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 resource "aws_lb_target_group" "backend" {
-  name        = "${var.project_name}-tg-back"
-  port        = 3000
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
+  name                 = "${var.project_name}-tg-back"
+  port                 = 3000
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "ip"
   deregistration_delay = 30
 
   health_check {
@@ -58,7 +58,7 @@ resource "aws_acm_certificate" "main" {
   count             = var.domain_name != "" ? 1 : 0
   domain_name       = var.domain_name
   validation_method = "DNS"
-  
+
   subject_alternative_names = ["*.${var.domain_name}"]
 
   lifecycle {

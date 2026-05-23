@@ -57,4 +57,29 @@ export class ProductFilterDto {
   @IsOptional()
   @IsString()
   color?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  categorySlug?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  isNewArrival?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  t?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

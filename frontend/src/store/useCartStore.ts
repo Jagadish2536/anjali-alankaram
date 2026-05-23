@@ -30,6 +30,7 @@ interface CartState {
   addItem: (variantId: string, quantity: number) => Promise<void>;
   updateItem: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
+  clearCart: () => void;
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -86,5 +87,9 @@ export const useCartStore = create<CartState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  clearCart: () => {
+    set({ items: [], subtotal: 0, itemCount: 0 });
   },
 }));

@@ -1,4 +1,4 @@
-// Prisma Schema — Anjali Alankaram Fashion eCommerce
+// Prisma Schema — Anjali Alankaram Fashion eCommerce (Enterprise Edition)
 // Database: PostgreSQL
 
 generator client {
@@ -16,28 +16,44 @@ datasource db {
 
 enum Role {
   CUSTOMER
+  WAREHOUSE_STAFF
   ADMIN
   SUPER_ADMIN
 }
 
 enum OrderStatus {
-  PENDING
+  // Pre-fulfillment
+  PENDING_PAYMENT
+  PAYMENT_VERIFIED
   CONFIRMED
+  INVENTORY_RESERVED
+  // Fulfillment
   PROCESSING
+  PICKING
+  PACKED
+  READY_FOR_SHIPMENT
+  // Shipping
   SHIPPED
+  IN_TRANSIT
   OUT_FOR_DELIVERY
   DELIVERED
-  CANCELLED
+  // Returns
   RETURN_REQUESTED
   RETURN_APPROVED
-  RETURN_PICKED
+  RETURN_REJECTED
+  PICKUP_SCHEDULED
+  RETURNED
+  REFUND_INITIATED
   REFUNDED
+  // Terminal
+  CANCELLED
 }
 
 enum PaymentStatus {
   PENDING
   PAID
   FAILED
+  REFUND_INITIATED
   REFUNDED
   PARTIALLY_REFUNDED
 }
@@ -63,12 +79,17 @@ enum ProductStatus {
 
 enum NotificationType {
   ORDER_PLACED
+  ORDER_CONFIRMED
   ORDER_SHIPPED
+  ORDER_OUT_FOR_DELIVERY
   ORDER_DELIVERED
   ORDER_CANCELLED
+  ORDER_UPDATE
   PAYMENT_SUCCESS
   PAYMENT_FAILED
   RETURN_UPDATE
+  REFUND_UPDATE
+  LOW_STOCK_ALERT
   OFFER
   GENERAL
 }
@@ -77,6 +98,20 @@ enum CouponType {
   PERCENTAGE
   FLAT
   FREE_SHIPPING
+}
+
+enum InventoryMovementType {
+  RESERVED        // Stock reserved during checkout
+  RESERVATION_RELEASED  // Stock released (order cancelled / expired)
+  DEDUCTED        // Stock deducted after payment confirmed
+  RESTOCKED       // Stock added (return / manual restock)
+  ADJUSTED        // Manual inventory adjustment
+}
+
+enum WarehouseStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
 }
 
 // ─────────────────────────────────────────────
@@ -91,10 +126,15 @@ model User {
   avatar           String?
   role             Role           @default(CUSTOMER)
   googleId         String?        @unique
+  password         String?
   isPhoneVerified  Boolean        @default(false)
   isEmailVerified  Boolean        @default(false)
   isActive         Boolean        @default(true)
+  gender           String?
+  birthday         String?
   fcmToken         String?
+  warehouseId      String?        // For WAREHOUSE_STAFF role
+  warehouse        Warehouse?     @relation(fields: [warehouseId], references: [id])
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   addresses        Address[]
@@ -105,13 +145,18 @@ model User {
   notifications    Notification[]
   otpCodes         OtpCode[]
   refreshTokens    RefreshToken[]
+  statusActions    OrderStatusHistory[] // Orders whose status this user changed
 
+  @@index([email])
+  @@index([phone])
+  @@index([role])
   @@map("users")
 }
 
 model OtpCode {
   id        String   @id @default(uuid())
-  phone     String
+  phone     String?
+  email     String?
   code      String
   expiresAt DateTime
   used      Boolean  @default(false)
@@ -155,6 +200,47 @@ model Address {
 }
 
 // ─────────────────────────────────────────────
+// WAREHOUSES
+// ─────────────────────────────────────────────
+
+model Warehouse {
+  id          String            @id @default(uuid())
+  name        String
+  code        String            @unique  // e.g. "WH-BLR-01"
+  address     String
+  city        String
+  state       String
+  pincode     String
+  phone       String?
+  email       String?
+  status      WarehouseStatus   @default(ACTIVE)
+  isDefault   Boolean           @default(false)
+  staff       User[]
+  inventory   WarehouseInventory[]
+  orders      Order[]           // Orders assigned to this warehouse
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("warehouses")
+}
+
+model WarehouseInventory {
+  id          String         @id @default(uuid())
+  warehouseId String
+  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+  quantity    Int            @default(0)
+  reserved    Int            @default(0)  // Currently reserved
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([warehouseId, variantId])
+  @@index([warehouseId])
+  @@index([variantId])
+  @@map("warehouse_inventory")
+}
+
+// ─────────────────────────────────────────────
 // PRODUCTS & CATALOG
 // ─────────────────────────────────────────────
 
@@ -191,6 +277,12 @@ model Product {
   tags             String[]
   material         String?
   careInstructions String?
+  instagramReelUrl String?
+  codAvailable     Boolean          @default(true)
+  returnEnabled    Boolean          @default(true)
+  replaceEnabled   Boolean          @default(true)
+  returnDays       Int              @default(14)
+  sizeGuide        Json?
   status           ProductStatus    @default(DRAFT)
   isFeatured       Boolean          @default(false)
   isNewArrival     Boolean          @default(false)
@@ -206,26 +298,35 @@ model Product {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
+  @@index([status])
+  @@index([categoryId])
+  @@index([slug])
   @@map("products")
 }
 
 model ProductVariant {
-  id         String      @id @default(uuid())
-  productId  String
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  size       String
-  color      String?
-  colorHex   String?
-  sku        String      @unique
-  stock      Int         @default(0)
-  extraPrice Decimal     @default(0) @db.Decimal(10, 2)
-  images     String[]
-  isActive   Boolean     @default(true)
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id                 String               @id @default(uuid())
+  productId          String
+  product            Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size               String
+  color              String?
+  colorHex           String?
+  sku                String               @unique
+  stock              Int                  @default(0)
+  reservedStock      Int                  @default(0)  // Currently reserved
+  extraPrice         Decimal              @default(0) @db.Decimal(10, 2)
+  images             String[]
+  isActive           Boolean              @default(true)
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  warehouseInventory WarehouseInventory[]
+  inventoryLogs      InventoryLog[]
+  reservations       InventoryReservation[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
+  @@index([productId])
+  @@index([sku])
   @@map("product_variants")
 }
 
@@ -288,77 +389,191 @@ model WishlistItem {
 // ─────────────────────────────────────────────
 
 model Order {
-  id                  String        @id @default(uuid())
-  orderNumber         String        @unique
-  userId              String
-  user                User          @relation(fields: [userId], references: [id])
-  addressId           String
-  address             Address       @relation(fields: [addressId], references: [id])
-  items               OrderItem[]
-  subtotal            Decimal       @db.Decimal(10, 2)
-  discountAmount      Decimal       @default(0) @db.Decimal(10, 2)
-  shippingCharge      Decimal       @default(0) @db.Decimal(10, 2)
-  totalAmount         Decimal       @db.Decimal(10, 2)
-  couponId            String?
-  coupon              Coupon?       @relation(fields: [couponId], references: [id])
-  couponCode          String?
-  status              OrderStatus   @default(PENDING)
-  paymentStatus       PaymentStatus @default(PENDING)
-  paymentMethod       PaymentMethod
-  razorpayOrderId     String?
-  payment             Payment?
-  notes               String?
-  cancelReason        String?
-  returnReason        String?
-  shiprocketOrderId   String?
-  shiprocketShipmentId String?
-  awbCode             String?
-  trackingUrl         String?
-  estimatedDelivery   DateTime?
-  deliveredAt         DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                    String               @id @default(uuid())
+  orderNumber           String               @unique
+  userId                String
+  user                  User                 @relation(fields: [userId], references: [id])
+  addressId             String
+  address               Address              @relation(fields: [addressId], references: [id])
+  warehouseId           String?              // Assigned warehouse
+  warehouse             Warehouse?           @relation(fields: [warehouseId], references: [id])
+  items                 OrderItem[]
+  statusHistory         OrderStatusHistory[]
+  reservations          InventoryReservation[]
+  subtotal              Decimal              @db.Decimal(10, 2)
+  discountAmount        Decimal              @default(0) @db.Decimal(10, 2)
+  shippingCharge        Decimal              @default(0) @db.Decimal(10, 2)
+  giftCharge            Decimal              @default(0) @db.Decimal(10, 2)
+  platformFee           Decimal              @default(0) @db.Decimal(10, 2)
+  codCharges            Decimal              @default(0) @db.Decimal(10, 2)
+  gstAmount             Decimal              @default(0) @db.Decimal(10, 2)
+  totalAmount           Decimal              @db.Decimal(10, 2)
+  couponId              String?
+  coupon                Coupon?              @relation(fields: [couponId], references: [id])
+  couponCode            String?
+  status                OrderStatus          @default(PENDING_PAYMENT)
+  paymentStatus         PaymentStatus        @default(PENDING)
+  paymentMethod         PaymentMethod
+  razorpayOrderId       String?
+  payment               Payment?
+  paymentTransactions   PaymentTransaction[]
+  notes                 String?
+  giftMessage           String?
+  isGift                Boolean              @default(false)
+  cancelReason          String?
+  returnReason          String?
+  // Shipping
+  awbCode               String?
+  trackingUrl           String?
+  courierName           String?
+  courierTrackingId     String?
+  shiprocketOrderId     String?
+  shiprocketShipmentId  String?
+  estimatedDelivery     DateTime?
+  shippedAt             DateTime?
+  deliveredAt           DateTime?
+  // Return
+  returnRequestedAt     DateTime?
+  returnApprovedAt      DateTime?
+  pickupScheduledAt     DateTime?
+  returnedAt            DateTime?
+  refundInitiatedAt     DateTime?
+  refundedAt            DateTime?
+  pickupSlot            String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([createdAt])
   @@map("orders")
 }
 
-model OrderItem {
+// Append-only status history — never update, only insert
+model OrderStatusHistory {
+  id          String      @id @default(uuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  actorId     String?     // userId who made the change (null = system)
+  actor       User?       @relation(fields: [actorId], references: [id])
+  actorRole   String?     // "CUSTOMER" | "ADMIN" | "SYSTEM" | "WEBHOOK"
+  notes       String?     // optional admin note / reason
+  metadata    Json?       // e.g. { awbCode, paymentId, refundId }
+  createdAt   DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("order_status_history")
+}
+
+// Inventory reservation — created when order is placed, released on cancel/confirm
+model InventoryReservation {
   id          String         @id @default(uuid())
   orderId     String
   order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product        @relation(fields: [productId], references: [id])
   variantId   String
   variant     ProductVariant @relation(fields: [variantId], references: [id])
-  productName String
-  variantInfo Json
   quantity    Int
-  unitPrice   Decimal        @db.Decimal(10, 2)
-  totalPrice  Decimal        @db.Decimal(10, 2)
-  imageUrl    String?
+  isConfirmed Boolean        @default(false)  // true = stock deducted
+  isReleased  Boolean        @default(false)  // true = rollback done
+  expiresAt   DateTime       // auto-release after 15 mins if payment not received
   createdAt   DateTime       @default(now())
 
+  @@index([orderId])
+  @@index([variantId])
+  @@index([expiresAt])
+  @@map("inventory_reservations")
+}
+
+// Audit trail for every stock movement
+model InventoryLog {
+  id          String                @id @default(uuid())
+  variantId   String
+  variant     ProductVariant        @relation(fields: [variantId], references: [id])
+  type        InventoryMovementType
+  quantity    Int                   // positive = added, negative = removed
+  stockBefore Int
+  stockAfter  Int
+  orderId     String?
+  actorId     String?
+  notes       String?
+  createdAt   DateTime              @default(now())
+
+  @@index([variantId])
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("inventory_logs")
+}
+
+model OrderItem {
+  id             String         @id @default(uuid())
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product        @relation(fields: [productId], references: [id])
+  variantId      String
+  variant        ProductVariant @relation(fields: [variantId], references: [id])
+  productName    String
+  variantInfo    Json
+  sku            String?
+  quantity       Int
+  unitPrice      Decimal        @db.Decimal(10, 2)
+  totalPrice     Decimal        @db.Decimal(10, 2)
+  imageUrl       String?
+  returnEnabled  Boolean        @default(true)
+  replaceEnabled Boolean        @default(true)
+  returnDays     Int            @default(14)
+  // Fulfillment
+  isPicked       Boolean        @default(false)
+  isPacked       Boolean        @default(false)
+  pickedAt       DateTime?
+  packedAt       DateTime?
+  createdAt      DateTime       @default(now())
+
+  @@index([orderId])
   @@map("order_items")
 }
 
 model Payment {
-  id                String        @id @default(uuid())
-  orderId           String        @unique
-  order             Order         @relation(fields: [orderId], references: [id])
+  id                String             @id @default(uuid())
+  orderId           String             @unique
+  order             Order              @relation(fields: [orderId], references: [id])
   razorpayOrderId   String?
-  razorpayPaymentId String?       @unique
+  razorpayPaymentId String?            @unique
   razorpaySignature String?
-  amount            Decimal       @db.Decimal(10, 2)
-  currency          String        @default("INR")
-  status            PaymentStatus @default(PENDING)
+  amount            Decimal            @db.Decimal(10, 2)
+  currency          String             @default("INR")
+  status            PaymentStatus      @default(PENDING)
   method            PaymentMethod
   failureReason     String?
   refundId          String?
-  refundAmount      Decimal?      @db.Decimal(10, 2)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  refundAmount      Decimal?           @db.Decimal(10, 2)
+  refundedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@map("payments")
+}
+
+// Every payment event (attempt, success, failure, refund) is logged
+model PaymentTransaction {
+  id          String        @id @default(uuid())
+  orderId     String
+  order       Order         @relation(fields: [orderId], references: [id])
+  type        String        // "CHARGE" | "REFUND" | "RETRY" | "COD_COLLECTED"
+  amount      Decimal       @db.Decimal(10, 2)
+  status      String        // "SUCCESS" | "FAILED" | "PENDING"
+  gateway     String        // "RAZORPAY" | "COD" | "MANUAL"
+  gatewayRef  String?       // razorpay payment id / refund id
+  failReason  String?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([orderId])
+  @@map("payment_transactions")
 }
 
 // ─────────────────────────────────────────────
@@ -444,17 +659,54 @@ model Notification {
   body      String
   data      Json?
   isRead    Boolean          @default(false)
+  sentVia   String[]         @default([])  // ["EMAIL","SMS","PUSH","IN_APP"]
   createdAt DateTime         @default(now())
 
+  @@index([userId, isRead])
   @@map("notifications")
 }
+
+// ─────────────────────────────────────────────
+// STORE SETTINGS
+// ─────────────────────────────────────────────
+
 model StoreSettings {
-  id              String   @id @default(uuid())
-  storeName       String   @default("Anjali Alankaram")
-  supportEmail    String   @default("support@anjalialankaram.com")
-  supportPhone    String   @default("+91 9876543210")
-  whatsappNumber  String   @default("+91 9876543210")
-  instagramUrl    String   @default("https://instagram.com/anjalialankaram")
-  maintenanceMode Boolean  @default(false)
-  updatedAt       DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  storeName               String   @default("Anjali Alankaram")
+  supportEmail            String   @default("support@anjalialankaram.com")
+  supportPhone            String   @default("+91 9876543210")
+  whatsappNumber          String   @default("+91 9876543210")
+  instagramUrl            String   @default("https://instagram.com/anjalialankaram")
+  maintenanceMode         Boolean  @default(false)
+  require2FA              Boolean  @default(false)
+  notifyNewOrder          Boolean  @default(true)
+  notifyLowStock          Boolean  @default(true)
+  notifyCustomerSignup    Boolean  @default(true)
+  // Regional
+  currency                String   @default("INR")
+  currencySymbol          String   @default("₹")
+  gstEnabled              Boolean  @default(true)
+  gstRate                 Float    @default(18)
+  freeShippingThreshold   Float    @default(499)
+  shippingCharge          Float    @default(49)
+  codEnabled              Boolean  @default(true)
+  codCharges              Float    @default(0)
+  // Features
+  couponsEnabled          Boolean  @default(true)
+  giftEnabled             Boolean  @default(false)
+  giftAmount              Float    @default(35)
+  platformFeeEnabled      Boolean  @default(false)
+  platformFeeAmount       Float    @default(0)
+  // Inventory
+  lowStockThreshold       Int      @default(5)
+  reservationTimeoutMins  Int      @default(15)
+  // Footer / Store Info
+  storeDescription        String?
+  contactEmail            String?
+  contactPhone            String?
+  returnPolicyDays        Int      @default(7)
+  footerCategories        Json?
+  updatedAt               DateTime @updatedAt
+
+  @@map("store_settings")
 }

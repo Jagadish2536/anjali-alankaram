@@ -1,28 +1,21 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function FloatingWhatsApp() {
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const { settings, fetchSettings } = useSettingsStore();
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data } = await api.get('/settings');
-        if (data?.whatsappNumber) setWhatsappNumber(data.whatsappNumber.replace(/[^0-9]/g, ''));
-      } catch (e) {
-        console.error('Failed to fetch whatsapp');
-      }
-    };
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
-  if (!whatsappNumber) return null;
+  const number = settings.whatsappNumber.replace(/[^0-9]/g, '');
+  if (!number) return null;
 
   return (
     <a 
-      href={`https://wa.me/${whatsappNumber}`}
+      href={`https://wa.me/${number}`}
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-8 right-8 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center justify-center group"

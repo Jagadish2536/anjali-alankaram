@@ -21,6 +21,7 @@ export class ProductsService {
       page = 1,
       limit = 20,
       categoryId,
+      categorySlug,
       minPrice,
       maxPrice,
       sortBy = 'createdAt',
@@ -28,12 +29,29 @@ export class ProductsService {
       status = 'ACTIVE',
       size,
       color,
+      isNewArrival,
+      search,
     } = filters;
 
     const skip = (page - 1) * limit;
-    const where: any = { status: status as ProductStatus };
+    const where: any = {};
 
-    if (categoryId) where.categoryId = categoryId;
+    if (status === 'ALL') {
+      where.status = { not: 'ARCHIVED' };
+    } else if (status) {
+      where.status = status as ProductStatus;
+    }
+
+    if (categoryId) {
+      where.categoryId = categoryId;
+    } else if (categorySlug) {
+      where.category = { slug: categorySlug };
+    }
+
+    if (isNewArrival === 'true') {
+      where.isNewArrival = true;
+    }
+
     if (minPrice || maxPrice) {
       where.basePrice = {};
       if (minPrice) where.basePrice.gte = minPrice;
@@ -48,6 +66,16 @@ export class ProductsService {
           stock: { gt: 0 },
         },
       };
+    }
+
+    // Full-text search across name, description, material
+    if (search && search.trim()) {
+      where.OR = [
+        { name: { contains: search.trim(), mode: 'insensitive' } },
+        { description: { contains: search.trim(), mode: 'insensitive' } },
+        { material: { contains: search.trim(), mode: 'insensitive' } },
+        { tags: { has: search.trim() } },
+      ];
     }
 
     const [products, total] = await Promise.all([
@@ -170,6 +198,7 @@ export class ProductsService {
     return this.prisma.product.create({
       data: {
         ...dto,
+        status: dto.status || 'ACTIVE',
         slug: finalSlug,
         variants: dto.variants
           ? {
@@ -191,10 +220,42 @@ export class ProductsService {
     // Invalidate cache
     await this.redis.del(`product:${product.slug}`);
 
-    return this.prisma.product.update({
+    // Separate variants from the rest of the dto
+    const { variants, ...productData } = dto as any;
+
+    // Update the core product fields
+    const updated = await this.prisma.product.update({
       where: { id },
-      data: dto as any,
+      data: productData,
       include: { variants: true, category: true },
+    });
+
+    // Upsert variants if provided
+    if (variants && Array.isArray(variants)) {
+      for (const v of variants) {
+        if (v.id) {
+          // Update existing variant
+          await this.prisma.productVariant.update({
+            where: { id: v.id },
+            data: { size: v.size, stock: v.stock, sku: v.sku },
+          });
+        } else {
+          // Create new variant
+          await this.prisma.productVariant.create({
+            data: {
+              productId: id,
+              size: v.size,
+              stock: v.stock,
+              sku: v.sku || `${id.substring(0, 4)}-${v.size}-${Date.now()}`.toUpperCase(),
+            },
+          });
+        }
+      }
+    }
+
+    return this.prisma.product.findUnique({
+      where: { id },
+      include: { variants: { where: { isActive: true }, orderBy: { size: 'asc' } }, category: true },
     });
   }
 

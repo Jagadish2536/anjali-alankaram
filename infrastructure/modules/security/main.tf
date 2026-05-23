@@ -95,8 +95,8 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -110,8 +110,8 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 
 # Add Secrets Manager Policy to Execution Role
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
-  name   = "${var.project_name}-ecs-secrets-policy"
-  role   = aws_iam_role.ecs_task_execution_role.id
+  name = "${var.project_name}-ecs-secrets-policy"
+  role = aws_iam_role.ecs_task_execution_role.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -127,8 +127,8 @@ resource "aws_iam_role" "ecs_task_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -137,13 +137,13 @@ resource "aws_iam_role" "ecs_task_role" {
 
 # Allow ECS Exec (Execute Command)
 resource "aws_iam_role_policy" "ecs_exec_command" {
-  name   = "${var.project_name}-ecs-exec-policy"
-  role   = aws_iam_role.ecs_task_role.id
+  name = "${var.project_name}-ecs-exec-policy"
+  role = aws_iam_role.ecs_task_role.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = [
+      Effect = "Allow"
+      Action = [
         "ssmmessages:CreateControlChannel",
         "ssmmessages:CreateDataChannel",
         "ssmmessages:OpenControlChannel",
@@ -155,8 +155,8 @@ resource "aws_iam_role_policy" "ecs_exec_command" {
 }
 
 resource "aws_iam_role_policy" "ecs_s3_access" {
-  name   = "${var.project_name}-ecs-s3-policy"
-  role   = aws_iam_role.ecs_task_role.id
+  name = "${var.project_name}-ecs-s3-policy"
+  role = aws_iam_role.ecs_task_role.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -167,7 +167,7 @@ resource "aws_iam_role_policy" "ecs_s3_access" {
           "s3:DeleteObject",
           "s3:ListBucket"
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         Resource = [
           "arn:aws:s3:::anjali-alankaram-assets-*",
           "arn:aws:s3:::anjali-alankaram-assets-*/*"

@@ -13,16 +13,21 @@ import {
   ChevronRight,
   Menu,
   X,
-  Loader2
+  Loader2,
+  Bell,
+  Warehouse,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { api } from '@/lib/api';
 
 const sidebarItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/admin' },
   { name: 'Catalogue', icon: Package, href: '/admin/products' },
   { name: 'Categories', icon: ShoppingBag, href: '/admin/categories' },
   { name: 'Orders', icon: ShoppingBag, href: '/admin/orders' },
+  { name: 'Warehouse', icon: Warehouse, href: '/admin/warehouse' },
   { name: 'Customers', icon: Users, href: '/admin/customers' },
+  { name: 'Notifications', icon: Bell, href: '/admin/notifications' },
   { name: 'Settings', icon: Settings, href: '/admin/settings' },
 ];
 
@@ -33,10 +38,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await api.get('/notifications');
+      const notifications = res.data || [];
+      const unread = notifications.filter((n: any) => !n.isRead).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error('Failed to fetch notifications unread count', err);
+    }
+  };
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (isHydrated && isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 15000); // 15s polling
+
+      const handleUpdate = () => {
+        fetchUnreadCount();
+      };
+      window.addEventListener('notifications-updated', handleUpdate);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('notifications-updated', handleUpdate);
+      };
+    }
+  }, [isHydrated, isAuthenticated, user]);
 
   // Security Check
   useEffect(() => {
@@ -44,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     
     if (!isAuthenticated) {
       router.push('/login?returnUrl=' + pathname);
-    } else if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+    } else if (!['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF'].includes(user?.role || '')) {
       router.push('/');
     }
   }, [isHydrated, isAuthenticated, user, router, pathname]);
@@ -85,14 +119,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link 
                 key={item.name} 
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                   isActive 
                     ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
-                <Icon className="w-5 h-5 shrink-0" />
+                <div className="relative">
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {item.name === 'Notifications' && unreadCount > 0 && isCollapsed && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                  )}
+                </div>
                 {!isCollapsed && <span className="font-medium">{item.name}</span>}
+                {!isCollapsed && item.name === 'Notifications' && unreadCount > 0 && (
+                  <span className={`ml-auto flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[10px] font-bold text-white transition-colors duration-200 ${
+                    isActive ? 'bg-white text-primary' : 'bg-red-500'
+                  }`}>
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -133,12 +182,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       key={item.name} 
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
                         isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                       }`}
                     >
-                      <Icon className="w-5 h-5 shrink-0" />
-                      <span className="font-medium">{item.name}</span>
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">{item.name}</span>
+                      </div>
+                      {item.name === 'Notifications' && unreadCount > 0 && (
+                        <span className={`flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[10px] font-bold text-white ${
+                          isActive ? 'bg-white text-primary' : 'bg-red-500'
+                        }`}>
+                          {unreadCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

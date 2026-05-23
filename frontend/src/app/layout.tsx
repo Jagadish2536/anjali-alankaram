@@ -4,6 +4,7 @@ import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { OAuthProvider } from '@/components/providers/OAuthProvider'
+import { MaintenanceProvider } from '@/components/providers/MaintenanceProvider'
 import FloatingWhatsApp from '@/components/common/FloatingWhatsApp'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -23,14 +24,17 @@ export default function RootLayout({
     <html lang="en" className="light">
       <body className={`${inter.variable} ${outfit.variable} font-sans min-h-screen flex flex-col`}>
         <OAuthProvider>
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <FloatingWhatsApp />
+          <MaintenanceProvider>
+            <Navbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <FloatingWhatsApp />
+          </MaintenanceProvider>
         </OAuthProvider>
       </body>
     </html>
   )
 }
+

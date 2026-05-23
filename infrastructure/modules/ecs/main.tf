@@ -46,9 +46,9 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([
     {
-      name      = "backend"
-      image     = "${aws_ecr_repository.backend.repository_url}:latest"
-      essential = true
+      name         = "backend"
+      image        = "${aws_ecr_repository.backend.repository_url}:latest"
+      essential    = true
       portMappings = [{ containerPort = 3000, hostPort = 3000 }]
       logConfiguration = {
         logDriver = "awslogs"
@@ -68,9 +68,21 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "JWT_SECRET", valueFrom = "${var.secrets_arn}:JWT_SECRET::" },
         { name = "DATABASE_URL", valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
         { name = "REDIS_HOST", valueFrom = "${var.secrets_arn}:REDIS_HOST::" },
+        { name = "REDIS_PORT", valueFrom = "${var.secrets_arn}:REDIS_PORT::" },
+        { name = "REDIS_PASSWORD", valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
+        { name = "JWT_ACCESS_EXPIRES", valueFrom = "${var.secrets_arn}:JWT_ACCESS_EXPIRES::" },
+        { name = "AWS_ACCESS_KEY_ID", valueFrom = "${var.secrets_arn}:AWS_ACCESS_KEY_ID::" },
+        { name = "AWS_SECRET_ACCESS_KEY", valueFrom = "${var.secrets_arn}:AWS_SECRET_ACCESS_KEY::" },
         { name = "MSG91_AUTH_KEY", valueFrom = "${var.secrets_arn}:MSG91_AUTH_KEY::" },
         { name = "MSG91_TEMPLATE_ID", valueFrom = "${var.secrets_arn}:MSG91_TEMPLATE_ID::" },
         { name = "GOOGLE_CLIENT_ID", valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" },
+        { name = "RAZORPAY_KEY_ID", valueFrom = "${var.secrets_arn}:RAZORPAY_KEY_ID::" },
+        { name = "RAZORPAY_KEY_SECRET", valueFrom = "${var.secrets_arn}:RAZORPAY_KEY_SECRET::" },
+        { name = "RAZORPAY_WEBHOOK_SECRET", valueFrom = "${var.secrets_arn}:RAZORPAY_WEBHOOK_SECRET::" },
+        { name = "SHIPROCKET_EMAIL", valueFrom = "${var.secrets_arn}:SHIPROCKET_EMAIL::" },
+        { name = "SHIPROCKET_PASSWORD", valueFrom = "${var.secrets_arn}:SHIPROCKET_PASSWORD::" },
+        { name = "FIREBASE_SERVICE_ACCOUNT_BASE64", valueFrom = "${var.secrets_arn}:FIREBASE_SERVICE_ACCOUNT_BASE64::" },
+        { name = "RATE_LIMIT_REQUESTS", valueFrom = "${var.secrets_arn}:RATE_LIMIT_REQUESTS::" },
         { name = "ALLOWED_ORIGINS", valueFrom = "${var.secrets_arn}:ALLOWED_ORIGINS::" }
       ]
     }
@@ -90,9 +102,9 @@ resource "aws_ecs_task_definition" "frontend" {
 
   container_definitions = jsonencode([
     {
-      name      = "frontend"
-      image     = "${aws_ecr_repository.frontend.repository_url}:latest"
-      essential = true
+      name         = "frontend"
+      image        = "${aws_ecr_repository.frontend.repository_url}:latest"
+      essential    = true
       portMappings = [{ containerPort = 4000, hostPort = 4000 }]
       logConfiguration = {
         logDriver = "awslogs"
@@ -113,11 +125,11 @@ resource "aws_ecs_task_definition" "frontend" {
 
 # --- Backend Service ---
 resource "aws_ecs_service" "backend" {
-  name            = "${var.project_name}-backend-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = 1 # Cost saving. Set to 2+ for high availability
-  launch_type     = "FARGATE"
+  name                   = "${var.project_name}-backend-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.backend.arn
+  desired_count          = 1 # Cost saving. Set to 2+ for high availability
+  launch_type            = "FARGATE"
   enable_execute_command = true
 
   network_configuration {
@@ -143,11 +155,11 @@ resource "aws_ecs_service" "backend" {
 
 # --- Frontend Service ---
 resource "aws_ecs_service" "frontend" {
-  name            = "${var.project_name}-frontend-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                   = "${var.project_name}-frontend-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.frontend.arn
+  desired_count          = 1
+  launch_type            = "FARGATE"
   enable_execute_command = true
 
   network_configuration {

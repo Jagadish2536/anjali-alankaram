@@ -9,7 +9,7 @@ resource "aws_secretsmanager_secret" "frontend_secrets" {
 }
 
 resource "aws_secretsmanager_secret_version" "backend_version" {
-  secret_id     = aws_secretsmanager_secret.backend_secrets.id
+  secret_id = aws_secretsmanager_secret.backend_secrets.id
   # Value is managed manually in AWS Console or via CI to prevent overwrites
   secret_string = "{}"
   lifecycle {

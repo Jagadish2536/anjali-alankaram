@@ -1,22 +1,51 @@
-import { Controller, Post, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Request } from 'express';
 
 @Controller('uploads')
 export class UploadsController {
   private s3: AWS.S3;
 
   constructor(private config: ConfigService) {
-    this.s3 = new AWS.S3({
-      region: this.config.get('AWS_REGION'),
-    });
+    const awsAccessKey = this.config.get('AWS_ACCESS_KEY_ID');
+    // Only initialize S3 if not in local upload driver mode and access key is configured
+    const uploadDriver = this.config.get('UPLOAD_DRIVER') || 's3';
+    if (uploadDriver !== 'local' && awsAccessKey && awsAccessKey !== 'your_access_key') {
+      this.s3 = new AWS.S3({
+        region: this.config.get('AWS_REGION'),
+      });
+    }
   }
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
+    const uploadDriver = this.config.get('UPLOAD_DRIVER') || 's3';
+    const awsAccessKey = this.config.get('AWS_ACCESS_KEY_ID');
+    const isLocal = uploadDriver === 'local' || !awsAccessKey || awsAccessKey === 'your_access_key';
+
+    if (isLocal) {
+      const uploadDir = path.join(process.cwd(), 'uploads', 'products');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const fileName = `${uuidv4()}-${file.originalname.replace(/\s+/g, '_')}`;
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, file.buffer);
+
+      const host = req.get('host');
+      const protocol = req.protocol;
+      const url = `${protocol}://${host}/api/v1/uploads/products/${fileName}`;
+
+      return { url };
+    }
+
     const bucket = this.config.get('AWS_S3_BUCKET');
     const key = `products/${uuidv4()}-${file.originalname}`;
 
@@ -33,3 +62,4 @@ export class UploadsController {
     };
   }
 }
+

@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import * as express from 'express';
+import * as path from 'path';
 const helmet = require('helmet');
 const compression = require('compression');
 import { AppModule } from './app.module';
@@ -15,7 +17,11 @@ async function bootstrap() {
   app.useLogger(logger);
 
   // Security
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   app.use(compression());
   app.enableCors({
     origin: configService.get('ALLOWED_ORIGINS', 'http://localhost:3001').split(','),
@@ -35,6 +41,9 @@ async function bootstrap() {
 
   // API prefix
   app.setGlobalPrefix('api/v1');
+
+  // Serve uploaded files statically in development/local storage mode
+  app.use('/api/v1/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // Swagger
   if (configService.get('NODE_ENV') !== 'production') {

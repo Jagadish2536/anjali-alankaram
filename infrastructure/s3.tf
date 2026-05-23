@@ -3,7 +3,7 @@
 # ---------------------------------------------------------
 
 resource "aws_s3_bucket" "assets" {
-  bucket = "${var.project_name}-assets-${data.aws_caller_identity.current.account_id}"
+  bucket        = "${var.project_name}-assets-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 
   tags = local.common_tags
@@ -32,7 +32,7 @@ resource "aws_s3_bucket_policy" "public_read" {
       }
     ]
   })
-  
+
   depends_on = [aws_s3_bucket_public_access_block.assets]
 }
 

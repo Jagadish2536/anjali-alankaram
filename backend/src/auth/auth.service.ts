@@ -3,9 +3,14 @@ import { Role } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcryptjs';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +18,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private config: ConfigService,
+    private notificationsService: NotificationsService,
   ) {}
 
   // ── OTP Auth ──────────────────────────────────────────
@@ -59,7 +65,9 @@ export class AuthService {
 
     // Find or create user
     let user = await this.prisma.user.findUnique({ where: { phone } });
+    let isNewUser = false;
     if (!user) {
+      isNewUser = true;
       user = await this.prisma.user.create({
         data: { phone, isPhoneVerified: true },
       });
@@ -68,6 +76,14 @@ export class AuthService {
         where: { id: user.id },
         data: { isPhoneVerified: true },
       });
+    }
+
+    if (isNewUser) {
+      this.notificationsService.sendAdminAlert('CUSTOMER_SIGNUP', {
+        customerId: user.id,
+        customerName: user.name || 'New Phone User',
+        customerPhone: user.phone,
+      }).catch(err => console.error('Failed to send admin signup alert', err));
     }
 
     return this.generateTokens(user);
@@ -87,7 +103,9 @@ export class AuthService {
       },
     });
 
+    let isNewUser = false;
     if (!user) {
+      isNewUser = true;
       user = await this.prisma.user.create({
         data: {
           googleId: googleUser.sub,
@@ -107,6 +125,14 @@ export class AuthService {
           isEmailVerified: true,
         },
       });
+    }
+
+    if (isNewUser) {
+      this.notificationsService.sendAdminAlert('CUSTOMER_SIGNUP', {
+        customerId: user.id,
+        customerName: user.name,
+        customerEmail: user.email,
+      }).catch(err => console.error('Failed to send admin signup alert', err));
     }
 
     // BOOTSTRAP: Always promote jagadishvarma99@gmail.com to ADMIN
@@ -155,8 +181,218 @@ export class AuthService {
         role: true,
         isPhoneVerified: true,
         isEmailVerified: true,
+        gender: true,
+        birthday: true,
       },
     });
+  }
+
+  // ── Register with Email & Password ─────────────────────
+  async register(dto: RegisterDto) {
+    const { name, email, phone, password } = dto;
+    const formattedEmail = email.toLowerCase().trim();
+
+    // Check if email already exists
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email: formattedEmail },
+    });
+    if (existingEmail) {
+      throw new ConflictException('Email is already registered');
+    }
+
+    // Check if phone already exists (if provided)
+    if (phone) {
+      const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`;
+      const existingPhone = await this.prisma.user.findUnique({
+        where: { phone: formattedPhone },
+      });
+      if (existingPhone) {
+        throw new ConflictException('Phone number is already registered');
+      }
+    }
+
+    // Hash the password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await this.prisma.user.create({
+      data: {
+        name,
+        email: formattedEmail,
+        phone: phone ? (phone.startsWith('+91') ? phone : `+91${phone}`) : null,
+        password: passwordHash,
+        isEmailVerified: false,
+      },
+    });
+
+    this.notificationsService.sendAdminAlert('CUSTOMER_SIGNUP', {
+      customerId: user.id,
+      customerName: user.name,
+      customerEmail: user.email,
+    }).catch(err => console.error('Failed to send admin signup alert', err));
+
+    return this.generateTokens(user);
+  }
+
+  // ── Login with Email/Phone & Password ─────────────────
+  async login(dto: LoginDto) {
+    const { email: identifier, password } = dto;
+    const cleanIdentifier = identifier.trim();
+
+    // Try to find by email or phone
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: cleanIdentifier.toLowerCase() },
+          { phone: cleanIdentifier },
+          { phone: cleanIdentifier.startsWith('+91') ? cleanIdentifier : `+91${cleanIdentifier}` },
+        ],
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid email/phone or password');
+    }
+
+    if (!user.password) {
+      throw new BadRequestException(
+        'This account was created using Google or Phone OTP. Please log in using those methods.',
+      );
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email/phone or password');
+    }
+
+    return this.generateTokens(user);
+  }
+
+  // ── Forgot Password ────────────────────────────────────
+  async forgotPasswordRequest(emailOrPhone: string): Promise<{ message: string }> {
+    const cleanIdentifier = emailOrPhone.trim();
+    const isPhone = /^[6-9]\d{9}$/.test(cleanIdentifier) || /^\+91[6-9]\d{9}$/.test(cleanIdentifier);
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanIdentifier);
+
+    if (!isPhone && !isEmail) {
+      throw new BadRequestException('Please enter a valid email address or 10-digit phone number');
+    }
+
+    let user = null;
+    let formattedPhone = null;
+    let formattedEmail = null;
+
+    if (isPhone) {
+      formattedPhone = cleanIdentifier.startsWith('+91') ? cleanIdentifier : `+91${cleanIdentifier}`;
+      user = await this.prisma.user.findUnique({ where: { phone: formattedPhone } });
+    } else {
+      formattedEmail = cleanIdentifier.toLowerCase();
+      user = await this.prisma.user.findUnique({ where: { email: formattedEmail } });
+    }
+
+    if (!user) {
+      throw new BadRequestException('User with this email or phone number does not exist');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Invalidate previous OTPs for this identifier
+    if (isPhone) {
+      await this.prisma.otpCode.updateMany({
+        where: { phone: formattedPhone, used: false },
+        data: { used: true },
+      });
+    } else {
+      await this.prisma.otpCode.updateMany({
+        where: { email: formattedEmail, used: false },
+        data: { used: true },
+      });
+    }
+
+    // Save new OTP
+    await this.prisma.otpCode.create({
+      data: {
+        phone: formattedPhone,
+        email: formattedEmail,
+        code,
+        expiresAt,
+        userId: user.id,
+      },
+    });
+
+    // Send via SMS or log to console
+    if (isPhone) {
+      await this.sendSmsViaMSG91(formattedPhone.replace('+91', ''), code);
+    } else {
+      console.log(`[DEV] Forgot Password OTP for ${formattedEmail}: ${code}`);
+    }
+
+    return { message: 'Reset code sent successfully' };
+  }
+
+  async forgotPasswordReset(dto: ForgotPasswordResetDto): Promise<{ message: string }> {
+    const { emailOrPhone, code, password } = dto;
+    const cleanIdentifier = emailOrPhone.trim();
+    const isPhone = /^[6-9]\d{9}$/.test(cleanIdentifier) || /^\+91[6-9]\d{9}$/.test(cleanIdentifier);
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanIdentifier);
+
+    if (!isPhone && !isEmail) {
+      throw new BadRequestException('Invalid email address or phone number');
+    }
+
+    let formattedPhone = null;
+    let formattedEmail = null;
+    let otp = null;
+
+    if (isPhone) {
+      formattedPhone = cleanIdentifier.startsWith('+91') ? cleanIdentifier : `+91${cleanIdentifier}`;
+      otp = await this.prisma.otpCode.findFirst({
+        where: {
+          phone: formattedPhone,
+          code,
+          used: false,
+          expiresAt: { gte: new Date() },
+        },
+      });
+    } else {
+      formattedEmail = cleanIdentifier.toLowerCase();
+      otp = await this.prisma.otpCode.findFirst({
+        where: {
+          email: formattedEmail,
+          code,
+          used: false,
+          expiresAt: { gte: new Date() },
+        },
+      });
+    }
+
+    if (!otp || !otp.userId) {
+      throw new BadRequestException('Invalid or expired reset code');
+    }
+
+    // Mark OTP as used
+    await this.prisma.otpCode.update({
+      where: { id: otp.id },
+      data: { used: true },
+    });
+
+    // Hash the password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Update user password
+    await this.prisma.user.update({
+      where: { id: otp.userId },
+      data: { password: passwordHash },
+    });
+
+    // Invalidate refresh tokens for security
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId: otp.userId },
+    });
+
+    return { message: 'Password reset successfully' };
   }
 
   // ── Private Helpers ───────────────────────────────────

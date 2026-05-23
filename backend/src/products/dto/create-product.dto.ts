@@ -118,4 +118,24 @@ export class CreateProductDto {
   @IsOptional()
   @IsArray()
   variants?: CreateVariantDto[];
+
+  @ApiPropertyOptional({ example: 'https://www.instagram.com/reel/ABC123/' })
+  @IsOptional()
+  @IsString()
+  instagramReelUrl?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  codAvailable?: boolean;
+
+  @ApiPropertyOptional({ example: 14 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  returnDays?: number;
+
+  @ApiPropertyOptional({ description: 'Size guide rows as JSON array' })
+  @IsOptional()
+  sizeGuide?: any;
 }
