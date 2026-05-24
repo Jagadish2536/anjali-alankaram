@@ -169,7 +169,7 @@ export default function Navbar() {
 
             {/* Admin badge desktop only */}
             {mounted && isAuthenticated && ['ADMIN','SUPER_ADMIN','WAREHOUSE_STAFF','ORDER_MANAGER','STOCK_MANAGER'].includes(user?.role || '') && (
-              <Link href={getAdminHref()} className="hidden md:flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-100/50 transition-colors">
+              <Link href={getAdminHref()} className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-100/50 transition-colors">
                 <ShieldAlert className="h-3.5 w-3.5" />
                 <span>{getAdminLabel()}</span>
               </Link>
