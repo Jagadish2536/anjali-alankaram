@@ -706,6 +706,11 @@ model StoreSettings {
   contactPhone            String?
   returnPolicyDays        Int      @default(7)
   footerCategories        Json?
+  // Homepage configurable
+  marqueeText             String?  @default("Free Delivery on All Orders")
+  heroImageUrl            String?
+  heroTitle               String?  @default("Make Every Occasion Special")
+  heroSubtitle            String?  @default("Designer Lehengas & Elegant Gowns for Festive Looks")
   updatedAt               DateTime @updatedAt
 
   @@map("store_settings")

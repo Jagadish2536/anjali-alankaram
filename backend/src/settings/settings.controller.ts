@@ -41,6 +41,7 @@ export class SettingsController {
       lowStockThreshold, reservationTimeoutMins,
       storeDescription, contactEmail, contactPhone,
       returnPolicyDays, footerCategories,
+      marqueeText, heroImageUrl, heroTitle, heroSubtitle,
     } = data;
 
     // Build clean payload with only defined values (skip undefined)
@@ -77,6 +78,10 @@ export class SettingsController {
     safe('contactPhone', contactPhone);
     safe('returnPolicyDays', returnPolicyDays != null ? Number(returnPolicyDays) : undefined);
     safe('footerCategories', footerCategories);
+    safe('marqueeText', marqueeText);
+    safe('heroImageUrl', heroImageUrl);
+    safe('heroTitle', heroTitle);
+    safe('heroSubtitle', heroSubtitle);
 
     const settings = await this.prisma.storeSettings.findFirst();
 

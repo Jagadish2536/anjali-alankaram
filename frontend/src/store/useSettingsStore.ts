@@ -39,6 +39,9 @@ interface StoreSettings {
   returnPolicyDays: number;
   footerCategories: any;
   marqueeText: string;
+  heroImageUrl: string;
+  heroTitle: string;
+  heroSubtitle: string;
 }
 
 interface SettingsStore {
@@ -84,7 +87,10 @@ const DEFAULT_SETTINGS: StoreSettings = {
   reservationTimeoutMins: 15,
   returnPolicyDays: 7,
   footerCategories: [],
-  marqueeText: 'Free Delivery',
+  marqueeText: 'Free Delivery on All Orders',
+  heroImageUrl: '',
+  heroTitle: 'Make Every Occasion Special',
+  heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({

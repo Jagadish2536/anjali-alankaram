@@ -367,7 +367,10 @@ export default function AdminSettingsPage() {
     contactPhone: '',
     returnPolicyDays: 7,
     footerCategories: '[]',
-    marqueeText: 'Free Delivery',
+    marqueeText: 'Free Delivery on All Orders',
+    heroImageUrl: '',
+    heroTitle: 'Make Every Occasion Special',
+    heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
   });
 
   // ── Payment form state ────────────────────────────────────────────────────
@@ -626,8 +629,21 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <div className="border-t pt-4">
-                <Field label="Marquee Banner Text" hint="This scrolling text appears between sections on the homepage (e.g. 'Free Delivery on orders above ₹499').">
-                  <TextInput value={formData.marqueeText || 'Free Delivery'} onChange={set('marqueeText')} placeholder="Free Delivery" />
+                <Field label="Marquee Banner Text" hint="This scrolling text appears at the top and between sections on the homepage (e.g. 'Free Delivery on All Orders').">
+                  <TextInput value={formData.marqueeText || ''} onChange={set('marqueeText')} placeholder="Free Delivery on All Orders" />
+                </Field>
+              </div>
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="text-base font-bold">Hero Banner</h3>
+                <p className="text-sm text-muted-foreground -mt-2">Customise the large banner that appears at the top of the homepage.</p>
+                <Field label="Hero Image URL" hint="Paste a direct image URL (e.g. from your S3 bucket or Cloudinary). Recommended: 1200×900px, portrait orientation.">
+                  <TextInput value={formData.heroImageUrl || ''} onChange={set('heroImageUrl')} placeholder="https://your-cdn.com/hero-image.jpg" />
+                </Field>
+                <Field label="Hero Title" hint="Main heading on the hero banner.">
+                  <TextInput value={formData.heroTitle || ''} onChange={set('heroTitle')} placeholder="Make Every Occasion Special" />
+                </Field>
+                <Field label="Hero Subtitle" hint="Subtext below the heading.">
+                  <TextInput value={formData.heroSubtitle || ''} onChange={set('heroSubtitle')} placeholder="Designer Lehengas & Elegant Gowns for Festive Looks" />
                 </Field>
               </div>
             </div>

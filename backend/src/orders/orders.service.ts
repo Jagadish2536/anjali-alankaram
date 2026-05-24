@@ -215,7 +215,7 @@ export class OrdersService {
             shipping: Number(order.shippingCharge),
             total: Number(order.totalAmount),
             paymentMethod: dto.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online Payment',
-            address: `${address.name}, ${address.addressLine1}, ${address.city} - ${address.pincode}`,
+            address: `${address.name}, ${address.line1}, ${address.city} - ${address.pincode}`,
           }).catch(() => {});
         }
       }).catch(() => {});

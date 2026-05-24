@@ -20,11 +20,13 @@ const LotusSVG = ({ className = '' }: { className?: string }) => (
   </svg>
 );
 
-// ── Lotus Marquee Divider ────────────────────────────────────────────────────
+// ── Lotus Marquee Divider — text from admin settings ─────────────────────────
 function LotusDivider({ text }: { text?: string }) {
-  const items = text
-    ? Array(14).fill(null).flatMap((_, i) => [{ type: 'text', val: text, key: `t${i}` }, { type: 'lotus', key: `l${i}` }])
-    : Array(20).fill(null).map((_, i) => ({ type: 'lotus', key: `l${i}` }));
+  const displayText = text || 'Free Delivery on All Orders';
+  const items = Array(12).fill(null).flatMap((_, i) => [
+    { type: 'text', val: displayText, key: `t${i}` },
+    { type: 'lotus', key: `l${i}` },
+  ]);
 
   return (
     <div className="w-full bg-primary overflow-hidden py-2.5" aria-hidden="true">
@@ -39,18 +41,27 @@ function LotusDivider({ text }: { text?: string }) {
   );
 }
 
-// ── Lily Watermark BG (SVG data URI) ─────────────────────────────────────────
+// ── Lily Watermark BG ─────────────────────────────────────────────────────────
 const lilyBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath d='M60 100C60 100 30 80 30 55C30 40 44 28 60 28C76 28 90 40 90 55C90 80 60 100 60 100Z' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3Cpath d='M60 100C60 100 42 76 42 52C42 38 50 24 60 24C70 24 78 38 78 52C78 76 60 100 60 100Z' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3Cpath d='M60 28C60 28 36 36 32 54' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3Cpath d='M60 28C60 28 84 36 88 54' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3C/svg%3E")`;
 
-// ── Category card ────────────────────────────────────────────────────────────
+// ── Category card — horizontal scroll card style ──────────────────────────────
 function CollectionCard({ cat }: { cat: any }) {
-  const img = cat.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600';
+  // Use the category's own image if available
+  const img = cat.image && !cat.image.includes('unsplash')
+    ? cat.image
+    : null;
+
   return (
-    <Link href={`/products?category=${cat.slug}`} className="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block">
+    <Link
+      href={`/products?category=${cat.slug}`}
+      className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block"
+    >
       <div className="absolute inset-0 bg-primary" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px' }} />
-      <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700 mix-blend-multiply opacity-90" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-      <div className="absolute bottom-4 left-4">
+      {img && (
+        <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700 mix-blend-multiply opacity-90" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+      <div className="absolute bottom-4 left-4 right-4">
         <span className="text-white font-outfit font-semibold text-base drop-shadow-md">{cat.name}</span>
       </div>
     </Link>
@@ -65,7 +76,7 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
 
   return (
     <div className="group flex flex-col relative">
-      <Link href={`/products/${product.slug}`} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
+      <Link href={`/products/${product.slug}`} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2">
         {product.images?.[0] ? (
           <Image src={product.images[0]} alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
         ) : (
@@ -93,7 +104,7 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
       </Link>
       <Link href={`/products/${product.slug}`}>
         <h3 className="text-sm font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-0.5">
           <span className="font-semibold text-sm">{formatPrice(product.salePrice || product.basePrice)}</span>
           {hasDiscount && (
             <span className="text-muted-foreground line-through text-xs">{formatPrice(product.basePrice)}</span>
@@ -104,7 +115,58 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
   );
 }
 
-// ── Featured Videos Carousel (real Instagram reel URLs from products) ─────────
+// ── Product section with empty state ─────────────────────────────────────────
+function ProductSection({
+  id, title, href, products, isLoading,
+}: {
+  id: string; title: string; href: string; products: any[]; isLoading: boolean;
+}) {
+  if (!isLoading && products.length === 0) {
+    return (
+      <section className="py-10 px-4" aria-labelledby={id}>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 id={id} className="font-outfit text-2xl font-bold text-foreground">{title}</h2>
+            <Link href={href} className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+              Shop more
+            </Link>
+          </div>
+          <div className="rounded-2xl border border-primary/10 bg-primary/5 py-12 text-center">
+            <p className="text-muted-foreground text-sm">No {title.toLowerCase()} yet — check back soon!</p>
+            <Link href="/products" className="mt-4 inline-block text-primary text-sm font-semibold hover:underline">Browse all products →</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="py-10 px-4" aria-labelledby={id}>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <h2 id={id} className="font-outfit text-2xl font-bold text-foreground">{title}</h2>
+          <Link href={href} className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+            Shop more
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          {isLoading
+            ? Array(4).fill(null).map((_, i) => (
+                <div key={i} className="animate-pulse flex flex-col gap-2">
+                  <div className="bg-muted aspect-[3/4] rounded-xl w-full" />
+                  <div className="h-3 bg-muted w-3/4 rounded" />
+                  <div className="h-3 bg-muted w-1/4 rounded" />
+                </div>
+              ))
+            : products.map(p => <ProductCard key={p.id} product={p} />)
+          }
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Featured Videos Carousel ───────────────────────────────────────────────────
 function VideoCarousel({ videos }: { videos: any[] }) {
   const [center, setCenter] = useState(0);
 
@@ -112,14 +174,7 @@ function VideoCarousel({ videos }: { videos: any[] }) {
     if (videos.length > 0) setCenter(Math.min(2, videos.length - 1));
   }, [videos.length]);
 
-  if (videos.length === 0) {
-    return (
-      <section className="py-16 bg-background">
-        <h2 className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-6">Featured Videos</h2>
-        <p className="text-center text-muted-foreground text-sm">No videos yet — add an Instagram Reel URL to a product to feature it here.</p>
-      </section>
-    );
-  }
+  if (videos.length === 0) return null;
 
   const total = videos.length;
   const prev = () => setCenter(c => (c - 1 + total) % total);
@@ -152,15 +207,13 @@ function VideoCarousel({ videos }: { videos: any[] }) {
                 className="relative w-52 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
                 style={{ aspectRatio: '9/16', maxHeight: 340 }}
               >
-                <Image src={vid.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400'} alt={vid.name} fill className="object-cover" />
+                <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-                {/* Play button overlay */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                     <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
                   </div>
                 </div>
-                {/* Instagram badge */}
                 <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
                   style={{ background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)' }}>
                   <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current" aria-hidden="true">
@@ -178,7 +231,6 @@ function VideoCarousel({ videos }: { videos: any[] }) {
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
-      {/* Dot pagination */}
       <div className="flex justify-center gap-2 mt-8">
         {videos.map((_, i) => (
           <button key={i} onClick={() => setCenter(i)}
@@ -202,20 +254,11 @@ function StarsRow({ rating, className = '' }: { rating: number; className?: stri
   );
 }
 
-// ── "What Our Customers Say" — real reviews from DB, each links to product ────
+// ── Reviews section ───────────────────────────────────────────────────────────
 function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
   const [idx, setIdx] = useState(0);
 
-  if (reviews.length === 0) {
-    return (
-      <section className="py-14 px-4" aria-labelledby="testimonials-heading">
-        <h2 id="testimonials-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-6">
-          What Our Customers Say
-        </h2>
-        <p className="text-center text-muted-foreground text-sm">No reviews yet — be the first to review a product!</p>
-      </section>
-    );
-  }
+  if (reviews.length === 0) return null;
 
   const review = reviews[idx];
 
@@ -229,11 +272,10 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
           href={review.product?.slug ? `/products/${review.product.slug}` : '/products'}
           className="flex flex-col md:flex-row gap-8 items-center bg-white rounded-3xl p-8 shadow-sm border border-border hover:shadow-md transition-shadow"
         >
-          {/* Product image */}
           <div className="relative shrink-0 w-52 h-64">
             <div className="absolute -top-3 -left-3 w-40 h-52 rounded-2xl overflow-hidden border-4 border-white shadow-md rotate-[-4deg]">
               <Image
-                src={reviews[(idx + 1) % reviews.length]?.product?.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400'}
+                src={reviews[(idx + 1) % reviews.length]?.product?.images?.[0] || ''}
                 alt=""
                 fill
                 className="object-cover"
@@ -241,14 +283,13 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
             </div>
             <div className="absolute top-4 left-4 w-44 h-56 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
               <Image
-                src={review.product?.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400'}
+                src={review.product?.images?.[0] || ''}
                 alt={review.product?.name || 'Product'}
                 fill
                 className="object-cover"
               />
             </div>
           </div>
-          {/* Text */}
           <div className="flex-1">
             <p className="font-cormorant text-2xl font-bold text-primary mb-2">{review.user?.name || 'Customer'}</p>
             <StarsRow rating={review.rating} className="mb-4" />
@@ -282,46 +323,35 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
 // ── Main Homepage ─────────────────────────────────────────────────────────────
 export default function Home() {
   const { settings, fetchSettings } = useSettingsStore();
+  const s = settings as any;
   const [categories, setCategories] = useState<any[]>([]);
-  const [sareeProducts, setSareeProducts] = useState<any[]>([]);
-  const [kurtiProducts, setKurtiProducts] = useState<any[]>([]);
-  const [lehengaProducts, setLehengaProducts] = useState<any[]>([]);
   const [bestSellers, setBestSellers] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
   const [reelProducts, setReelProducts] = useState<any[]>([]);
   const [recentReviews, setRecentReviews] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'sarees' | 'kurti-sets' | 'lehengas'>('sarees');
+  const [bsLoading, setBsLoading] = useState(true);
+  const [naLoading, setNaLoading] = useState(true);
 
   useEffect(() => {
     fetchSettings();
 
+    // Categories for "Shop by collections"
     api.get('/categories').then(({ data }) => {
       const list = Array.isArray(data) ? data : data?.data || [];
-      setCategories(list.length > 0 ? list : FALLBACK_CATS);
-    }).catch(() => setCategories(FALLBACK_CATS));
+      setCategories(list);
+    }).catch(() => {});
 
-    // Fetch product sections
-    const fetchProducts = async (slug: string, setter: (d: any[]) => void) => {
-      try {
-        const { data } = await api.get('/products', { params: { categorySlug: slug, limit: 4, t: Date.now() } });
-        const list = Array.isArray(data) ? data : data?.data || [];
-        setter(list.slice(0, 4));
-      } catch { setter([]); }
-    };
-
-    fetchProducts('saree', setSareeProducts);
-    fetchProducts('kurti-sets', setKurtiProducts);
-    fetchProducts('lehengas', setLehengaProducts);
-
+    // Best sellers
     api.get('/products', { params: { isBestseller: 'true', limit: 4, t: Date.now() } })
-      .then(({ data }) => { const l = Array.isArray(data) ? data : data?.data || []; setBestSellers(l.slice(0, 4)); })
-      .catch(() => setBestSellers([]));
+      .then(({ data }) => { const l = Array.isArray(data) ? data : data?.data || []; setBestSellers(l.slice(0, 4)); setBsLoading(false); })
+      .catch(() => { setBestSellers([]); setBsLoading(false); });
 
+    // New arrivals
     api.get('/products', { params: { isNewArrival: 'true', limit: 4, t: Date.now() } })
-      .then(({ data }) => { const l = Array.isArray(data) ? data : data?.data || []; setNewArrivals(l.slice(0, 4)); })
-      .catch(() => setNewArrivals([]));
+      .then(({ data }) => { const l = Array.isArray(data) ? data : data?.data || []; setNewArrivals(l.slice(0, 4)); setNaLoading(false); })
+      .catch(() => { setNewArrivals([]); setNaLoading(false); });
 
-    // Fetch products with Instagram Reel URLs for featured videos
+    // Featured reel products
     api.get('/products', { params: { hasReel: 'true', limit: 10, t: Date.now() } })
       .then(({ data }) => {
         const l = Array.isArray(data) ? data : data?.data || [];
@@ -329,7 +359,7 @@ export default function Home() {
       })
       .catch(() => setReelProducts([]));
 
-    // Fetch real reviews
+    // Real reviews
     api.get('/reviews', { params: { limit: 10, sort: 'recent', t: Date.now() } })
       .then(({ data }) => {
         const l = Array.isArray(data) ? data : data?.data || data?.reviews || [];
@@ -338,185 +368,96 @@ export default function Home() {
       .catch(() => setRecentReviews([]));
   }, []);
 
-  const FALLBACK_CATS = [
-    { id: '1', name: 'Sarees', slug: 'sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600' },
-    { id: '2', name: 'Kurti Sets', slug: 'kurti-sets', image: 'https://images.unsplash.com/photo-1583391733958-d25e27a26aca?q=80&w=600' },
-    { id: '3', name: 'Gowns', slug: 'gowns', image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=600' },
-    { id: '4', name: 'Lehengas', slug: 'lehengas', image: 'https://images.unsplash.com/photo-1596455607563-ad6193f78b78?q=80&w=600' },
-    { id: '5', name: 'Stretchable Blouses', slug: 'stretchable-blouses', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=600' },
-    { id: '6', name: 'Kids', slug: 'kids', image: 'https://images.unsplash.com/photo-1503944583220-5d1384befa45?q=80&w=600' },
-    { id: '7', name: 'Jewellery', slug: 'jewellery', image: 'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?q=80&w=600' },
-  ];
-
-  const displayCats = categories.length > 0 ? categories : FALLBACK_CATS;
-  const tabProducts = activeTab === 'sarees' ? sareeProducts : activeTab === 'kurti-sets' ? kurtiProducts : lehengaProducts;
-  const marqueeText = (settings as any).marqueeText || 'Free Delivery';
+  const marqueeText = s.marqueeText || 'Free Delivery on All Orders';
+  const heroImage = s.heroImageUrl || '';
+  const heroTitle = s.heroTitle || 'Make Every Occasion Special';
+  const heroSubtitle = s.heroSubtitle || 'Designer Lehengas & Elegant Gowns for Festive Looks';
 
   return (
     <div className="flex flex-col">
 
-      {/* ── § 1 HERO ──────────────────────────────────────────────────────── */}
+      {/* ── § 1 MARQUEE TOP (same text as admin marquee) ──────────────── */}
+      <LotusDivider text={marqueeText} />
+
+      {/* ── § 2 HERO — admin-configurable bg image + text ─────────────── */}
       <section
         className="relative w-full overflow-hidden flex items-center"
         style={{ minHeight: '60vh', background: 'hsl(345, 80%, 28%)' }}
         aria-label="Hero banner"
       >
-        {/* Lily watermark pattern */}
         <div className="absolute inset-0" style={{ backgroundImage: lilyBg, backgroundSize: '140px 140px', opacity: 0.25 }} />
 
-        {/* Model image — right half */}
+        {/* Model / hero image — admin can set heroImageUrl in settings */}
         <div className="absolute right-0 top-0 h-full w-1/2 md:w-[45%] opacity-90">
-          <Image
-            src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800"
-            alt="Model in saree"
-            fill
-            className="object-cover object-top"
-            priority
-          />
+          {heroImage ? (
+            <Image src={heroImage} alt="Hero" fill className="object-cover object-top" priority />
+          ) : (
+            <div className="w-full h-full bg-primary/30" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-l from-transparent to-primary/90" />
         </div>
 
-        {/* Text content */}
         <div className="relative z-10 container py-16 md:py-24 max-w-2xl">
           <h1 className="font-cormorant text-5xl md:text-7xl font-bold text-white leading-tight">
-            Make Every<br />Occasion Special
+            {heroTitle}
           </h1>
           <p className="text-white/80 text-base md:text-lg mt-4 mb-8 max-w-sm">
-            Designer Lehengas &amp; Elegant Gowns for Festive Looks
+            {heroSubtitle}
           </p>
           <Link
             href="/products"
-            className="inline-block bg-white text-primary font-bold px-8 py-3 rounded-full hover:bg-cream hover:shadow-lg transition-all duration-200 active:scale-95"
+            className="inline-block bg-white text-primary font-bold px-8 py-3 rounded-full hover:shadow-lg transition-all duration-200 active:scale-95"
           >
             Shop Now
           </Link>
         </div>
       </section>
 
-      {/* ── § 2 SHOP BY COLLECTIONS ──────────────────────────────────────── */}
-      <section className="py-14 px-4" aria-labelledby="collections-heading">
-        <h2 id="collections-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-10">
+      {/* ── § 3 SHOP BY COLLECTIONS — horizontal scroll (like marquee) ── */}
+      <section className="py-12 px-4" aria-labelledby="collections-heading">
+        <h2 id="collections-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-8">
           Shop by collections
         </h2>
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-          {displayCats.map(cat => <CollectionCard key={cat.id} cat={cat} />)}
-        </div>
-      </section>
-
-      {/* ── § 3 LOTUS DIVIDER ────────────────────────────────────────────── */}
-      <LotusDivider />
-
-      {/* ── § 4 WOMEN'S COLLECTION (TABBED) ─────────────────────────────── */}
-      <section className="py-14 px-4" aria-labelledby="womens-collection-heading">
-        <h2 id="womens-collection-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-8">
-          Women&apos;s Collection — <em>Grace in Every Stitch</em>
-        </h2>
-
-        {/* Tab bar */}
-        <div className="flex justify-center gap-8 mb-10 border-b border-border max-w-md mx-auto">
-          {([
-            { key: 'sarees', label: 'Sarees' },
-            { key: 'kurti-sets', label: 'Kurti Sets' },
-            { key: 'lehengas', label: 'Lehengas' },
-          ] as const).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === tab.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-          {tabProducts.length > 0
-            ? tabProducts.map(p => <ProductCard key={p.id} product={p} />)
-            : Array(4).fill(null).map((_, i) => (
-                <div key={i} className="animate-pulse flex flex-col gap-2">
-                  <div className="bg-muted aspect-[3/4] rounded-xl w-full" />
-                  <div className="h-3 bg-muted w-3/4 rounded" />
-                  <div className="h-3 bg-muted w-1/4 rounded" />
-                </div>
-              ))
-          }
-        </div>
-
-        <div className="flex justify-center mt-10">
-          <Link
-            href={`/products?category=${activeTab}`}
-            className="bg-primary text-primary-foreground px-10 py-3 rounded-full font-semibold hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
+        {categories.length === 0 ? (
+          <p className="text-center text-muted-foreground text-sm py-6">No collections yet</p>
+        ) : (
+          <div
+            className="flex gap-4 overflow-x-auto pb-4 md:overflow-visible md:grid md:grid-cols-4 md:gap-6 max-w-7xl mx-auto"
+            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as any}
           >
-            Shop Now
-          </Link>
-        </div>
+            {categories.map(cat => <CollectionCard key={cat.id} cat={cat} />)}
+          </div>
+        )}
       </section>
 
-      {/* ── § 5 BEST SELLERS ─────────────────────────────────────────────── */}
-      <section className="py-10 px-4" aria-labelledby="bestsellers-heading">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h2 id="bestsellers-heading" className="font-outfit text-2xl font-bold text-foreground">Best Sellers</h2>
-            <Link
-              href="/products?filter=bestseller"
-              className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Shop more
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {bestSellers.length > 0
-              ? bestSellers.map(p => <ProductCard key={p.id} product={p} />)
-              : Array(4).fill(null).map((_, i) => (
-                  <div key={i} className="animate-pulse flex flex-col gap-2">
-                    <div className="bg-muted aspect-[3/4] rounded-xl w-full" />
-                    <div className="h-3 bg-muted w-3/4 rounded" />
-                    <div className="h-3 bg-muted w-1/4 rounded" />
-                  </div>
-                ))
-            }
-          </div>
-        </div>
-      </section>
-
-      {/* ── § 6 FEATURED VIDEOS ──────────────────────────────────────────── */}
-      <VideoCarousel videos={reelProducts} />
-
-      {/* ── § 7 MARQUEE DIVIDER (admin-configurable text) ─────────────────── */}
+      {/* ── § 4 LOTUS MARQUEE DIVIDER (admin text) ────────────────────── */}
       <LotusDivider text={marqueeText} />
 
-      {/* ── § 8 NEW ARRIVALS ─────────────────────────────────────────────── */}
-      <section className="py-10 px-4" aria-labelledby="new-arrivals-heading">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h2 id="new-arrivals-heading" className="font-outfit text-2xl font-bold text-foreground">New Arrivals</h2>
-            <Link
-              href="/products?filter=new"
-              className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Shop more
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {newArrivals.length > 0
-              ? newArrivals.map(p => <ProductCard key={p.id} product={p} />)
-              : Array(4).fill(null).map((_, i) => (
-                  <div key={i} className="animate-pulse flex flex-col gap-2">
-                    <div className="bg-muted aspect-[3/4] rounded-xl w-full" />
-                    <div className="h-3 bg-muted w-3/4 rounded" />
-                    <div className="h-3 bg-muted w-1/4 rounded" />
-                  </div>
-                ))
-            }
-          </div>
-        </div>
-      </section>
+      {/* ── § 5 BEST SELLERS ──────────────────────────────────────────── */}
+      <ProductSection
+        id="bestsellers-heading"
+        title="Best Sellers"
+        href="/products?filter=bestseller"
+        products={bestSellers}
+        isLoading={bsLoading}
+      />
 
-      {/* ── § 9 WHAT OUR CUSTOMERS SAY (real reviews, click → product page) ─ */}
+      {/* ── § 6 NEW ARRIVALS ──────────────────────────────────────────── */}
+      <ProductSection
+        id="new-arrivals-heading"
+        title="New Arrivals"
+        href="/products?filter=new"
+        products={newArrivals}
+        isLoading={naLoading}
+      />
+
+      {/* ── § 7 FEATURED VIDEOS ───────────────────────────────────────── */}
+      <VideoCarousel videos={reelProducts} />
+
+      {/* ── § 8 LOTUS MARQUEE DIVIDER ─────────────────────────────────── */}
+      <LotusDivider text={marqueeText} />
+
+      {/* ── § 9 WHAT OUR CUSTOMERS SAY ────────────────────────────────── */}
       <CustomerReviewsSection reviews={recentReviews} />
 
     </div>
