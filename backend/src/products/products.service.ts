@@ -260,7 +260,14 @@ export class ProductsService {
           // Update existing variant
           await this.prisma.productVariant.update({
             where: { id: v.id },
-            data: { size: v.size, color: v.color || null, stock: v.stock, sku: v.sku },
+            data: {
+              size: v.size,
+              color: v.color || null,
+              colorHex: v.colorHex || null,
+              images: Array.isArray(v.images) ? v.images : [],
+              stock: v.stock,
+              sku: v.sku,
+            },
           });
         } else {
           // Create new variant
@@ -269,6 +276,8 @@ export class ProductsService {
               productId: id,
               size: v.size,
               color: v.color || null,
+              colorHex: v.colorHex || null,
+              images: Array.isArray(v.images) ? v.images : [],
               stock: v.stock,
               sku: v.sku || `${id.substring(0, 4)}-${v.size}-${Date.now()}`.toUpperCase(),
             },

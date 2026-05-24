@@ -51,6 +51,9 @@ export class CouponsService {
       if (out[key] === undefined) delete out[key];
     }
 
+    // Ensure required array fields always have a default
+    if (!Array.isArray(out.applicableCategories)) out.applicableCategories = [];
+
     return out;
   }
 
