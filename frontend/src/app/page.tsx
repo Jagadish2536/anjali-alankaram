@@ -28,9 +28,12 @@ function LotusDivider({ text }: { text?: string }) {
     { type: 'lotus', key: `l${i}` },
   ]);
 
+  // Adjust scroll duration based on character length so speed is uniform & slower
+  const duration = Math.max(40, Math.min(300, Math.round(displayText.length * 1.8)));
+
   return (
     <div className="w-full bg-primary overflow-hidden py-2.5" aria-hidden="true">
-      <div className="flex animate-marquee" style={{ width: 'max-content' }}>
+      <div className="flex animate-marquee" style={{ animationDuration: `${duration}s`, width: 'max-content' }}>
         {[...items, ...items].map((item, idx) =>
           item.type === 'lotus'
             ? <LotusSVG key={`${item.key}-${idx}`} className="w-8 h-6 text-primary-foreground/70 shrink-0 mx-3" />
@@ -184,7 +187,7 @@ function VideoCarousel({ videos }: { videos: any[] }) {
     const pos = diff <= total / 2 ? diff : diff - total;
     const absPos = Math.abs(pos);
     const scale = absPos === 0 ? 1 : absPos === 1 ? 0.82 : 0.65;
-    const translateX = pos * 220;
+    const translateX = pos * 265;
     const zIndex = 10 - absPos * 3;
     const opacity = absPos > 2 ? 0 : absPos === 2 ? 0.45 : 1;
     const blur = absPos === 2 ? 'blur(2px)' : 'none';
@@ -194,20 +197,20 @@ function VideoCarousel({ videos }: { videos: any[] }) {
   return (
     <section className="py-16 bg-background">
       <h2 className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-12">Featured Videos</h2>
-      <div className="relative flex items-center justify-center" style={{ height: 380 }}>
+      <div className="relative flex items-center justify-center" style={{ height: 500 }}>
         <button onClick={prev} className="absolute left-4 md:left-12 z-20 w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground/5 transition-colors" aria-label="Previous">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <div className="relative flex items-center justify-center" style={{ width: '100%', maxWidth: 700 }}>
+        <div className="relative flex items-center justify-center" style={{ width: '100%', maxWidth: 760 }}>
           {videos.map((vid, i) => (
-            <div key={vid.id} className="absolute" style={getStyle(i)}>
+            <div key={vid.id} className="absolute flex flex-col items-center" style={getStyle(i)}>
               {/* Outer click => open Instagram reel */}
               <a
                 href={vid.instagramReelUrl || `/products/${vid.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative w-52 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
-                style={{ aspectRatio: '9/16', maxHeight: 340 }}
+                className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+                style={{ aspectRatio: '9/16', maxHeight: 390 }}
               >
                 <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
@@ -226,12 +229,13 @@ function VideoCarousel({ videos }: { videos: any[] }) {
                   <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
                 </div>
               </a>
-              {/* Secondary: small product link */}
+              {/* Premium style View Product button */}
               <Link
                 href={`/products/${vid.slug}`}
-                className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                className="mt-3.5 inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[11px] font-bold tracking-wider uppercase bg-primary text-primary-foreground rounded-full hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all hover:shadow-md shadow-sm"
               >
-                <span>View Product →</span>
+                <span>View Product</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           ))}

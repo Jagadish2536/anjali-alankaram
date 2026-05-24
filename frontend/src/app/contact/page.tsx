@@ -1,6 +1,19 @@
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+'use client';
+import { useEffect } from 'react';
+import { Mail, Phone, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function ContactPage() {
+  const { settings, fetchSettings } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const phone = settings.supportPhone || '+91 98765 43210';
+  const email = settings.supportEmail || 'support@anjalialankaram.com';
+  const whatsappNumber = settings.whatsappNumber ? settings.whatsappNumber.replace(/[^0-9]/g, '') : '';
+
   return (
     <div className="container py-12 max-w-6xl">
       <div className="text-center mb-16">
@@ -50,10 +63,19 @@ export default function ContactPage() {
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
                 <Phone className="w-5 h-5 text-primary" />
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold text-lg mb-1">Customer Care</h3>
-                <p className="text-muted-foreground mb-2">Call or WhatsApp us for instant support.</p>
-                <a href="tel:+919876543210" className="text-xl font-bold text-primary hover:underline">+91 98765 43210</a>
+                <p className="text-muted-foreground mb-3">Call or WhatsApp us for instant support.</p>
+                <div className="flex flex-wrap gap-3">
+                  <a href={`tel:${phone}`} className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl border border-primary/20 text-sm font-bold text-primary hover:bg-primary/5 transition-colors">
+                    <Phone className="w-4 h-4" /> {phone}
+                  </a>
+                  {whatsappNumber && (
+                    <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-[#25D366] text-white text-sm font-bold hover:bg-[#20ba56] transition-colors shadow-sm shadow-[#25D366]/20">
+                      <MessageCircle className="w-4 h-4 fill-current" /> Chat with Us
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -64,7 +86,7 @@ export default function ContactPage() {
               <div>
                 <h3 className="font-bold text-lg mb-1">Email Support</h3>
                 <p className="text-muted-foreground mb-2">Drop us a line and we'll reply within 24 hours.</p>
-                <a href="mailto:support@anjalialankaram.com" className="text-primary hover:underline font-medium">support@anjalialankaram.com</a>
+                <a href={`mailto:${email}`} className="text-primary hover:underline font-medium">{email}</a>
               </div>
             </div>
 

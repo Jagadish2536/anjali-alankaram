@@ -13,7 +13,7 @@ interface ShippingProvider {
   trackShipment(awb: string): Promise<TrackingEvent[]>;
 }
 
-interface TrackingEvent {
+export interface TrackingEvent {
   status: string;
   location: string;
   timestamp: Date;
@@ -52,8 +52,14 @@ class MockShippingProvider implements ShippingProvider {
       {
         status: 'Out for Delivery',
         location: 'Local Hub',
-        timestamp: new Date(),
+        timestamp: new Date(Date.now() - 3600000 * 2),
         description: 'Package out for delivery',
+      },
+      {
+        status: 'Delivered',
+        location: 'Customer Doorstep',
+        timestamp: new Date(Date.now() - 600000),
+        description: 'Package successfully delivered to customer',
       },
     ];
   }

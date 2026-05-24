@@ -38,6 +38,12 @@ export class OrdersController {
     return this.ordersService.findOne(id, req.user.id);
   }
 
+  @Get(':id/track')
+  @ApiOperation({ summary: 'Track order shipment status' })
+  async trackOrder(@Req() req: any, @Param('id') id: string) {
+    return this.ordersService.trackOrder(id, req.user.id, req.user.role);
+  }
+
   @Get(':id/history')
   @ApiOperation({ summary: 'Get order status history' })
   async getHistory(@Req() req: any, @Param('id') id: string) {

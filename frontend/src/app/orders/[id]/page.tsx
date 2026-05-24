@@ -371,6 +371,7 @@ export default function OrderDetailPage() {
   const [toast, setToast] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const pollRef = useRef<any>(null);
+  const [transitEvents, setTransitEvents] = useState<any[]>([]);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
@@ -378,6 +379,17 @@ export default function OrderDetailPage() {
     try {
       const { data } = await api.get(`/orders/${params.id}`);
       setOrder(data);
+      if (data.awbCode) {
+        try {
+          const trackRes = await api.get(`/orders/${params.id}/track`);
+          setTransitEvents(trackRes.data.events || []);
+          if (trackRes.data.status && trackRes.data.status !== data.status) {
+            data.status = trackRes.data.status;
+          }
+        } catch (err) {
+          console.error('Failed to fetch transit details:', err);
+        }
+      }
     } catch { /* ignore */ }
     finally { setIsLoading(false); }
   }, [params.id]);
@@ -669,6 +681,34 @@ export default function OrderDetailPage() {
                     Track Package <ExternalLink className="w-3 h-3" />
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* Live transit details */}
+            {order.awbCode && transitEvents.length > 0 && (
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-primary" /> Live Shipment Transit Logs
+                </h3>
+                <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                  {transitEvents.map((ev, i) => (
+                    <div key={i} className="flex gap-3 relative pb-4 last:pb-0 border-l border-gray-150 pl-4 ml-1.5">
+                      <div className={`absolute left-[-4.5px] top-1.5 w-2 h-2 rounded-full ${i === 0 ? 'bg-primary animate-pulse' : 'bg-gray-300'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2 flex-wrap">
+                          <p className="text-sm font-bold text-foreground leading-snug">{ev.status}</p>
+                          <p className="text-[10px] text-muted-foreground font-semibold">
+                            {new Date(ev.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {new Date(ev.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ev.description}</p>
+                        {ev.location && (
+                          <p className="text-[10px] text-primary/80 font-bold mt-1">📍 {ev.location}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

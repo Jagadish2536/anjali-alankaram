@@ -288,6 +288,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where,
       include: {
+        user: { select: { id: true, name: true, phone: true, email: true, avatar: true } },
         items: {
           include: {
             product: { select: { id: true, name: true, images: true, slug: true } },
@@ -304,6 +305,54 @@ export class OrdersService {
     // Attach status history
     const history = await this.statusHistory.findByOrder(id);
     return { ...order, statusHistory: history };
+  }
+
+  async trackOrder(orderId: string, userId?: string, userRole?: string) {
+    const where: any = userId && !['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER', 'WAREHOUSE_STAFF'].includes(userRole || '') 
+      ? { id: orderId, userId } 
+      : { id: orderId };
+      
+    const order = await this.prisma.order.findFirst({ where });
+    if (!order) throw new NotFoundException('Order not found');
+    if (!order.awbCode) return { events: [], trackingUrl: order.trackingUrl || '' };
+
+    // Fetch tracking details from shipping service
+    const events = await this.shippingService.trackShipment(order.awbCode);
+
+    // If the latest event status is "Delivered" (or contains "deliver" case-insensitively),
+    // and the order status is not already DELIVERED, update it!
+    if (events && events.length > 0) {
+      // Find latest event (sort by timestamp descending)
+      const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      const latest = sortedEvents[0];
+      
+      const isDeliveredEvent = latest.status.toLowerCase().includes('deliver');
+      if (isDeliveredEvent && order.status !== 'DELIVERED') {
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'DELIVERED',
+            deliveredAt: new Date(),
+          },
+        });
+        order.status = 'DELIVERED';
+        
+        await this.statusHistory.append({
+          orderId: order.id,
+          toStatus: 'DELIVERED',
+          fromStatus: order.status,
+          actorRole: 'SYSTEM',
+          notes: 'Auto-updated to DELIVERED via courier delivery tracking',
+        });
+        
+        // Trigger customer notification
+        await this.notificationsService
+          .sendOrderNotification(order.userId, 'ORDER_DELIVERED', order.id, order.orderNumber)
+          .catch(() => {});
+      }
+    }
+
+    return { events, trackingUrl: order.trackingUrl || '', awbCode: order.awbCode, courierName: order.courierName, status: order.status };
   }
 
   async findAll(query?: {

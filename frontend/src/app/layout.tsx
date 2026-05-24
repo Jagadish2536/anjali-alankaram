@@ -6,7 +6,6 @@ import Footer from '@/components/layout/Footer'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { OAuthProvider } from '@/components/providers/OAuthProvider'
 import { MaintenanceProvider } from '@/components/providers/MaintenanceProvider'
-import FloatingWhatsApp from '@/components/common/FloatingWhatsApp'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' })
@@ -65,7 +64,6 @@ export default function RootLayout({
             <div className="md:hidden pb-16">
               <Footer />
             </div>
-            <FloatingWhatsApp />
             <MobileBottomNav />
           </MaintenanceProvider>
         </OAuthProvider>

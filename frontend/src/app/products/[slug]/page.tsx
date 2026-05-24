@@ -33,9 +33,11 @@ const MARQUEE_ITEMS = [
 
 function LotusPolicyMarquee() {
   const items = MARQUEE_ITEMS.flatMap((t, i) => [{ type: 'text', val: t, key: `t${i}` }, { type: 'lotus', key: `l${i}` }]);
+  const totalLength = MARQUEE_ITEMS.reduce((acc, t) => acc + t.length, 0);
+  const duration = Math.max(80, Math.round(totalLength * 1.5));
   return (
     <div className="w-full bg-primary overflow-hidden py-2" aria-hidden="true">
-      <div className="flex animate-marquee" style={{ width: 'max-content' }}>
+      <div className="flex animate-marquee" style={{ animationDuration: `${duration}s`, width: 'max-content' }}>
         {[...items, ...items].map((item, idx) =>
           item.type === 'lotus'
             ? <LotusSVG key={`${item.key}-${idx}`} />

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  Search, ShoppingBag, X, Menu, ChevronRight, LogOut, ShieldAlert,
+  Search, ShoppingBag, X, Menu, ChevronRight, LogOut, ShieldAlert, Heart, User,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -167,6 +167,16 @@ export default function Navbar() {
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}
+            </Link>
+
+            {/* Desktop: Wishlist */}
+            <Link href="/wishlist" className="hidden md:flex text-foreground hover:text-primary transition-colors p-1" title="Wishlist">
+              <Heart className="h-5 w-5" />
+            </Link>
+
+            {/* Desktop: Profile */}
+            <Link href={mounted && isAuthenticated ? "/profile" : "/login"} className="hidden md:flex text-foreground hover:text-primary transition-colors p-1" title="Profile">
+              <User className="h-5 w-5" />
             </Link>
 
             {/* Desktop: logout */}

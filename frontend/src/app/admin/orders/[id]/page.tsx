@@ -14,13 +14,26 @@ import { formatPrice } from '@/lib/utils';
 // ── Delivery Partners ────────────────────────────────────────────
 const DELIVERY_PARTNERS = [
   { id: 'india_post', name: 'India Post', trackingBase: 'https://www.indiapost.gov.in/VAS/Pages/trackconsignment.aspx' },
-  { id: 'dtdc',       name: 'DTDC',       trackingBase: 'https://www.dtdc.in/tracking.asp' },
+  { id: 'dtdc',       name: 'DTDC',       trackingBase: 'https://www.dtdc.com/tracking' },
   { id: 'bluedart',   name: 'BlueDart',   trackingBase: 'https://www.bluedart.com/tracking' },
   { id: 'delhivery',  name: 'Delhivery',  trackingBase: 'https://www.delhivery.com/track/' },
   { id: 'ekart',      name: 'Ekart',      trackingBase: 'https://ekartlogistics.com/shipmenttrack/' },
   { id: 'xpressbees', name: 'XpressBees', trackingBase: 'https://www.xpressbees.com/shipment/tracking' },
   { id: 'other',      name: 'Other',      trackingBase: '' },
 ];
+
+const getTrackingUrl = (partnerId: string, awb: string) => {
+  if (!awb.trim()) return '';
+  switch (partnerId) {
+    case 'india_post': return `https://www.indiapost.gov.in/VAS/Pages/trackconsignment.aspx?SessionID=${awb.trim()}`;
+    case 'dtdc':       return `https://www.dtdc.in/tracking/tracking-results.xhtml?shipmentNumber=${awb.trim()}`;
+    case 'bluedart':   return `https://www.bluedart.com/web/guest/track-dart-details?waybill=${awb.trim()}`;
+    case 'delhivery':  return `https://www.delhivery.com/track/share?reftype=lrn&refNo=${awb.trim()}`;
+    case 'ekart':      return `https://ekartlogistics.com/shipmenttrack/${awb.trim()}`;
+    case 'xpressbees': return `https://www.xpressbees.com/shipment/tracking?awb=${awb.trim()}`;
+    default:           return '';
+  }
+};
 
 const STATUS_COLOR: Record<string, string> = {
   DELIVERED:          'bg-green-50 text-green-700 border-green-200',
@@ -66,6 +79,15 @@ const ALL_STATUSES = [
   { id: 'RETURNED', name: 'Returned' },
   { id: 'REFUND_INITIATED', name: 'Refund Initiated' },
   { id: 'REFUNDED', name: 'Refunded' },
+];
+
+const SIMPLE_STATUSES = [
+  { id: 'PENDING_PAYMENT', name: 'Pending Payment' },
+  { id: 'CONFIRMED', name: 'Order Placed / Confirmed' },
+  { id: 'PACKED', name: 'Product Packed' },
+  { id: 'SHIPPED', name: 'Shipped' },
+  { id: 'DELIVERED', name: 'Delivered' },
+  { id: 'CANCELLED', name: 'Cancelled' },
 ];
 
 const ADMIN_ORDER_STEPS = [
@@ -228,6 +250,10 @@ export default function OrderDetailPage() {
   const [toast, setToast] = useState('');
   const [scanning, setScanning] = useState(false);
   const awbRef = useRef<HTMLInputElement>(null);
+  const [selectedCourierCustomName, setSelectedCourierCustomName] = useState('');
+
+  // Transit Logs State
+  const [transitEvents, setTransitEvents] = useState<any[]>([]);
 
   const fetchOrder = async () => {
     setLoading(true);
@@ -241,14 +267,26 @@ export default function OrderDetailPage() {
       const courierPartner = DELIVERY_PARTNERS.find(p => p.name.toLowerCase() === (data.courierName || '').toLowerCase());
       setSelectedPartner(courierPartner ? courierPartner.id : data.courierName ? 'other' : '');
       setSelectedCourierCustomName(courierPartner ? '' : data.courierName || '');
+
+      // Fetch live transit data if AWB exists
+      if (data.awbCode) {
+        try {
+          const trackRes = await api.get(`/orders/${id}/track`);
+          setTransitEvents(trackRes.data.events || []);
+          if (trackRes.data.status && trackRes.data.status !== data.status) {
+            data.status = trackRes.data.status;
+            setSelectedStatus(trackRes.data.status);
+          }
+        } catch (err) {
+          console.error('Failed to fetch live transit details:', err);
+        }
+      }
     } catch (e: any) {
       setError(e.response?.data?.message || 'Failed to load order details');
     } finally {
       setLoading(false);
     }
   };
-
-  const [selectedCourierCustomName, setSelectedCourierCustomName] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -269,9 +307,9 @@ export default function OrderDetailPage() {
   const handlePartnerChange = (partnerId: string) => {
     setSelectedPartner(partnerId);
     if (partnerId && partnerId !== 'other') {
-      const p = DELIVERY_PARTNERS.find(item => item.id === partnerId);
-      if (p?.trackingBase && awbCode.trim()) {
-        setTrackingUrl(`${p.trackingBase}?awb=${awbCode.trim()}`);
+      const url = getTrackingUrl(partnerId, awbCode);
+      if (url) {
+        setTrackingUrl(url);
       }
     }
   };
@@ -279,9 +317,9 @@ export default function OrderDetailPage() {
   const handleAwbChange = (code: string) => {
     setAwbCode(code);
     if (selectedPartner && selectedPartner !== 'other') {
-      const p = DELIVERY_PARTNERS.find(item => item.id === selectedPartner);
-      if (p?.trackingBase && code.trim()) {
-        setTrackingUrl(`${p.trackingBase}?awb=${code.trim()}`);
+      const url = getTrackingUrl(selectedPartner, code);
+      if (url) {
+        setTrackingUrl(url);
       }
     }
   };
@@ -544,6 +582,38 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
+            {/* Live Transit Logs */}
+            {order.awbCode && (
+              <div className="bg-white rounded-2xl border shadow-sm p-6">
+                <h3 className="font-bold font-outfit text-sm uppercase tracking-wider mb-4 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-primary" /> Live Transit Timeline
+                  </span>
+                  <span className="text-[10px] font-bold bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Live</span>
+                </h3>
+                
+                {transitEvents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No live tracking events available yet or invalid AWB</p>
+                ) : (
+                  <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                    {transitEvents.map((ev, i) => (
+                      <div key={i} className="flex gap-3 relative pb-4 last:pb-0 border-l border-gray-100 pl-4 ml-2">
+                        <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-primary animate-pulse' : 'bg-gray-300'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground">{ev.status}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {ev.location && <span className="font-semibold text-foreground mr-1.5">📍 {ev.location}</span>}
+                            {new Date(ev.timestamp).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Timeline history log */}
             {showHistory && (
               <div className="bg-white rounded-2xl border shadow-sm p-6">
@@ -580,9 +650,15 @@ export default function OrderDetailPage() {
                     required
                   >
                     <option value="">Select status…</option>
-                    {ALL_STATUSES.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
+                    {(() => {
+                      const dropdownStatuses = [...SIMPLE_STATUSES];
+                      if (order && !SIMPLE_STATUSES.some(s => s.id === order.status)) {
+                        dropdownStatuses.push({ id: order.status, name: order.status.replace(/_/g, ' ') });
+                      }
+                      return dropdownStatuses.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ));
+                    })()}
                   </select>
                 </div>
 
@@ -714,17 +790,17 @@ export default function OrderDetailPage() {
               <h3 className="font-bold font-outfit text-sm uppercase tracking-wider border-b pb-2">Customer Profile</h3>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base shrink-0">
-                  {order.user?.name?.[0]?.toUpperCase() || 'C'}
+                  {(order.user?.name || order.address?.name)?.[0]?.toUpperCase() || 'C'}
                 </div>
                 <div>
-                  <p className="font-bold text-sm text-foreground">{order.user?.name || 'Customer'}</p>
+                  <p className="font-bold text-sm text-foreground">{order.user?.name || order.address?.name || 'Customer'}</p>
                   <p className="text-xs text-muted-foreground truncate">{order.user?.email || 'No email provided'}</p>
                 </div>
               </div>
               
               <div className="text-xs space-y-2 pt-2 border-t text-muted-foreground">
-                <div className="flex justify-between"><span>User Account ID:</span><span className="font-mono text-[10px] text-foreground">{order.user?.id}</span></div>
-                <div className="flex justify-between"><span>Registered phone:</span><span className="text-foreground">{order.user?.phone || 'N/A'}</span></div>
+                <div className="flex justify-between"><span>User Account ID:</span><span className="font-mono text-[10px] text-foreground">{order.user?.id || 'N/A'}</span></div>
+                <div className="flex justify-between"><span>Registered phone:</span><span className="text-foreground">{order.user?.phone || order.address?.phone || 'N/A'}</span></div>
               </div>
             </div>
 
