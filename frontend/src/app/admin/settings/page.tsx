@@ -77,7 +77,7 @@ function Toggle({ checked, onChange, label, desc, color = 'bg-primary' }: {
 
 // ── Coupon Management Component ───────────────────────────────────────────────
 const EMPTY_COUPON = {
-  code: '', description: '', type: 'FIXED' as 'FIXED' | 'PERCENTAGE' | 'FREE_SHIPPING',
+  code: '', description: '', type: 'FLAT' as 'FLAT' | 'PERCENTAGE' | 'FREE_SHIPPING',
   value: 0, minOrderValue: '', maxDiscount: '', usageLimit: '',
   perUserLimit: '', expiresAt: '', isActive: true,
 };
@@ -239,7 +239,7 @@ function CouponManagement() {
               <label className="block text-sm font-medium mb-1.5">Discount Type *</label>
                 <select value={form.type} onChange={f('type')}
                 className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary">
-                <option value="FIXED">Fixed Amount (₹)</option>
+                <option value="FLAT">Fixed Amount (₹)</option>
                 <option value="PERCENTAGE">Percentage (%)</option>
                 <option value="FREE_SHIPPING">Free Shipping</option>
               </select>
