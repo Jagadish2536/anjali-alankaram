@@ -73,6 +73,22 @@ export default function Navbar() {
   const marqueeText = (settings as any).marqueeText || 'Free Delivery on all Orders';
   const cartCount = mounted ? cartItems?.length ?? 0 : 0;
 
+  const getAdminHref = () => {
+    if (!user) return '/admin';
+    if (user.role === 'ORDER_MANAGER') return '/admin/orders';
+    if (user.role === 'STOCK_MANAGER') return '/admin/products';
+    if (user.role === 'WAREHOUSE_STAFF') return '/admin/warehouse';
+    return '/admin';
+  };
+
+  const getAdminLabel = () => {
+    if (!user) return 'Admin';
+    if (user.role === 'ORDER_MANAGER') return 'Orders';
+    if (user.role === 'STOCK_MANAGER') return 'Products';
+    if (user.role === 'WAREHOUSE_STAFF') return 'Warehouse';
+    return 'Admin';
+  };
+
   return (
     <>
       {/* ── Announcement Bar ─────────────────────────────────────────── */}
@@ -153,9 +169,9 @@ export default function Navbar() {
 
             {/* Admin badge desktop only */}
             {mounted && isAuthenticated && ['ADMIN','SUPER_ADMIN','WAREHOUSE_STAFF','ORDER_MANAGER','STOCK_MANAGER'].includes(user?.role || '') && (
-              <Link href="/admin" className="hidden md:flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-100/50 transition-colors">
+              <Link href={getAdminHref()} className="hidden md:flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-100/50 transition-colors">
                 <ShieldAlert className="h-3.5 w-3.5" />
-                <span>Admin</span>
+                <span>{getAdminLabel()}</span>
               </Link>
             )}
 
@@ -279,11 +295,11 @@ export default function Navbar() {
                   </Link>
                   {['ADMIN','SUPER_ADMIN','WAREHOUSE_STAFF','ORDER_MANAGER','STOCK_MANAGER'].includes(user?.role || '') && (
                     <Link
-                      href="/admin"
+                      href={getAdminHref()}
                       onClick={() => setMobileOpen(false)}
                       className="flex items-center justify-center w-full py-3 rounded-xl border-2 border-rose-200 text-rose-600 font-semibold text-sm"
                     >
-                      ⚙ Admin Panel
+                      ⚙️ {getAdminLabel() === 'Admin' ? 'Admin Panel' : `${getAdminLabel()} Panel`}
                     </Link>
                   )}
                   <button

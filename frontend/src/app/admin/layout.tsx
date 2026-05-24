@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -45,6 +45,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const userRole = user?.role || '';
   const sidebarItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(userRole));
 
+  const isPathAuthorized = useCallback(() => {
+    if (pathname === '/admin' || pathname === '/admin/') {
+      return ['ADMIN', 'SUPER_ADMIN'].includes(userRole);
+    }
+    const navItem = [...ALL_NAV_ITEMS].reverse().find(item => item.href !== '/admin' && pathname.startsWith(item.href));
+    if (navItem) {
+      return navItem.roles.includes(userRole);
+    }
+    if (pathname.startsWith('/admin/warehouse')) {
+      return ['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF'].includes(userRole);
+    }
+    return true;
+  }, [pathname, userRole]);
+
   const fetchUnreadCount = async () => {
     try {
       const res = await api.get('/notifications');
@@ -69,12 +83,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!isHydrated) return;
     if (!isAuthenticated) {
       router.push('/login?returnUrl=' + pathname);
-    } else if (!ALLOWED_ROLES.includes(userRole)) {
-      router.push('/');
+      return;
     }
-  }, [isHydrated, isAuthenticated, userRole, router, pathname]);
+    if (!ALLOWED_ROLES.includes(userRole)) {
+      router.push('/');
+      return;
+    }
 
-  if (!isHydrated || !isAuthenticated || !ALLOWED_ROLES.includes(userRole)) {
+    // Role-based route guard
+    // 1. Root redirect based on role
+    if (pathname === '/admin' || pathname === '/admin/') {
+      if (userRole === 'ORDER_MANAGER') {
+        router.replace('/admin/orders');
+        return;
+      }
+      if (userRole === 'STOCK_MANAGER') {
+        router.replace('/admin/products');
+        return;
+      }
+      if (userRole === 'WAREHOUSE_STAFF') {
+        router.replace('/admin/warehouse');
+        return;
+      }
+    }
+
+    // 2. Prevent accessing unauthorized pages directly via URL
+    if (!isPathAuthorized()) {
+      if (userRole === 'ORDER_MANAGER') {
+        router.replace('/admin/orders');
+      } else if (userRole === 'STOCK_MANAGER') {
+        router.replace('/admin/products');
+      } else if (userRole === 'WAREHOUSE_STAFF') {
+        router.replace('/admin/warehouse');
+      } else {
+        router.replace('/');
+      }
+    }
+  }, [isHydrated, isAuthenticated, userRole, router, pathname, isPathAuthorized]);
+
+  const authorized = isHydrated && isAuthenticated && ALLOWED_ROLES.includes(userRole) && isPathAuthorized();
+
+  if (!authorized) {
     return (
       <div className="min-h-screen bg-muted/20 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -12,6 +12,18 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   
   const { setTokens, setUser } = useAuthStore();
   
+  const redirectAfterLogin = (userObj: any, defaultUrl: string) => {
+    let targetUrl = defaultUrl;
+    if (targetUrl === '/profile' || targetUrl === '/admin' || targetUrl === '/admin/') {
+      if (['ADMIN', 'SUPER_ADMIN'].includes(userObj.role)) {
+        targetUrl = '/admin';
+      } else if (['ORDER_MANAGER', 'STOCK_MANAGER', 'WAREHOUSE_STAFF'].includes(userObj.role)) {
+        targetUrl = '/';
+      }
+    }
+    router.push(targetUrl);
+  };
+  
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER' | 'OTP' | 'FORGOT_PASSWORD'>('LOGIN');
   const [forgotStep, setForgotStep] = useState<'REQUEST' | 'RESET'>('REQUEST');
   
@@ -131,7 +143,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
-      router.push(returnUrl);
+      redirectAfterLogin(data.user, returnUrl);
     } catch (err: any) {
       const msg = err.response?.data?.message;
       setError(Array.isArray(msg) ? msg.join(', ') : (msg || 'Login failed. Please check your credentials.'));
@@ -165,7 +177,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
-      router.push(returnUrl);
+      redirectAfterLogin(data.user, returnUrl);
     } catch (err: any) {
       const msg = err.response?.data?.message;
       setError(Array.isArray(msg) ? msg.join(', ') : (msg || 'Registration failed. Please try again.'));
@@ -214,7 +226,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
-      router.push(returnUrl);
+      redirectAfterLogin(data.user, returnUrl);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
     } finally {
@@ -233,7 +245,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
-      router.push(returnUrl);
+      redirectAfterLogin(data.user, returnUrl);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Google Login failed. Please try again.');
     } finally {
