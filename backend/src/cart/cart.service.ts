@@ -46,6 +46,15 @@ export class CartService {
       });
     }
 
+    // Cleanup any items belonging to archived or draft products
+    const inactiveItems = cart.items.filter(item => item.product.status !== 'ACTIVE');
+    if (inactiveItems.length > 0) {
+      await this.prisma.cartItem.deleteMany({
+        where: { id: { in: inactiveItems.map(item => item.id) } }
+      });
+      return this.getCart(userId);
+    }
+
     const subtotal = cart.items.reduce((sum, item) => {
       const price = Number(item.product.salePrice || item.product.basePrice) +
         Number(item.variant.extraPrice);

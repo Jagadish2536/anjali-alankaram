@@ -145,7 +145,7 @@ export class ProductsService {
       },
     });
 
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product || product.status === 'ARCHIVED') throw new NotFoundException('Product not found');
 
     await this.redis.setex(cacheKey, 300, JSON.stringify(product)); // 5min cache
     return product;
