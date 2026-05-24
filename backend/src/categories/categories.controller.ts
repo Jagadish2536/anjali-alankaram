@@ -20,7 +20,7 @@ export class CategoriesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create category (Admin)' })
   async create(@Body() dto: any) {
@@ -29,7 +29,7 @@ export class CategoriesController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update category (Admin)' })
   async update(@Param('id') id: string, @Body() dto: any) {
@@ -38,7 +38,7 @@ export class CategoriesController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete category (Admin)' })
   async remove(@Param('id') id: string) {

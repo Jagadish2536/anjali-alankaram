@@ -25,11 +25,11 @@ const config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))", // Rose Gold
+          DEFAULT: "hsl(var(--primary))", // Deep Crimson
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))", // Soft Pink
+          DEFAULT: "hsl(var(--secondary))", // Crimson tint
           foreground: "hsl(var(--secondary-foreground))",
         },
         destructive: {
@@ -41,7 +41,7 @@ const config = {
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))", // Beige
+          DEFAULT: "hsl(var(--accent))", // Warm beige
           foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
@@ -52,6 +52,13 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        crimson: "#8B0030",
+        cream: "#FDF5EC",
+      },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'sans-serif'],
+        outfit: ['var(--font-outfit)', 'sans-serif'],
+        cormorant: ['var(--font-cormorant)', 'Georgia', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -70,12 +77,22 @@ const config = {
         "fade-in": {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" }
-        }
+        },
+        "marquee-scroll": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "slide-in-left": {
+          "0%": { opacity: "0", transform: "translateX(-20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-out",
+        "marquee": "marquee-scroll 22s linear infinite",
+        "slide-in-left": "slide-in-left 0.4s ease-out",
       },
     },
   },

@@ -4,62 +4,59 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    
-    /* Rose Gold */
-    --primary: 351 33% 66%;
-    --primary-foreground: 0 0% 100%;
-    
-    /* Soft Pink */
-    --secondary: 350 50% 90%;
-    --secondary-foreground: 351 33% 30%;
-    
-    /* Beige */
-    --accent: 40 40% 90%;
-    --accent-foreground: 40 40% 30%;
-    
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    
+    /* Warm cream background */
+    --background: 36 60% 97%;
+    --foreground: 345 30% 12%;
+
+    /* Deep crimson — navbar, CTAs, footer, category cards */
+    --primary: 345 80% 28%;
+    --primary-foreground: 36 60% 97%;
+
+    /* Lighter crimson tint */
+    --secondary: 345 50% 92%;
+    --secondary-foreground: 345 80% 28%;
+
+    /* Warm beige accent */
+    --accent: 36 40% 88%;
+    --accent-foreground: 345 30% 18%;
+
+    --muted: 36 20% 92%;
+    --muted-foreground: 345 10% 45%;
+
+    --popover: 36 60% 98%;
+    --popover-foreground: 345 30% 12%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 351 33% 66%;
+    --card-foreground: 345 30% 12%;
+
+    --border: 36 20% 85%;
+    --input: 36 20% 85%;
+    --ring: 345 80% 28%;
     --radius: 0.5rem;
+
+    /* Crimson for direct use in inline styles */
+    --crimson: #8B0030;
+    --cream: #FDF5EC;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
-    
-    /* Matte Black + Rose Gold accents */
-    --primary: 351 33% 66%;
-    --primary-foreground: 0 0% 10%;
-    
-    --secondary: 351 20% 25%;
-    --secondary-foreground: 0 0% 98%;
-    
-    --accent: 40 20% 25%;
-    --accent-foreground: 0 0% 98%;
-    
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
-    
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
-    
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 351 33% 66%;
+    --background: 345 20% 8%;
+    --foreground: 36 60% 95%;
+    --primary: 345 70% 50%;
+    --primary-foreground: 36 60% 97%;
+    --secondary: 345 30% 20%;
+    --secondary-foreground: 36 60% 97%;
+    --accent: 345 20% 18%;
+    --accent-foreground: 36 60% 97%;
+    --muted: 345 15% 15%;
+    --muted-foreground: 36 20% 60%;
+    --popover: 345 20% 10%;
+    --popover-foreground: 36 60% 97%;
+    --card: 345 20% 10%;
+    --card-foreground: 36 60% 97%;
+    --border: 345 20% 20%;
+    --input: 345 20% 20%;
+    --ring: 345 70% 50%;
   }
 }
 
@@ -69,5 +66,24 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter), sans-serif;
   }
 }
+
+/* ── Lotus / Marquee strip ── */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee-scroll 20s linear infinite;
+}
+
+/* ── Fan carousel transitions ── */
+.fan-card {
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── Scrollbar hide utility ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

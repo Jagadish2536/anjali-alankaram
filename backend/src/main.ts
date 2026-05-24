@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import * as express from 'express';
@@ -16,20 +16,49 @@ async function bootstrap() {
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
   app.useLogger(logger);
 
-  // Security
+  // ── Security Headers ─────────────────────────────────────────────
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      // Content-Security-Policy — strict for production
+      contentSecurityPolicy: configService.get('NODE_ENV') === 'production' ? {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"], // Razorpay etc needs unsafe-inline
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:', 'http:'],
+          connectSrc: ["'self'", 'https:'],
+          frameSrc: ["'self'", 'https://checkout.razorpay.com'],
+          fontSrc: ["'self'", 'https:', 'data:'],
+        },
+      } : false,
+      hsts: configService.get('NODE_ENV') === 'production'
+        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+        : false,
     }),
   );
-  app.use(compression());
+
+  // ── Compression ──────────────────────────────────────────────────
+  app.use(compression({ threshold: 512 }));
+
+  // ── Body size limits ────────────────────────────────────────────
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // ── CORS ────────────────────────────────────────────────────────
+  const allowedOrigins = configService
+    .get('ALLOWED_ORIGINS', 'http://localhost:3001')
+    .split(',')
+    .map((o: string) => o.trim());
+
   app.enableCors({
-    origin: configService.get('ALLOWED_ORIGINS', 'http://localhost:3001').split(','),
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
-  // Global pipes
+  // ── Global Validation ────────────────────────────────────────────
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -39,13 +68,13 @@ async function bootstrap() {
     }),
   );
 
-  // API prefix
+  // ── API prefix ───────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');
 
-  // Serve uploaded files statically in development/local storage mode
+  // ── Static file serving (development / local storage) ───────────
   app.use('/api/v1/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-  // Swagger
+  // ── Swagger (dev only) ───────────────────────────────────────────
   if (configService.get('NODE_ENV') !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('Anjali Alankaram API')
@@ -63,15 +92,22 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  // Health check
-  app.use('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  // ── Health check ─────────────────────────────────────────────────
+  app.use('/health', (_req: any, res: any) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      env: configService.get('NODE_ENV', 'development'),
+    });
   });
 
   const port = configService.get<number>('PORT', 3000);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0'); // bind to all interfaces (required in Docker)
   logger.log(`🚀 Anjali Alankaram API running on port ${port}`, 'Bootstrap');
-  logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`, 'Bootstrap');
+  logger.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`, 'Bootstrap');
+  if (configService.get('NODE_ENV') !== 'production') {
+    logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`, 'Bootstrap');
+  }
 }
 
 bootstrap();

@@ -33,11 +33,14 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
-        mask-aws-account-id: 'false' # So we can see the registry ID in logs
+        mask-aws-account-id: 'false'
 
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
+
+    # DB schema sync (prisma db push --accept-data-loss=false) runs in
+    # entrypoint.sh at container startup — additive only, never drops data.
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
@@ -68,15 +71,15 @@ jobs:
     - name: Register new task definition
       id: register-task-def
       run: |
-        TASK_DEFINITION_ARN=$(aws ecs register-task-definition --cli-input-json file://${{ steps.task-def.outputs.task-definition }} --query taskDefinition.taskDefinitionArn --output text)
+        TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+          --cli-input-json file://${{ steps.task-def.outputs.task-definition }} \
+          --query taskDefinition.taskDefinitionArn --output text)
         echo "DEBUG: Registered ARN is $TASK_DEFINITION_ARN"
         if [ -z "$TASK_DEFINITION_ARN" ]; then
           echo "Failed to register task definition"
           exit 1
         fi
         echo "task_definition_arn=$TASK_DEFINITION_ARN" >> $GITHUB_OUTPUT
-
-
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1

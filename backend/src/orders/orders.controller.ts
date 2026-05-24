@@ -9,6 +9,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
+const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'ORDER_MANAGER'];
+
 @ApiTags('Orders')
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -81,8 +83,8 @@ export class OrdersController {
 
   @Get('admin/all')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF')
-  @ApiOperation({ summary: 'Get all orders (Admin/Warehouse)' })
+  @Roles(...ADMIN_ROLES)
+  @ApiOperation({ summary: 'Get all orders (Admin/Warehouse/Order Manager)' })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'page', required: false })
@@ -98,7 +100,7 @@ export class OrdersController {
 
   @Get('admin/:id/history')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF')
+  @Roles(...ADMIN_ROLES)
   @ApiOperation({ summary: 'Get order status history (Admin)' })
   async getAdminHistory(@Param('id') id: string) {
     return this.ordersService.getStatusHistory(id);
@@ -106,7 +108,7 @@ export class OrdersController {
 
   @Put('admin/:id/status')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF')
+  @Roles(...ADMIN_ROLES)
   @ApiOperation({ summary: 'Update order status (Admin)' })
   async updateStatus(
     @Req() req: any,
@@ -127,6 +129,33 @@ export class OrdersController {
         warehouseId: body.warehouseId,
         refundId: body.refundId,
         pickupSlot: body.pickupSlot,
+      },
+    );
+  }
+
+  /**
+   * Assign courier & AWB code → automatically transitions order to SHIPPED
+   */
+  @Put('admin/:id/assign-courier')
+  @UseGuards(RolesGuard)
+  @Roles(...ADMIN_ROLES)
+  @ApiOperation({ summary: 'Assign delivery partner and AWB/tracking code (Admin)' })
+  async assignCourier(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { courierName: string; awbCode: string; trackingUrl?: string; notes?: string },
+  ) {
+    // First persist courier info via status update to SHIPPED
+    return this.ordersService.updateStatus(
+      id,
+      'SHIPPED',
+      req.user.id,
+      req.user.role,
+      {
+        courierName: body.courierName,
+        awbCode: body.awbCode,
+        trackingUrl: body.trackingUrl || '',
+        notes: body.notes || `Shipped via ${body.courierName}. AWB: ${body.awbCode}`,
       },
     );
   }

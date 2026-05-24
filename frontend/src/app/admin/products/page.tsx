@@ -8,8 +8,34 @@ import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import {
   Plus, Edit2, Trash2, Search, AlertCircle, CheckCircle2,
-  Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink
+  Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink, AlertTriangle
 } from 'lucide-react';
+
+// ── Confirm Dialog ───────────────────────────────────────────────
+function ConfirmDialog({ title, message, onConfirm, onCancel }: {
+  title: string; message: string; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+          </div>
+          <h3 className="font-black text-base">{title}</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">{message}</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 h-10 rounded-xl border-2 border-border text-sm font-bold hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={onConfirm} className="flex-1 h-10 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors">Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 
 interface SizeRow { size: string; bust: string; waist: string; hips: string; length: string; }
 interface EditFormData {
@@ -42,11 +68,12 @@ export default function AdminProductsPage() {
   const [editVariants, setEditVariants] = useState<{ id?: string; size: string; stock: number; sku: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return router.push('/login?returnUrl=/admin/products');
-    if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') return router.push('/profile');
-
+    const allowed = ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'];
+    if (!allowed.includes(user?.role || '')) return router.push('/profile');
     fetchProducts();
     fetchCategories();
   }, [isAuthenticated, user, router]);
@@ -166,11 +193,11 @@ export default function AdminProductsPage() {
     }
   };
 
-  const deleteProduct = async (productId: string, productName: string) => {
-    if (!confirm(`Delete "${productName}"? This will archive the product.`)) return;
+  const deleteProduct = async (productId: string) => {
     try {
       await api.delete(`/products/${productId}`);
       setProducts(prods => prods.filter(p => p.id !== productId));
+      setConfirmDelete(null);
     } catch (err: any) {
       alert('Failed to delete: ' + (err.response?.data?.message || err.message));
     }
@@ -181,7 +208,15 @@ export default function AdminProductsPage() {
   );
 
   return (
-    <div className="container py-10">
+    <div className="container py-6 sm:py-10">
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.name}"?`}
+          message="This action cannot be undone. The product will be permanently removed from your store."
+          onConfirm={() => deleteProduct(confirmDelete.id)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-outfit font-bold text-foreground">Catalogue Management</h1>
@@ -630,7 +665,7 @@ export default function AdminProductsPage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => deleteProduct(product.id, product.name)}
+                            onClick={() => setConfirmDelete({ id: product.id, name: product.name })}
                             className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                             title="Delete"
                           >

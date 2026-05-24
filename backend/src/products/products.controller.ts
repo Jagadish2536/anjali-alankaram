@@ -70,7 +70,7 @@ export class ProductsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create product (Admin)' })
   async create(@Body() dto: CreateProductDto) {
@@ -79,7 +79,7 @@ export class ProductsController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update product (Admin)' })
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
@@ -88,7 +88,7 @@ export class ProductsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete product (Admin)' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {

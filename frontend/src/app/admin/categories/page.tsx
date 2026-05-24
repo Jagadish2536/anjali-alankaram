@@ -1,8 +1,32 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
+
+// ── Confirm Dialog ───────────────────────────────────────────────
+function ConfirmDialog({ title, message, onConfirm, onCancel }: {
+  title: string; message: string; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+          </div>
+          <h3 className="font-black text-base">{title}</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">{message}</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 h-10 rounded-xl border-2 border-border text-sm font-bold hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={onConfirm} className="flex-1 h-10 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors">Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface CategoryForm {
   name: string;
@@ -20,6 +44,7 @@ export default function AdminCategoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CategoryForm>(emptyForm);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -93,10 +118,10 @@ export default function AdminCategoriesPage() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!confirm('Are you sure? This might affect products in this category.')) return;
     try {
       await api.delete(`/categories/${id}`);
       setCategories(cats => cats.filter(c => c.id !== id));
+      setConfirmDelete(null);
     } catch (e: any) {
       alert('Failed to delete category: ' + (e.response?.data?.message || e.message));
     }
@@ -109,7 +134,15 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.name}"?`}
+          message="This will permanently delete the category. Products in this category may be affected."
+          onConfirm={() => deleteCategory(confirmDelete.id)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-outfit font-bold">Category Management</h1>
@@ -254,7 +287,7 @@ export default function AdminCategoriesPage() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteCategory(cat.id)}
+                        onClick={() => setConfirmDelete({ id: cat.id, name: cat.name })}
                         className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                         title="Delete"
                       >
