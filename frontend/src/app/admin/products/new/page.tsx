@@ -27,10 +27,8 @@ export default function NewProductPage() {
     salePrice: '',
     images: [''],
     tags: ['New Arrival'],
-    variants: [{ size: 'S', stock: 10, sku: '' }],
+    variants: [{ size: 'S', color: '', colorHex: '#000000', stock: 10, sku: '', images: [] as string[] }],
     instagramReelUrl: '',
-    codAvailable: true,
-    returnDays: 14,
     sizeGuide: [] as SizeRow[],
   });
 
@@ -49,7 +47,7 @@ export default function NewProductPage() {
 
   const handleAddImage = () => setFormData({ ...formData, images: [...formData.images, ''] });
   const handleRemoveImage = (i: number) => setFormData({ ...formData, images: formData.images.filter((_, idx) => idx !== i) });
-  const handleAddVariant = () => setFormData({ ...formData, variants: [...formData.variants, { size: '', stock: 0, sku: '' }] });
+  const handleAddVariant = () => setFormData({ ...formData, variants: [...formData.variants, { size: '', color: '', colorHex: '#000000', stock: 0, sku: '', images: [] }] });
   const handleRemoveVariant = (i: number) => setFormData({ ...formData, variants: formData.variants.filter((_, idx) => idx !== i) });
 
   const handleFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +76,14 @@ export default function NewProductPage() {
       if (!formData.name || !formData.basePrice) throw new Error('Name and Base Price are required');
       const cleanVariants = formData.variants
         .filter(v => v.size.trim() !== '')
-        .map(v => ({ size: v.size, stock: Number(v.stock), sku: v.sku || `${formData.name.substring(0, 3)}-${v.size}-${Date.now()}`.toUpperCase() }));
+        .map(v => ({
+          size: v.size,
+          stock: Number(v.stock),
+          sku: v.sku || `${formData.name.substring(0, 3)}-${v.size}-${Date.now()}`.toUpperCase(),
+          ...(v.color && { color: v.color }),
+          ...(v.colorHex && { colorHex: v.colorHex }),
+          images: v.images || [],
+        }));
       if (cleanVariants.length === 0) throw new Error('Please add at least one size/variant');
       const payload: any = {
         name: formData.name,
@@ -92,8 +97,6 @@ export default function NewProductPage() {
         status: 'ACTIVE',
         variants: cleanVariants,
         instagramReelUrl: formData.instagramReelUrl.trim() || undefined,
-        codAvailable: formData.codAvailable,
-        returnDays: formData.returnDays,
         sizeGuide: formData.sizeGuide.length > 0 ? formData.sizeGuide : undefined,
       };
       if (formData.salePrice) payload.salePrice = Number(formData.salePrice);
@@ -304,43 +307,6 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* ── Delivery & Returns ── */}
-        <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b pb-4">
-            <Truck className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold font-outfit">Delivery &amp; Returns</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-3">Cash on Delivery (COD)</label>
-              <div className="flex items-center justify-between p-4 bg-muted/10 border rounded-xl">
-                <div>
-                  <p className="text-sm font-medium">Enable COD for this product</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Customers can pay on delivery</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, codAvailable: !formData.codAvailable })}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${formData.codAvailable ? 'bg-primary' : 'bg-gray-300'}`}
-                >
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${formData.codAvailable ? 'translate-x-5' : ''}`} />
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-3">Return Window</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number" min={0} max={90}
-                  className="w-28 px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                  value={formData.returnDays}
-                  onChange={e => setFormData({ ...formData, returnDays: parseInt(e.target.value) || 0 })}
-                />
-                <span className="text-sm text-muted-foreground">days <span className="text-xs">(0 = no returns)</span></span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* ── Size Guide ── */}
         <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
@@ -407,50 +373,112 @@ export default function NewProductPage() {
           )}
         </div>
 
-        {/* ── Inventory & Sizes ── */}
+        {/* ── Inventory, Sizes & Colours ── */}
         <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
           <div className="flex justify-between items-center border-b pb-4">
-            <h2 className="text-xl font-bold font-outfit">Inventory &amp; Sizes</h2>
+            <h2 className="text-xl font-bold font-outfit">Inventory, Sizes &amp; Colours</h2>
             <button type="button" onClick={handleAddVariant} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-              <PlusCircle className="w-4 h-4" /> Add Size
+              <PlusCircle className="w-4 h-4" /> Add Variant
             </button>
           </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-4 gap-4 px-4 text-xs font-bold text-muted-foreground uppercase">
-              <div className="col-span-2">Size / Variant Name</div>
-              <div>Stock Quantity</div>
-              <div className="text-right">Action</div>
-            </div>
-            {formData.variants.map((v, i) => (
-              <div key={i} className="grid grid-cols-4 gap-4 items-center">
-                <div className="col-span-2">
-                  <input
-                    required type="text" placeholder="e.g. Medium (M)"
-                    className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                    value={v.size}
-                    onChange={e => {
-                      const vs = [...formData.variants]; vs[i].size = e.target.value;
-                      setFormData({ ...formData, variants: vs });
-                    }}
-                  />
-                </div>
-                <div>
-                  <input
-                    required type="number" placeholder="0" min={0}
-                    className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                    value={v.stock}
-                    onChange={e => {
-                      const vs = [...formData.variants]; vs[i].stock = Number(e.target.value);
-                      setFormData({ ...formData, variants: vs });
-                    }}
-                  />
-                </div>
-                <div className="flex justify-end">
+          <p className="text-xs text-muted-foreground -mt-3">Add a colour + images per variant. When a customer selects a colour, only those images will show.</p>
+          <div className="space-y-6">
+            {(formData.variants as any[]).map((v, i) => (
+              <div key={i} className="border rounded-2xl p-4 space-y-3 bg-muted/5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Variant {i + 1}</span>
                   {formData.variants.length > 1 && (
-                    <button type="button" onClick={() => handleRemoveVariant(i)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors">
-                      <Trash2 className="w-5 h-5" />
+                    <button type="button" onClick={() => handleRemoveVariant(i)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-xs font-medium mb-1">Size *</label>
+                    <input
+                      required type="text" placeholder="e.g. S, M, L, XL"
+                      className="w-full px-3 py-2.5 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={v.size}
+                      onChange={e => {
+                        const vs = [...formData.variants] as any[]; vs[i].size = e.target.value;
+                        setFormData({ ...formData, variants: vs } as any);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Stock</label>
+                    <input
+                      required type="number" placeholder="0" min={0}
+                      className="w-full px-3 py-2.5 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={v.stock}
+                      onChange={e => {
+                        const vs = [...formData.variants] as any[]; vs[i].stock = Number(e.target.value);
+                        setFormData({ ...formData, variants: vs } as any);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Colour Name</label>
+                    <input
+                      type="text" placeholder="e.g. Crimson Red"
+                      className="w-full px-3 py-2.5 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={v.color || ''}
+                      onChange={e => {
+                        const vs = [...formData.variants] as any[]; vs[i].color = e.target.value;
+                        setFormData({ ...formData, variants: vs } as any);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Colour Swatch</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        className="w-10 h-10 rounded-lg border cursor-pointer"
+                        value={v.colorHex || '#000000'}
+                        onChange={e => {
+                          const vs = [...formData.variants] as any[]; vs[i].colorHex = e.target.value;
+                          setFormData({ ...formData, variants: vs } as any);
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">{v.colorHex || '#000000'}</span>
+                    </div>
+                  </div>
+                </div>
+                {/* Per-colour image upload */}
+                <div>
+                  <label className="block text-xs font-medium mb-2">Colour Images <span className="text-muted-foreground font-normal">(shown when this colour is selected)</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {(v.images || []).map((imgUrl: string, imgIdx: number) => (
+                      <div key={imgIdx} className="relative w-16 h-16 rounded-lg overflow-hidden border bg-muted/10">
+                        {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
+                        <button type="button" onClick={() => {
+                          const vs = [...formData.variants] as any[];
+                          vs[i].images = (vs[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
+                          setFormData({ ...formData, variants: vs } as any);
+                        }} className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center">
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+                      {isUploading === (i + 100) ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Plus className="w-5 h-5 text-muted-foreground" />}
+                      <span className="text-[10px] text-muted-foreground mt-0.5">Add</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        setIsUploading(i + 100);
+                        try {
+                          const fd = new FormData(); fd.append('file', file);
+                          const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                          const vs = [...formData.variants] as any[];
+                          vs[i].images = [...(vs[i].images || []), data.url];
+                          setFormData({ ...formData, variants: vs } as any);
+                        } catch (err: any) { alert('Upload failed'); }
+                        finally { setIsUploading(null); }
+                      }} />
+                    </label>
+                  </div>
                 </div>
               </div>
             ))}

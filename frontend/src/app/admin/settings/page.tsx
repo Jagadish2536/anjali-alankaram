@@ -24,8 +24,11 @@ import {
   Trash2,
   Pencil,
   X,
-  Check
+  Check,
+  Upload,
+  ImageIcon,
 } from 'lucide-react';
+import Image from 'next/image';
 
 // ── Reusable field components ─────────────────────────────────────────────────
 
@@ -79,6 +82,59 @@ const EMPTY_COUPON = {
   perUserLimit: '', expiresAt: '', isActive: true,
 };
 
+// ── Hero Image Uploader component ─────────────────────────────────────────────
+function HeroImageUploader({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Please select an image file.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError('File size must be under 10MB.'); return; }
+    setError('');
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const { data } = await api.post('/uploads', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      onChange(data.url);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Upload failed. Try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary hover:bg-primary/5'}`}>
+        <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+        {uploading ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Upload className="w-5 h-5 text-muted-foreground" />}
+        <span className="text-sm text-muted-foreground">{uploading ? 'Uploading…' : 'Click to upload hero image'}</span>
+      </label>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {value && (
+        <div className="relative w-full max-w-xs aspect-[9/16] rounded-xl overflow-hidden border bg-muted/10">
+          <Image src={value} alt="Hero preview" fill className="object-cover" />
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+      {!value && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <ImageIcon className="w-3 h-3" /> No image set — homepage hero will show crimson background
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CouponManagement() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,10 +175,11 @@ function CouponManagement() {
       const payload: any = {
         code: form.code.toUpperCase().trim(), description: form.description,
         type: form.type, value: Number(form.value), isActive: form.isActive,
+        applicableCategories: [],  // required field in DB schema
         ...(form.minOrderValue && { minOrderValue: Number(form.minOrderValue) }),
         ...(form.maxDiscount && { maxDiscount: Number(form.maxDiscount) }),
         ...(form.usageLimit && { usageLimit: Number(form.usageLimit) }),
-        ...(form.perUserLimit && { perUserLimit: Number(form.perUserLimit) }),
+        ...(form.perUserLimit ? { perUserLimit: Number(form.perUserLimit) } : { perUserLimit: 1 }),
         ...(form.expiresAt && { expiresAt: new Date(form.expiresAt).toISOString() }),
       };
       if (editId) { await api.put(`/coupons/${editId}`, payload); }
@@ -636,8 +693,11 @@ export default function AdminSettingsPage() {
               <div className="border-t pt-4 space-y-4">
                 <h3 className="text-base font-bold">Hero Banner</h3>
                 <p className="text-sm text-muted-foreground -mt-2">Customise the large banner that appears at the top of the homepage.</p>
-                <Field label="Hero Image URL" hint="Paste a direct image URL (e.g. from your S3 bucket or Cloudinary). Recommended: 1200×900px, portrait orientation.">
-                  <TextInput value={formData.heroImageUrl || ''} onChange={set('heroImageUrl')} placeholder="https://your-cdn.com/hero-image.jpg" />
+                <Field label="Hero Image" hint="Upload an image from your computer (saved to S3). Recommended: portrait, 900×1200px minimum.">
+                  <HeroImageUploader
+                    value={formData.heroImageUrl || ''}
+                    onChange={url => setFormData((p: any) => ({ ...p, heroImageUrl: url }))}
+                  />
                 </Field>
                 <Field label="Hero Title" hint="Main heading on the hero banner.">
                   <TextInput value={formData.heroTitle || ''} onChange={set('heroTitle')} placeholder="Make Every Occasion Special" />

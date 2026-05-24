@@ -407,6 +407,9 @@ export default function ProductDetailPage() {
       }).catch(() => {});
   }, [product?.category?.slug, product?.id]);
 
+  // Reset carousel to first image when colour changes
+  useEffect(() => { setActiveImage(0); }, [selectedVariant?.id]);
+
   if (isLoading) return (
     <div className="container py-20 text-center">
       <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
@@ -418,7 +421,8 @@ export default function ProductDetailPage() {
   const currentPrice = Number(product.salePrice || product.basePrice) + Number(selectedVariant?.extraPrice || 0);
   const originalPrice = Number(product.basePrice) + Number(selectedVariant?.extraPrice || 0);
   const discountPct = currentPrice < originalPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
-  const allImages = product.images || [];
+  // Use colour-specific images if the selected variant has its own images uploaded
+  const allImages: string[] = (selectedVariant?.images?.length > 0 ? selectedVariant.images : product.images) || [];
   const sizeGuide: any[] = Array.isArray(product.sizeGuide) ? product.sizeGuide : [];
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -565,7 +569,7 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
 
           {/* ── Images ─────────────────────────────────────────────────── */}
-          <div className="sticky top-4 self-start">
+          <div className="md:sticky md:top-4 md:self-start">
 
             {/* MOBILE: full-width swipe carousel with dots */}
             <div className="md:hidden">
@@ -914,7 +918,7 @@ export default function ProductDetailPage() {
                     {pincodeStatus.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : '⚠'} {pincodeStatus.msg}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground mt-1.5">Please enter PIN code to check delivery time &amp; Pay on Delivery Availability</p>
+                  <p className="text-xs text-muted-foreground mt-1.5">Enter your PIN code to check delivery availability &amp; estimated time</p>
                 )}
               </div>
               <div className="space-y-2.5 pt-2 border-t">
@@ -923,41 +927,19 @@ export default function ProductDetailPage() {
                   <span className="text-sm text-muted-foreground">100% Original Products</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Package className="w-3.5 h-3.5 text-blue-600" /></div>
-                  <span className="text-sm text-muted-foreground">
-                    {product.codAvailable !== false ? 'Pay on delivery available' : 'Pay on delivery not available for this item'}
-                  </span>
+                  <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Truck className="w-3.5 h-3.5 text-blue-600" /></div>
+                  <span className="text-sm text-muted-foreground">Estimated delivery in 10–12 business days</span>
                 </div>
-                {/* Return badge — only show if returnEnabled */}
                 <div className="flex items-center gap-3">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${product.returnEnabled !== false ? 'bg-purple-50' : 'bg-gray-50'}`}>
-                    <RefreshCw className={`w-3.5 h-3.5 ${product.returnEnabled !== false ? 'text-purple-600' : 'text-gray-400'}`} />
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {product.returnEnabled !== false && (product.returnDays ?? 14) > 0
-                      ? <span className="font-medium text-purple-700">{product.returnDays || 14}-Day Easy Returns</span>
-                      : <span className="line-through text-gray-400">No Returns Available</span>
-                    }
-                  </span>
-                </div>
-
-                {/* Replace badge — only show if replaceEnabled */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${product.replaceEnabled !== false ? 'bg-teal-50' : 'bg-gray-50'}`}>
-                    <Package className={`w-3.5 h-3.5 ${product.replaceEnabled !== false ? 'text-teal-600' : 'text-gray-400'}`} />
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {product.replaceEnabled !== false
-                      ? <span className="font-medium text-teal-700">Free Replacement Available</span>
-                      : <span className="line-through text-gray-400">No Replacement Available</span>
-                    }
-                  </span>
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><Package className="w-3.5 h-3.5 text-primary" /></div>
+                  <span className="text-sm text-muted-foreground">Carefully packed &amp; insured shipping</span>
                 </div>
               </div>
             </div>
           </div>
 
           </div>
+
         </div>
       </div>
 

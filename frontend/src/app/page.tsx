@@ -46,21 +46,20 @@ const lilyBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg
 
 // ── Category card — horizontal scroll card style ──────────────────────────────
 function CollectionCard({ cat }: { cat: any }) {
-  // Use the category's own image if available
-  const img = cat.image && !cat.image.includes('unsplash')
-    ? cat.image
-    : null;
+  const img = cat.image || null;
 
   return (
     <Link
       href={`/products?category=${cat.slug}`}
       className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block"
     >
-      <div className="absolute inset-0 bg-primary" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px' }} />
-      {img && (
-        <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700 mix-blend-multiply opacity-90" />
+      {img ? (
+        <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700" />
+      ) : (
+        <div className="absolute inset-0 bg-primary" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px' }} />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+      {/* Light gradient only at bottom for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       <div className="absolute bottom-4 left-4 right-4">
         <span className="text-white font-outfit font-semibold text-base drop-shadow-md">{cat.name}</span>
       </div>
@@ -202,8 +201,11 @@ function VideoCarousel({ videos }: { videos: any[] }) {
         <div className="relative flex items-center justify-center" style={{ width: '100%', maxWidth: 700 }}>
           {videos.map((vid, i) => (
             <div key={vid.id} className="absolute" style={getStyle(i)}>
-              <Link
-                href={`/products/${vid.slug}`}
+              {/* Outer click => open Instagram reel */}
+              <a
+                href={vid.instagramReelUrl || `/products/${vid.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="relative w-52 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
                 style={{ aspectRatio: '9/16', maxHeight: 340 }}
               >
@@ -223,6 +225,13 @@ function VideoCarousel({ videos }: { videos: any[] }) {
                 <div className="absolute bottom-3 left-3 right-3">
                   <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
                 </div>
+              </a>
+              {/* Secondary: small product link */}
+              <Link
+                href={`/products/${vid.slug}`}
+                className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+              >
+                <span>View Product →</span>
               </Link>
             </div>
           ))}
