@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Instagram, MessageCircle, Mail, Phone, ArrowUp } from 'lucide-react';
+import { Instagram, MessageCircle, Mail, Phone, ArrowUp, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { api } from '@/lib/api';
 
@@ -21,6 +21,28 @@ const DISCOVER_LINKS = [
   { name: 'Shop', href: '/products' },
   { name: 'My Account', href: '/profile' },
 ];
+
+// ── Mobile-collapsible footer section ─────────────────────────────────────────
+function FooterAccordion({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      {/* Desktop: always-visible heading */}
+      <h4 className="hidden md:block font-outfit text-sm font-semibold text-white uppercase tracking-widest mb-5">{title}</h4>
+      {/* Mobile: tap to expand */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="md:hidden w-full flex items-center justify-between py-4 border-b border-white/10 text-white font-semibold text-sm"
+      >
+        {title}
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <div className={`md:block ${open ? 'block pt-4 pb-2' : 'hidden'}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function Footer() {
   const { settings, fetchSettings } = useSettingsStore();
@@ -57,8 +79,8 @@ export default function Footer() {
       style={{ background: 'hsl(345, 80%, 28%)', backgroundImage: damaskBg, backgroundSize: '80px 80px' }}
     >
       {/* Main columns */}
-      <div className="container py-14 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+      <div className="container py-10 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-0 md:gap-10">
 
           {/* Brand */}
           <div className="space-y-4">
@@ -106,50 +128,42 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Categories */}
-          <div>
-            <h4 className="font-outfit text-sm font-semibold text-white uppercase tracking-widest mb-5">Categories</h4>
-            <ul className="space-y-3">
-              {footerCategories.map(cat => (
-                <li key={cat.slug}>
-                  <Link
-                    href={`/products?category=${cat.slug}`}
-                    className="text-white/60 hover:text-white text-sm transition-colors"
-                  >
-                    {cat.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Categories — collapsible on mobile, always open on desktop */}
+          {footerCategories.length > 0 && (
+            <FooterAccordion title="Categories">
+              <ul className="space-y-3">
+                {footerCategories.map(cat => (
+                  <li key={cat.slug}>
+                    <Link href={`/products?category=${cat.slug}`} className="text-white/60 hover:text-white text-sm transition-colors">
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </FooterAccordion>
+          )}
 
           {/* Help */}
-          <div>
-            <h4 className="font-outfit text-sm font-semibold text-white uppercase tracking-widest mb-5">Help</h4>
+          <FooterAccordion title="Help">
             <ul className="space-y-3">
               {HELP_LINKS.map(link => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-white/60 hover:text-white text-sm transition-colors">
-                    {link.name}
-                  </Link>
+                  <Link href={link.href} className="text-white/60 hover:text-white text-sm transition-colors">{link.name}</Link>
                 </li>
               ))}
             </ul>
-          </div>
+          </FooterAccordion>
 
           {/* Discover */}
-          <div>
-            <h4 className="font-outfit text-sm font-semibold text-white uppercase tracking-widest mb-5">Discover</h4>
+          <FooterAccordion title="Discover">
             <ul className="space-y-3">
               {DISCOVER_LINKS.map(link => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-white/60 hover:text-white text-sm transition-colors">
-                    {link.name}
-                  </Link>
+                  <Link href={link.href} className="text-white/60 hover:text-white text-sm transition-colors">{link.name}</Link>
                 </li>
               ))}
             </ul>
-          </div>
+          </FooterAccordion>
 
         </div>
       </div>
@@ -184,10 +198,10 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Scroll to top */}
+      {/* Scroll to top — above bottom nav on mobile */}
       <button
         onClick={scrollToTop}
-        className="fixed bottom-6 right-6 z-40 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
+        className="fixed bottom-[76px] md:bottom-6 right-4 md:right-6 z-40 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
         aria-label="Scroll to top"
       >
         <ArrowUp className="w-4 h-4" />

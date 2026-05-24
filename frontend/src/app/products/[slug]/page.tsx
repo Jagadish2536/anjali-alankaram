@@ -470,54 +470,157 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
+      {/* ── MOBILE FIXED BOTTOM BAR ───────────────────────────────────────── */}
+      <div className="md:hidden fixed bottom-[60px] left-0 right-0 z-40 bg-[#FDF5EC] border-t border-primary/10 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        {/* Variant dropdown */}
+        {product.variants?.length > 0 && (
+          <div className="relative flex-1">
+            <select
+              value={selectedVariant?.id || ''}
+              onChange={e => {
+                const v = product.variants.find((vv: any) => vv.id === e.target.value);
+                if (v) setSelectedVariant(v);
+              }}
+              className="w-full h-12 rounded-xl border-2 border-primary/20 bg-white text-foreground text-sm font-medium px-3 pr-8 outline-none appearance-none cursor-pointer"
+            >
+              {product.variants.map((v: any) => (
+                <option key={v.id} value={v.id} disabled={v.stock === 0}>
+                  {v.color && v.color.trim() ? `${v.color} — ` : ''}{v.size ? v.size + ' — ' : ''}₹{Number(product.salePrice || product.basePrice).toLocaleString('en-IN')}{v.stock === 0 ? ' (Out of Stock)' : ''}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          </div>
+        )}
+        {/* Add to Cart */}
+        <button
+          onClick={handleAddToCart}
+          disabled={isCartLoading || !selectedVariant || selectedVariant?.stock === 0}
+          className={`flex-[1.5] h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 ${
+            addedToCart
+              ? 'bg-green-600 text-white'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          }`}
+        >
+          {addedToCart ? <><CheckCircle2 className="w-4 h-4" />Added!</> : isCartLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add to cart'}
+        </button>
+      </div>
+
       <div className="container py-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
 
-          {/* ── Images: vertical thumbnail strip + main ──────────────── */}
-          <div className="flex gap-3 sticky top-4 self-start">
-            {/* Vertical thumbnail strip */}
-            {allImages.length > 1 && (
-              <div className="flex flex-col gap-2 shrink-0">
-                {allImages.slice(0, 6).map((img: string, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(i)}
-                    className={`relative w-16 h-20 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                      activeImage === i ? 'border-primary shadow-md' : 'border-transparent hover:border-primary/40'
-                    }`}
-                  >
-                    <Image src={img} alt="" fill className="object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-            {/* Main image */}
-            <div
-              className="relative flex-1 aspect-[3/4] overflow-hidden rounded-2xl bg-accent/20 group cursor-zoom-in"
-              onClick={() => allImages.length > 0 && setLightboxOpen(true)}
-              title="Click to view full image"
-            >
-              {allImages[activeImage] && (
-                <Image src={allImages[activeImage]} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" priority />
-              )}
-              <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                🔍 Zoom
-              </div>
-              {discountPct > 0 && (
-                <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5 rounded-full shadow">{discountPct}% OFF</div>
-              )}
-              {/* Wishlist + Share row */}
-              <div className="absolute top-3 right-3 flex gap-2">
+          {/* ── Images ─────────────────────────────────────────────────── */}
+          <div className="sticky top-4 self-start">
+
+            {/* MOBILE: full-width swipe carousel with dots */}
+            <div className="md:hidden">
+              <div className="relative w-full overflow-hidden bg-muted/10" style={{ aspectRatio: '3/4' }}>
+                {/* Image track — swipe via touch */}
+                <div
+                  className="flex h-full transition-transform duration-300 ease-out"
+                  style={{ transform: `translateX(-${activeImage * 100}%)` }}
+                >
+                  {allImages.length > 0 ? allImages.map((img: string, i: number) => (
+                    <div key={i} className="relative shrink-0 w-full h-full">
+                      <Image src={img} alt={product.name} fill className="object-cover" priority={i === 0} />
+                    </div>
+                  )) : (
+                    <div className="shrink-0 w-full h-full flex items-center justify-center text-muted-foreground">No Image</div>
+                  )}
+                </div>
+
+                {/* Touch swipe handlers */}
+                <div
+                  className="absolute inset-0"
+                  onTouchStart={e => { (e.currentTarget as any)._touchX = e.touches[0].clientX; }}
+                  onTouchEnd={e => {
+                    const startX = (e.currentTarget as any)._touchX;
+                    if (startX === undefined) return;
+                    const diff = startX - e.changedTouches[0].clientX;
+                    if (Math.abs(diff) > 40) {
+                      if (diff > 0) setActiveImage(i => Math.min(i + 1, allImages.length - 1));
+                      else setActiveImage(i => Math.max(i - 1, 0));
+                    }
+                  }}
+                />
+
+                {/* Discount badge */}
+                {discountPct > 0 && (
+                  <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5 rounded-full shadow">{discountPct}% OFF</div>
+                )}
+
+                {/* Wishlist button */}
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleWishlist(); }}
+                  onClick={handleWishlist}
                   disabled={wishlistLoading}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center shadow transition-all backdrop-blur-sm ${
-                    isWishlisted ? 'bg-red-500 text-white' : 'bg-white/80 text-gray-600 hover:text-red-500'
+                  className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md ${
+                    isWishlisted ? 'bg-primary text-primary-foreground' : 'bg-white/90 text-foreground'
                   }`}
                   aria-label="Wishlist"
                 >
                   {wishlistLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />}
                 </button>
+              </div>
+
+              {/* Dot indicators */}
+              {allImages.length > 1 && (
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {allImages.map((_: any, i: number) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`rounded-full transition-all duration-200 ${
+                        i === activeImage
+                          ? 'w-5 h-2 bg-primary'
+                          : 'w-2 h-2 bg-primary/25'
+                      }`}
+                      aria-label={`Image ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* DESKTOP: vertical thumbnails + main image */}
+            <div className="hidden md:flex gap-3">
+              {allImages.length > 1 && (
+                <div className="flex flex-col gap-2 shrink-0">
+                  {allImages.slice(0, 6).map((img: string, i: number) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`relative w-16 h-20 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+                        activeImage === i ? 'border-primary shadow-md' : 'border-transparent hover:border-primary/40'
+                      }`}
+                    >
+                      <Image src={img} alt="" fill className="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div
+                className="relative flex-1 aspect-[3/4] overflow-hidden rounded-2xl bg-accent/20 group cursor-zoom-in"
+                onClick={() => allImages.length > 0 && setLightboxOpen(true)}
+              >
+                {allImages[activeImage] && (
+                  <Image src={allImages[activeImage]} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" priority />
+                )}
+                <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">🔍 Zoom</div>
+                {discountPct > 0 && (
+                  <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5 rounded-full shadow">{discountPct}% OFF</div>
+                )}
+                <div className="absolute top-3 right-3">
+                  <button
+                    onClick={e => { e.stopPropagation(); handleWishlist(); }}
+                    disabled={wishlistLoading}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow transition-all backdrop-blur-sm ${
+                      isWishlisted ? 'bg-primary text-primary-foreground' : 'bg-white/80 text-gray-600 hover:text-primary'
+                    }`}
+                    aria-label="Wishlist"
+                  >
+                    {wishlistLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { ChevronDown, ChevronRight, ShoppingBag } from 'lucide-react';
+import { ChevronDown, ChevronRight, ShoppingBag, Heart } from 'lucide-react';
 
 // ── Damask pattern (same as footer) ──────────────────────────────────────────
 const damaskBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='0.6' opacity='0.15'%3E%3Cellipse cx='40' cy='20' rx='6' ry='10'/%3E%3Cellipse cx='40' cy='60' rx='6' ry='10'/%3E%3Cellipse cx='20' cy='40' rx='10' ry='6'/%3E%3Cellipse cx='60' cy='40' rx='10' ry='6'/%3E%3Ccircle cx='40' cy='40' r='5'/%3E%3Cpath d='M40 10 C35 15 32 22 32 28 C32 34 35 38 40 40 C45 38 48 34 48 28 C48 22 45 15 40 10Z'/%3E%3Cpath d='M40 70 C35 65 32 58 32 52 C32 46 35 42 40 40 C45 42 48 46 48 52 C48 58 45 65 40 70Z'/%3E%3Cpath d='M10 40 C15 35 22 32 28 32 C34 32 38 35 40 40 C38 45 34 48 28 48 C22 48 15 45 10 40Z'/%3E%3Cpath d='M70 40 C65 35 58 32 52 32 C46 32 42 35 40 40 C42 45 46 48 52 48 C58 48 65 45 70 40Z'/%3E%3C/g%3E%3C/svg%3E")`;
@@ -105,7 +105,12 @@ function ProductCard({ product }: { product: any }) {
             <span className="bg-white text-foreground text-xs font-bold px-3 py-1 rounded-full shadow">SOLD OUT</span>
           </div>
         )}
-        <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+        {/* Heart — always visible on mobile, hover on desktop */}
+        <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:scale-90 md:group-hover:scale-100 transition-all duration-200">
+          <Heart className="w-3.5 h-3.5 text-primary" />
+        </div>
+        {/* Cart — always visible on mobile, hover on desktop */}
+        <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0 transition-all duration-200">
           <ShoppingBag className="w-3.5 h-3.5 text-primary" />
         </div>
       </div>

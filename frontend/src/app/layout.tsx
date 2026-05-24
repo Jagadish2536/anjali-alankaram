@@ -3,6 +3,7 @@ import { Inter, Outfit, Cormorant_Garamond } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { OAuthProvider } from '@/components/providers/OAuthProvider'
 import { MaintenanceProvider } from '@/components/providers/MaintenanceProvider'
 import FloatingWhatsApp from '@/components/common/FloatingWhatsApp'
@@ -31,6 +32,7 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Anjali Alankaram',
   },
+  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
 }
 
 export default function RootLayout({
@@ -44,11 +46,20 @@ export default function RootLayout({
         <OAuthProvider>
           <MaintenanceProvider>
             <Navbar />
-            <main className="flex-1">
+            {/* pb-16 on mobile so content isn't hidden behind bottom nav */}
+            <main className="flex-1 pb-16 md:pb-0">
               {children}
             </main>
-            <Footer />
+            {/* Hide footer on mobile — bottom nav replaces it */}
+            <div className="hidden md:block">
+              <Footer />
+            </div>
+            {/* Mobile-only collapsible footer */}
+            <div className="md:hidden pb-16">
+              <Footer />
+            </div>
             <FloatingWhatsApp />
+            <MobileBottomNav />
           </MaintenanceProvider>
         </OAuthProvider>
       </body>
