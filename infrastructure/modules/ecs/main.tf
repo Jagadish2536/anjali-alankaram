@@ -39,8 +39,8 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512
-  memory                   = 1024
+  cpu                      = 1024  # Tier 1: 1 vCPU (was 0.5)
+  memory                   = 2048  # Tier 1: 2 GB (was 1 GB)
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
@@ -94,8 +94,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512
-  memory                   = 1024
+  cpu                      = 1024  # Tier 1: 1 vCPU (was 0.5)
+  memory                   = 2048  # Tier 1: 2 GB (was 1 GB)
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
@@ -127,7 +127,7 @@ resource "aws_ecs_service" "backend" {
   name                   = "${var.project_name}-backend-service"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.backend.arn
-  desired_count          = 1 # Cost saving. Set to 2+ for high availability
+  desired_count          = 2  # Tier 1: 2 tasks minimum (redundancy + zero-downtime deploys)
   launch_type            = "FARGATE"
   enable_execute_command = true
 
@@ -157,7 +157,7 @@ resource "aws_ecs_service" "frontend" {
   name                   = "${var.project_name}-frontend-service"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.frontend.arn
-  desired_count          = 1
+  desired_count          = 2  # Tier 1: 2 tasks minimum
   launch_type            = "FARGATE"
   enable_execute_command = true
 
@@ -212,5 +212,80 @@ resource "aws_cloudwatch_metric_alarm" "backend_memory" {
   dimensions = {
     ClusterName = aws_ecs_cluster.main.name
     ServiceName = aws_ecs_service.backend.name
+  }
+}
+
+# ---------------------------------------------------------
+# Tier 1: Application Auto Scaling
+# Backend: scales 2→4 tasks when CPU > 60%, scales in when CPU < 40%
+# Frontend: scales 2→4 tasks when CPU > 70%
+# ---------------------------------------------------------
+
+# --- Backend Auto Scaling ---
+resource "aws_appautoscaling_target" "backend" {
+  max_capacity       = 4
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "backend_cpu_scale_out" {
+  name               = "${var.project_name}-backend-cpu-scale-out"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 60.0  # scale up when CPU > 60%, scale in when < 40%
+    scale_in_cooldown  = 300   # wait 5 min before scaling in (avoids flapping)
+    scale_out_cooldown = 60    # scale out quickly under load
+  }
+}
+
+resource "aws_appautoscaling_policy" "backend_memory_scale_out" {
+  name               = "${var.project_name}-backend-memory-scale-out"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = 75.0  # scale up when memory > 75%
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+# --- Frontend Auto Scaling ---
+resource "aws_appautoscaling_target" "frontend" {
+  max_capacity       = 4
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "frontend_cpu_scale_out" {
+  name               = "${var.project_name}-frontend-cpu-scale-out"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
   }
 }
