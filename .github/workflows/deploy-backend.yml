@@ -16,6 +16,7 @@ env:
   ECS_CLUSTER: anjali-alankaram-cluster
   ECS_TASK_DEFINITION: anjali-alankaram-backend-task
   CONTAINER_NAME: backend
+  RDS_INSTANCE: anjali-alankaram-db-wiped
 
 jobs:
   deploy:
@@ -34,6 +35,31 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
         mask-aws-account-id: 'false'
+
+    # ── Pre-deployment DB Snapshot ─────────────────────────────────────────
+    # Takes a snapshot BEFORE any code or schema changes land.
+    # Kept for 24 hours then auto-deleted. Blocks deploy if snapshot fails.
+    - name: Snapshot RDS before deployment
+      id: snapshot
+      run: |
+        TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+        SNAPSHOT_ID="pre-deploy-backend-${TIMESTAMP}"
+        echo "snapshot_id=$SNAPSHOT_ID" >> $GITHUB_OUTPUT
+
+        echo "📸 Creating RDS snapshot: $SNAPSHOT_ID"
+        aws rds create-db-snapshot \
+          --db-instance-identifier ${{ env.RDS_INSTANCE }} \
+          --db-snapshot-identifier $SNAPSHOT_ID \
+          --region ${{ env.AWS_REGION }}
+
+        echo "⏳ Waiting for snapshot to be available..."
+        aws rds wait db-snapshot-available \
+          --db-snapshot-identifier $SNAPSHOT_ID \
+          --region ${{ env.AWS_REGION }}
+
+        echo "✅ Snapshot ready: $SNAPSHOT_ID"
+
+    # (AWS credentials already configured above)
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -88,3 +114,38 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+
+    # ── Auto-delete snapshots older than 24 hours ──────────────────────────
+    # Runs after successful deployment only.
+    # Lists all pre-deploy-backend-* snapshots, deletes ones older than 1 day.
+    - name: Cleanup old pre-deploy snapshots (keep 24h)
+      if: success()
+      run: |
+        echo "🧹 Cleaning up pre-deploy snapshots older than 24 hours..."
+
+        # Get cutoff time = now - 24 hours (in seconds)
+        CUTOFF=$(date -u -d '24 hours ago' +%s 2>/dev/null || date -u -v-24H +%s)
+
+        # List all pre-deploy-backend snapshots
+        SNAPSHOTS=$(aws rds describe-db-snapshots \
+          --region ${{ env.AWS_REGION }} \
+          --snapshot-type manual \
+          --query "DBSnapshots[?starts_with(DBSnapshotIdentifier, 'pre-deploy-backend-')].{id:DBSnapshotIdentifier,time:SnapshotCreateTime}" \
+          --output json)
+
+        echo "Found snapshots: $SNAPSHOTS"
+
+        # Loop and delete anything older than 24h
+        echo "$SNAPSHOTS" | jq -r '.[] | "\(.time) \(.id)"' | while read SNAP_TIME SNAP_ID; do
+          SNAP_EPOCH=$(date -u -d "$SNAP_TIME" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%S" "${SNAP_TIME%%.*}" +%s 2>/dev/null || echo 0)
+          if [ "$SNAP_EPOCH" -lt "$CUTOFF" ] && [ "$SNAP_EPOCH" -gt 0 ]; then
+            echo "🗑️  Deleting old snapshot: $SNAP_ID (created: $SNAP_TIME)"
+            aws rds delete-db-snapshot \
+              --db-snapshot-identifier "$SNAP_ID" \
+              --region ${{ env.AWS_REGION }}
+          else
+            echo "✅ Keeping snapshot: $SNAP_ID (within 24h)"
+          fi
+        done
+
+        echo "🧹 Cleanup complete"
