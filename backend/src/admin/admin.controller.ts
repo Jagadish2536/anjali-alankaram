@@ -23,13 +23,21 @@ export class AdminController {
     private prisma: PrismaService,
     private config: ConfigService,
   ) {
-    this.costExplorer = new CostExplorerClient({
+    const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
+
+    const clientConfig: any = {
       region: 'us-east-1', // Cost Explorer API is global, always us-east-1
-      credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID') || '',
-        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY') || '',
-      },
-    });
+    };
+
+    if (accessKeyId && secretAccessKey) {
+      clientConfig.credentials = {
+        accessKeyId,
+        secretAccessKey,
+      };
+    }
+
+    this.costExplorer = new CostExplorerClient(clientConfig);
   }
 
   @Get('dashboard')
@@ -155,6 +163,8 @@ export class AdminController {
   @Get('billing')
   @ApiOperation({ summary: 'Get AWS billing summary for last 12 months' })
   async getAwsBilling() {
+    const activeKey = this.config.get<string>('AWS_ACCESS_KEY_ID') || '';
+    console.log(`[AWS Billing] Request received. Active Access Key: ${activeKey ? activeKey.substring(0, 8) + '...' : '(none/empty)'}`);
     try {
       // Build last 12 months worth of monthly windows
       const months: { start: string; end: string; label: string }[] = [];
