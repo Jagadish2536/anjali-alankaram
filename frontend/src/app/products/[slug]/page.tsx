@@ -561,40 +561,111 @@ export default function ProductDetailPage() {
             </p>
           </div>
 
-          {/* Size Selector */}
-          {product.variants?.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold">Select Size</h3>
-                {sizeGuide.length > 0 && (
-                  <button onClick={() => setShowSizeGuide(true)} className="text-xs text-primary flex items-center gap-1 hover:underline font-medium">
-                    <Ruler className="w-3.5 h-3.5" /> Size Guide
-                  </button>
+          {/* Size + Colour Selector */}
+          {product.variants?.length > 0 && (() => {
+            // Extract unique colours (non-empty)
+            const colouredVariants = product.variants.filter((v: any) => v.color && v.color.trim() !== '');
+            const uniqueColours = colouredVariants.length > 0
+              ? Array.from(new Map(colouredVariants.map((v: any) => [v.color, v])).values()) as any[]
+              : [];
+            const hasColour = uniqueColours.length > 0;
+
+            return (
+              <div className="space-y-4">
+                {/* Colour swatches */}
+                {hasColour && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="text-sm font-bold">Colour</h3>
+                      {selectedVariant?.color && (
+                        <span className="text-xs text-muted-foreground font-medium">
+                          — {selectedVariant.color}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2.5">
+                      {uniqueColours.map((v: any) => {
+                        // Is this colour hex or a name? Detect by leading '#'
+                        const isHex = v.color?.startsWith('#');
+                        const selectedColorGroup = selectedVariant?.color;
+                        const isSelected = selectedColorGroup === v.color;
+                        const outOfStock = product.variants
+                          .filter((vv: any) => vv.color === v.color)
+                          .every((vv: any) => vv.stock === 0);
+                        return (
+                          <button
+                            key={v.id}
+                            title={v.color}
+                            disabled={outOfStock}
+                            onClick={() => {
+                              // Select first in-stock variant of this colour
+                              const match = product.variants.find(
+                                (vv: any) => vv.color === v.color && vv.stock > 0
+                              ) || product.variants.find((vv: any) => vv.color === v.color);
+                              if (match) setSelectedVariant(match);
+                            }}
+                            className={`relative w-9 h-9 rounded-full border-2 transition-all flex items-center justify-center shrink-0 ${
+                              isSelected ? 'border-foreground scale-110 shadow-md' : 'border-transparent hover:border-foreground/40'
+                            } ${outOfStock ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            {isHex ? (
+                              <span
+                                className="block w-7 h-7 rounded-full"
+                                style={{ backgroundColor: v.color }}
+                              />
+                            ) : (
+                              <span
+                                className="block w-7 h-7 rounded-full border border-border"
+                                style={{ backgroundColor: v.color }}
+                              />
+                            )}
+                            {outOfStock && (
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                <span className="block w-8 h-0.5 bg-muted-foreground/60 rotate-45 rounded-full" />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
+
+                {/* Size selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold">Select Size</h3>
+                    {sizeGuide.length > 0 && (
+                      <button onClick={() => setShowSizeGuide(true)} className="text-xs text-primary flex items-center gap-1 hover:underline font-medium">
+                        <Ruler className="w-3.5 h-3.5" /> Size Guide
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {product.variants.map((v: any) => (
+                      <button
+                        key={v.id}
+                        onClick={() => setSelectedVariant(v)}
+                        disabled={v.stock === 0}
+                        className={`h-11 px-5 rounded-full border-2 text-sm font-semibold transition-all ${
+                          selectedVariant?.id === v.id
+                            ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                            : v.stock === 0 ? 'border-muted text-muted-foreground bg-muted/30 cursor-not-allowed line-through' : 'border-input hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {v.size}{v.color && hasColour && v.color !== selectedVariant?.color ? '' : ''}{v.stock === 0 && ' ✕'}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedVariant && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {selectedVariant.stock > 0 ? <><span className="text-green-600 font-bold">✓ In Stock</span> — {selectedVariant.stock} left</> : <span className="text-red-600 font-bold">Out of Stock</span>}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2.5">
-                {product.variants.map((v: any) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setSelectedVariant(v)}
-                    disabled={v.stock === 0}
-                    className={`h-11 px-5 rounded-full border-2 text-sm font-semibold transition-all ${
-                      selectedVariant?.id === v.id
-                        ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                        : v.stock === 0 ? 'border-muted text-muted-foreground bg-muted/30 cursor-not-allowed line-through' : 'border-input hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    {v.size}{v.stock === 0 && ' ✕'}
-                  </button>
-                ))}
-              </div>
-              {selectedVariant && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  {selectedVariant.stock > 0 ? <><span className="text-green-600 font-bold">✓ In Stock</span> — {selectedVariant.stock} left</> : <span className="text-red-600 font-bold">Out of Stock</span>}
-                </p>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {/* Quantity */}
           <div>
