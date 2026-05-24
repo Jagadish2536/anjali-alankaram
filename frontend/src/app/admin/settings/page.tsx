@@ -74,9 +74,9 @@ function Toggle({ checked, onChange, label, desc, color = 'bg-primary' }: {
 
 // ── Coupon Management Component ───────────────────────────────────────────────
 const EMPTY_COUPON = {
-  code: '', description: '', type: 'FIXED' as 'FIXED' | 'PERCENTAGE',
+  code: '', description: '', type: 'FIXED' as 'FIXED' | 'PERCENTAGE' | 'FREE_SHIPPING',
   value: 0, minOrderValue: '', maxDiscount: '', usageLimit: '',
-  expiresAt: '', isActive: true,
+  perUserLimit: '', expiresAt: '', isActive: true,
 };
 
 function CouponManagement() {
@@ -106,6 +106,7 @@ function CouponManagement() {
       value: Number(c.value), minOrderValue: c.minOrderValue ? String(c.minOrderValue) : '',
       maxDiscount: c.maxDiscount ? String(c.maxDiscount) : '',
       usageLimit: c.usageLimit ? String(c.usageLimit) : '',
+      perUserLimit: c.perUserLimit ? String(c.perUserLimit) : '',
       expiresAt: c.expiresAt ? c.expiresAt.slice(0, 10) : '', isActive: c.isActive,
     });
     setEditId(c.id); setShowForm(true);
@@ -121,6 +122,7 @@ function CouponManagement() {
         ...(form.minOrderValue && { minOrderValue: Number(form.minOrderValue) }),
         ...(form.maxDiscount && { maxDiscount: Number(form.maxDiscount) }),
         ...(form.usageLimit && { usageLimit: Number(form.usageLimit) }),
+        ...(form.perUserLimit && { perUserLimit: Number(form.perUserLimit) }),
         ...(form.expiresAt && { expiresAt: new Date(form.expiresAt).toISOString() }),
       };
       if (editId) { await api.put(`/coupons/${editId}`, payload); }
@@ -178,10 +180,11 @@ function CouponManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Discount Type *</label>
-              <select value={form.type} onChange={f('type')}
+                <select value={form.type} onChange={f('type')}
                 className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary">
                 <option value="FIXED">Fixed Amount (₹)</option>
                 <option value="PERCENTAGE">Percentage (%)</option>
+                <option value="FREE_SHIPPING">Free Shipping</option>
               </select>
             </div>
             <div>
@@ -210,6 +213,12 @@ function CouponManagement() {
               <label className="block text-sm font-medium mb-1.5">Usage Limit</label>
               <input type="number" min={1} placeholder="e.g. 100 (optional)"
                 value={form.usageLimit} onChange={f('usageLimit')}
+                className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Per-User Limit</label>
+              <input type="number" min={1} placeholder="e.g. 1 (optional)"
+                value={form.perUserLimit} onChange={f('perUserLimit')}
                 className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
@@ -358,6 +367,7 @@ export default function AdminSettingsPage() {
     contactPhone: '',
     returnPolicyDays: 7,
     footerCategories: '[]',
+    marqueeText: 'Free Delivery',
   });
 
   // ── Payment form state ────────────────────────────────────────────────────
@@ -614,6 +624,11 @@ export default function AdminSettingsPage() {
                   desc="Disable store access for customers while you make updates."
                   color="bg-orange-500"
                 />
+              </div>
+              <div className="border-t pt-4">
+                <Field label="Marquee Banner Text" hint="This scrolling text appears between sections on the homepage (e.g. 'Free Delivery on orders above ₹499').">
+                  <TextInput value={formData.marqueeText || 'Free Delivery'} onChange={set('marqueeText')} placeholder="Free Delivery" />
+                </Field>
               </div>
             </div>
           )}

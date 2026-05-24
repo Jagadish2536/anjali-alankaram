@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { ShoppingBag, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { ShoppingBag, Star, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
 // ── Lotus SVG ────────────────────────────────────────────────────────────────
 const LotusSVG = ({ className = '' }: { className?: string }) => (
@@ -103,18 +104,24 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
   );
 }
 
-// ── Fan Video Carousel ────────────────────────────────────────────────────────
-const DEMO_VIDEOS = [
-  { id: 1, thumbnail: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=400', title: 'Saree draping tutorial' },
-  { id: 2, thumbnail: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400', title: 'Lehenga styling' },
-  { id: 3, thumbnail: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=400', title: 'Festival outfit ideas' },
-  { id: 4, thumbnail: 'https://images.unsplash.com/photo-1583391733958-d25e27a26aca?q=80&w=400', title: 'Kurti collection' },
-  { id: 5, thumbnail: 'https://images.unsplash.com/photo-1596455607563-ad6193f78b78?q=80&w=400', title: 'Jewellery styling' },
-];
+// ── Featured Videos Carousel (real Instagram reel URLs from products) ─────────
+function VideoCarousel({ videos }: { videos: any[] }) {
+  const [center, setCenter] = useState(0);
 
-function VideoCarousel() {
-  const [center, setCenter] = useState(2);
-  const total = DEMO_VIDEOS.length;
+  useEffect(() => {
+    if (videos.length > 0) setCenter(Math.min(2, videos.length - 1));
+  }, [videos.length]);
+
+  if (videos.length === 0) {
+    return (
+      <section className="py-16 bg-background">
+        <h2 className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-6">Featured Videos</h2>
+        <p className="text-center text-muted-foreground text-sm">No videos yet — add an Instagram Reel URL to a product to feature it here.</p>
+      </section>
+    );
+  }
+
+  const total = videos.length;
   const prev = () => setCenter(c => (c - 1 + total) % total);
   const next = () => setCenter(c => (c + 1) % total);
 
@@ -138,12 +145,32 @@ function VideoCarousel() {
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="relative flex items-center justify-center" style={{ width: '100%', maxWidth: 700 }}>
-          {DEMO_VIDEOS.map((vid, i) => (
+          {videos.map((vid, i) => (
             <div key={vid.id} className="absolute" style={getStyle(i)}>
-              <div className="relative w-52 rounded-2xl overflow-hidden shadow-xl cursor-pointer" style={{ aspectRatio: '9/16', maxHeight: 340 }}>
-                <Image src={vid.thumbnail} alt={vid.title} fill className="object-cover" />
-                <div className="absolute inset-0 bg-black/10" />
-              </div>
+              <Link
+                href={`/products/${vid.slug}`}
+                className="relative w-52 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+                style={{ aspectRatio: '9/16', maxHeight: 340 }}
+              >
+                <Image src={vid.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400'} alt={vid.name} fill className="object-cover" />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
+                {/* Play button overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
+                  </div>
+                </div>
+                {/* Instagram badge */}
+                <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)' }}>
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current" aria-hidden="true">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </div>
+                <div className="absolute bottom-3 left-3 right-3">
+                  <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
+                </div>
+              </Link>
             </div>
           ))}
         </div>
@@ -153,7 +180,7 @@ function VideoCarousel() {
       </div>
       {/* Dot pagination */}
       <div className="flex justify-center gap-2 mt-8">
-        {DEMO_VIDEOS.map((_, i) => (
+        {videos.map((_, i) => (
           <button key={i} onClick={() => setCenter(i)}
             className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${i === center ? 'bg-primary scale-125' : 'bg-foreground/20'}`}
             aria-label={`Go to slide ${i + 1}`}
@@ -164,20 +191,7 @@ function VideoCarousel() {
   );
 }
 
-// ── Review cards ─────────────────────────────────────────────────────────────
-const STATIC_REVIEWS = [
-  { name: 'Manu Shesham', text: 'Good quality', rating: 5, category: 'Stretchable blouses', verified: true },
-  { name: 'Vijaya Kotikala', text: 'and I am so happy with the product. I gifted them to my mother-in-law and she loved them. The fit, comfort and fabric everything is nice 😊 Highly recommended…', rating: 5, category: 'Stretchable blouses', verified: true },
-  { name: 'Rajani .', text: 'Quality and fitting is excellent', rating: 5, category: 'Stretchable blouses', verified: true },
-  { name: 'Singireddi Mahalaks…', text: 'Super', rating: 4, category: 'Stretchable blouses', verified: true },
-];
-
-const STATIC_TESTIMONIALS = [
-  { name: 'Komali', text: '"The recent lehanga which I have purchased from you is excellent.. quality and fitting of blouse and lehanga is top notch. Thank you for maintaining such good quality and fast delivery service."', rating: 5, image: 'https://images.unsplash.com/photo-1596455607563-ad6193f78b78?q=80&w=600' },
-  { name: 'Priya Sharma', text: '"Absolutely love my saree! The fabric is gorgeous and the colors are even more vibrant in person. Will definitely shop again."', rating: 5, image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600' },
-  { name: 'Anitha Reddy', text: '"The kurti set is perfect for festive occasions. Great stitching and fast delivery. Highly recommended to everyone!"', rating: 5, image: 'https://images.unsplash.com/photo-1583391733958-d25e27a26aca?q=80&w=600' },
-];
-
+// ── Stars Row ─────────────────────────────────────────────────────────────────
 function StarsRow({ rating, className = '' }: { rating: number; className?: string }) {
   return (
     <div className={`flex gap-0.5 ${className}`}>
@@ -188,18 +202,99 @@ function StarsRow({ rating, className = '' }: { rating: number; className?: stri
   );
 }
 
+// ── "What Our Customers Say" — real reviews from DB, each links to product ────
+function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
+  const [idx, setIdx] = useState(0);
+
+  if (reviews.length === 0) {
+    return (
+      <section className="py-14 px-4" aria-labelledby="testimonials-heading">
+        <h2 id="testimonials-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-6">
+          What Our Customers Say
+        </h2>
+        <p className="text-center text-muted-foreground text-sm">No reviews yet — be the first to review a product!</p>
+      </section>
+    );
+  }
+
+  const review = reviews[idx];
+
+  return (
+    <section className="py-14 px-4" aria-labelledby="testimonials-heading">
+      <h2 id="testimonials-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-12">
+        What Our Customers Say
+      </h2>
+      <div className="max-w-3xl mx-auto">
+        <Link
+          href={review.product?.slug ? `/products/${review.product.slug}` : '/products'}
+          className="flex flex-col md:flex-row gap-8 items-center bg-white rounded-3xl p-8 shadow-sm border border-border hover:shadow-md transition-shadow"
+        >
+          {/* Product image */}
+          <div className="relative shrink-0 w-52 h-64">
+            <div className="absolute -top-3 -left-3 w-40 h-52 rounded-2xl overflow-hidden border-4 border-white shadow-md rotate-[-4deg]">
+              <Image
+                src={reviews[(idx + 1) % reviews.length]?.product?.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400'}
+                alt=""
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="absolute top-4 left-4 w-44 h-56 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
+              <Image
+                src={review.product?.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=400'}
+                alt={review.product?.name || 'Product'}
+                fill
+                className="object-cover"
+              />
+            </div>
+          </div>
+          {/* Text */}
+          <div className="flex-1">
+            <p className="font-cormorant text-2xl font-bold text-primary mb-2">{review.user?.name || 'Customer'}</p>
+            <StarsRow rating={review.rating} className="mb-4" />
+            <p className="text-foreground/80 text-sm leading-relaxed italic">&ldquo;{review.comment}&rdquo;</p>
+            {review.product?.name && (
+              <p className="text-xs text-muted-foreground mt-3">on <span className="font-semibold text-foreground">{review.product.name}</span></p>
+            )}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={(e) => { e.preventDefault(); setIdx(i => (i - 1 + reviews.length) % reviews.length); }}
+                className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                aria-label="Previous review"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); setIdx(i => (i + 1) % reviews.length); }}
+                className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                aria-label="Next review"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 // ── Main Homepage ─────────────────────────────────────────────────────────────
 export default function Home() {
+  const { settings, fetchSettings } = useSettingsStore();
   const [categories, setCategories] = useState<any[]>([]);
   const [sareeProducts, setSareeProducts] = useState<any[]>([]);
   const [kurtiProducts, setKurtiProducts] = useState<any[]>([]);
   const [lehengaProducts, setLehengaProducts] = useState<any[]>([]);
   const [bestSellers, setBestSellers] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
+  const [reelProducts, setReelProducts] = useState<any[]>([]);
+  const [recentReviews, setRecentReviews] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'sarees' | 'kurti-sets' | 'lehengas'>('sarees');
-  const [testimonialIdx, setTestimonialIdx] = useState(0);
 
   useEffect(() => {
+    fetchSettings();
+
     api.get('/categories').then(({ data }) => {
       const list = Array.isArray(data) ? data : data?.data || [];
       setCategories(list.length > 0 ? list : FALLBACK_CATS);
@@ -225,6 +320,22 @@ export default function Home() {
     api.get('/products', { params: { isNewArrival: 'true', limit: 4, t: Date.now() } })
       .then(({ data }) => { const l = Array.isArray(data) ? data : data?.data || []; setNewArrivals(l.slice(0, 4)); })
       .catch(() => setNewArrivals([]));
+
+    // Fetch products with Instagram Reel URLs for featured videos
+    api.get('/products', { params: { hasReel: 'true', limit: 10, t: Date.now() } })
+      .then(({ data }) => {
+        const l = Array.isArray(data) ? data : data?.data || [];
+        setReelProducts(l.filter((p: any) => p.instagramReelUrl));
+      })
+      .catch(() => setReelProducts([]));
+
+    // Fetch real reviews
+    api.get('/reviews', { params: { limit: 10, sort: 'recent', t: Date.now() } })
+      .then(({ data }) => {
+        const l = Array.isArray(data) ? data : data?.data || data?.reviews || [];
+        setRecentReviews(l.filter((r: any) => r.comment && r.rating >= 4));
+      })
+      .catch(() => setRecentReviews([]));
   }, []);
 
   const FALLBACK_CATS = [
@@ -238,14 +349,8 @@ export default function Home() {
   ];
 
   const displayCats = categories.length > 0 ? categories : FALLBACK_CATS;
-
   const tabProducts = activeTab === 'sarees' ? sareeProducts : activeTab === 'kurti-sets' ? kurtiProducts : lehengaProducts;
-
-  // Aggregate rating
-  const avgRating = 4.75;
-  const totalReviews = 4;
-
-  const testimonial = STATIC_TESTIMONIALS[testimonialIdx];
+  const marqueeText = (settings as any).marqueeText || 'Free Delivery';
 
   return (
     <div className="flex flex-col">
@@ -379,12 +484,12 @@ export default function Home() {
       </section>
 
       {/* ── § 6 FEATURED VIDEOS ──────────────────────────────────────────── */}
-      <VideoCarousel />
+      <VideoCarousel videos={reelProducts} />
 
-      {/* ── § 7 LOTUS DIVIDER (with text) ────────────────────────────────── */}
-      <LotusDivider text="Free Delivery" />
+      {/* ── § 7 MARQUEE DIVIDER (admin-configurable text) ─────────────────── */}
+      <LotusDivider text={marqueeText} />
 
-      {/* ── § 7 NEW ARRIVALS ─────────────────────────────────────────────── */}
+      {/* ── § 8 NEW ARRIVALS ─────────────────────────────────────────────── */}
       <section className="py-10 px-4" aria-labelledby="new-arrivals-heading">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
@@ -411,88 +516,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── § 8 CUSTOMERS ARE SAYING ─────────────────────────────────────── */}
-      <section className="py-14 px-4" aria-labelledby="ratings-heading">
-        <div className="max-w-4xl mx-auto text-center mb-10">
-          <h2 id="ratings-heading" className="font-cormorant text-3xl font-bold text-foreground mb-3">Customers are saying</h2>
-          <div className="flex items-center justify-center gap-3 text-sm">
-            <StarsRow rating={Math.round(avgRating)} className="[&>svg]:w-5 [&>svg]:h-5" />
-            <span className="font-bold text-foreground">{avgRating} ★</span>
-            <span className="text-muted-foreground">({totalReviews})</span>
-            <span className="flex items-center gap-1 text-emerald-600 font-semibold text-xs bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-              Verified
-            </span>
-          </div>
-        </div>
-
-        <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {STATIC_REVIEWS.map((rev, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-border flex flex-col gap-3">
-              <p className="text-sm text-foreground/80 flex-1 line-clamp-4">{rev.text}</p>
-              <div>
-                <StarsRow rating={rev.rating} />
-                <p className="text-sm font-bold mt-1.5 flex items-center gap-1">
-                  {rev.name}
-                  {rev.verified && (
-                    <svg className="w-3.5 h-3.5 text-primary" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">{rev.category}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── § 9 WHAT OUR CUSTOMERS SAY (TESTIMONIAL SLIDER) ──────────────── */}
-      <section className="py-14 px-4" aria-labelledby="testimonials-heading">
-        <h2 id="testimonials-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-12">
-          What Our Customers Say
-        </h2>
-        <div className="max-w-3xl mx-auto">
-          <div className="flex flex-col md:flex-row gap-8 items-center bg-white rounded-3xl p-8 shadow-sm border border-border">
-            {/* Stacked images */}
-            <div className="relative shrink-0 w-52 h-64">
-              <div className="absolute -top-3 -left-3 w-40 h-52 rounded-2xl overflow-hidden border-4 border-white shadow-md rotate-[-4deg]">
-                <Image
-                  src={STATIC_TESTIMONIALS[(testimonialIdx + 1) % STATIC_TESTIMONIALS.length].image}
-                  alt=""
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="absolute top-4 left-4 w-44 h-56 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
-                <Image src={testimonial.image} alt={testimonial.name} fill className="object-cover" />
-              </div>
-            </div>
-            {/* Text */}
-            <div className="flex-1">
-              <p className="font-cormorant text-2xl font-bold text-primary mb-2">{testimonial.name}</p>
-              <StarsRow rating={testimonial.rating} className="mb-4" />
-              <p className="text-foreground/80 text-sm leading-relaxed italic">{testimonial.text}</p>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setTestimonialIdx(i => (i - 1 + STATIC_TESTIMONIALS.length) % STATIC_TESTIMONIALS.length)}
-                  className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                  aria-label="Previous testimonial"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setTestimonialIdx(i => (i + 1) % STATIC_TESTIMONIALS.length)}
-                  className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                  aria-label="Next testimonial"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── § 9 WHAT OUR CUSTOMERS SAY (real reviews, click → product page) ─ */}
+      <CustomerReviewsSection reviews={recentReviews} />
 
     </div>
   );

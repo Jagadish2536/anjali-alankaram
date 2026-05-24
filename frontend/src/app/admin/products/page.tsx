@@ -65,7 +65,7 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
-  const [editVariants, setEditVariants] = useState<{ id?: string; size: string; stock: number; sku: string }[]>([]);
+  const [editVariants, setEditVariants] = useState<{ id?: string; size: string; color: string; stock: number; sku: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
@@ -127,8 +127,8 @@ export default function AdminProductsPage() {
       sizeGuide: product.sizeGuide || [],
     });
     setEditVariants(product.variants?.length > 0
-      ? product.variants.map((v: any) => ({ id: v.id, size: v.size, stock: v.stock, sku: v.sku || '' }))
-      : [{ size: '', stock: 0, sku: '' }]
+      ? product.variants.map((v: any) => ({ id: v.id, size: v.size, color: v.color || '', stock: v.stock, sku: v.sku || '' }))
+      : [{ size: '', color: '', stock: 0, sku: '' }]
     );
   };
 
@@ -159,6 +159,7 @@ export default function AdminProductsPage() {
         variants: editVariants.filter(v => v.size.trim() !== '').map(v => ({
           ...(v.id ? { id: v.id } : {}),
           size: v.size,
+          color: v.color || null,
           stock: Number(v.stock),
           sku: v.sku || `${editForm.name.substring(0, 3).toUpperCase()}-${v.size}-${Date.now()}`,
         })),
@@ -507,7 +508,7 @@ export default function AdminProductsPage() {
                   <span className="text-sm font-bold text-green-800">📦 Sizes & Stock</span>
                   <button
                     type="button"
-                    onClick={() => setEditVariants([...editVariants, { size: '', stock: 0, sku: '' }])}
+                    onClick={() => setEditVariants([...editVariants, { size: '', color: '', stock: 0, sku: '' }])}
                     className="text-xs font-bold text-green-700 flex items-center gap-1 hover:underline"
                   >
                     <PlusCircle className="w-3 h-3" /> Add Size
@@ -515,14 +516,15 @@ export default function AdminProductsPage() {
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground uppercase mb-2 px-1">
-                    <div className="col-span-5">Size</div>
-                    <div className="col-span-5">Stock</div>
-                    <div className="col-span-2"></div>
+                    <div className="col-span-4">Size</div>
+                    <div className="col-span-4">Colour</div>
+                    <div className="col-span-3">Stock</div>
+                    <div className="col-span-1"></div>
                   </div>
                   <div className="space-y-2">
                     {editVariants.map((v, i) => (
                       <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-5">
+                        <div className="col-span-4">
                           <input
                             type="text"
                             placeholder="e.g. S, M, L, XL"
@@ -535,7 +537,31 @@ export default function AdminProductsPage() {
                             }}
                           />
                         </div>
-                        <div className="col-span-5">
+                        <div className="col-span-4 flex items-center gap-2">
+                          <input
+                            type="color"
+                            className="w-9 h-9 rounded-lg border cursor-pointer shrink-0"
+                            value={v.color || '#8B0030'}
+                            onChange={e => {
+                              const updated = [...editVariants];
+                              updated[i] = { ...updated[i], color: e.target.value };
+                              setEditVariants(updated);
+                            }}
+                            title="Pick colour"
+                          />
+                          <input
+                            type="text"
+                            placeholder="e.g. Red"
+                            className="w-full px-2 py-2 bg-muted/20 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
+                            value={v.color || ''}
+                            onChange={e => {
+                              const updated = [...editVariants];
+                              updated[i] = { ...updated[i], color: e.target.value };
+                              setEditVariants(updated);
+                            }}
+                          />
+                        </div>
+                        <div className="col-span-3">
                           <input
                             type="number" min={0}
                             placeholder="0"
@@ -548,7 +574,7 @@ export default function AdminProductsPage() {
                             }}
                           />
                         </div>
-                        <div className="col-span-2 flex justify-end">
+                        <div className="col-span-1 flex justify-end">
                           {editVariants.length > 1 && (
                             <button
                               type="button"

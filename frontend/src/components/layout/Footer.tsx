@@ -1,21 +1,12 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Instagram, MessageCircle, Mail, Phone, ArrowUp } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { api } from '@/lib/api';
 
 // Damask / fleur-de-lis SVG pattern as data URI
 const damaskBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='0.6' opacity='0.12'%3E%3Cellipse cx='40' cy='20' rx='6' ry='10'/%3E%3Cellipse cx='40' cy='60' rx='6' ry='10'/%3E%3Cellipse cx='20' cy='40' rx='10' ry='6'/%3E%3Cellipse cx='60' cy='40' rx='10' ry='6'/%3E%3Ccircle cx='40' cy='40' r='5'/%3E%3Cpath d='M40 10 C35 15 32 22 32 28 C32 34 35 38 40 40 C45 38 48 34 48 28 C48 22 45 15 40 10Z'/%3E%3Cpath d='M40 70 C35 65 32 58 32 52 C32 46 35 42 40 40 C45 42 48 46 48 52 C48 58 45 65 40 70Z'/%3E%3Cpath d='M10 40 C15 35 22 32 28 32 C34 32 38 35 40 40 C38 45 34 48 28 48 C22 48 15 45 10 40Z'/%3E%3Cpath d='M70 40 C65 35 58 32 52 32 C46 32 42 35 40 40 C42 45 46 48 52 48 C58 48 65 45 70 40Z'/%3E%3C/g%3E%3C/svg%3E")`;
-
-const FOOTER_CATEGORIES = [
-  { name: 'Sarees', slug: 'sarees' },
-  { name: 'Kurti Sets', slug: 'kurti-sets' },
-  { name: 'Gowns', slug: 'gowns' },
-  { name: 'Lehengas', slug: 'lehengas' },
-  { name: 'Stretchable Blouses', slug: 'stretchable-blouses' },
-  { name: 'Kids', slug: 'kids' },
-  { name: 'Jewellery', slug: 'jewellery' },
-];
 
 const HELP_LINKS = [
   { name: 'Contact Us', href: '/contact' },
@@ -34,7 +25,18 @@ const DISCOVER_LINKS = [
 export default function Footer() {
   const { settings, fetchSettings } = useSettingsStore();
   const s = settings as any;
-  useEffect(() => { fetchSettings(); }, [fetchSettings]);
+  const [footerCats, setFooterCats] = useState<{ name: string; slug: string }[]>([]);
+
+  useEffect(() => {
+    fetchSettings();
+    // Fetch live categories so footer matches actual catalogue
+    api.get('/categories').then(({ data }) => {
+      const list: any[] = Array.isArray(data) ? data : data?.data || [];
+      if (list.length > 0) {
+        setFooterCats(list.map((c: any) => ({ name: c.name, slug: c.slug })));
+      }
+    }).catch(() => {});
+  }, [fetchSettings]);
 
   const storeName = s.storeName || 'Anjali Alankaram';
   const storeDesc = s.storeDescription || `Shop Sarees, Lehengas, Kurtis, Gowns, Kids Wear, Stretchable Blouses & Jewellery — All in One Place at ${storeName}`;
@@ -42,7 +44,10 @@ export default function Footer() {
   const whatsappNumber = (s.whatsappNumber || '7032492775').replace(/[^0-9]/g, '');
   const contactEmail = s.contactEmail || s.supportEmail || 'jagadishvarma99@gmail.com';
   const contactPhone = s.contactPhone || s.supportPhone || '+91 7032492775';
-  const footerCategories: { name: string; slug: string }[] = s.footerCategories?.length ? s.footerCategories : FOOTER_CATEGORIES;
+  // Use live categories from API, fallback to settings footerCategories
+  const footerCategories: { name: string; slug: string }[] = footerCats.length > 0
+    ? footerCats
+    : (s.footerCategories?.length ? s.footerCategories : []);
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 

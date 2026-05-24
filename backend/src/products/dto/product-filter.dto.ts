@@ -82,4 +82,14 @@ export class ProductFilterDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  hasReel?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  isBestseller?: string;
 }

@@ -38,6 +38,7 @@ interface StoreSettings {
   reservationTimeoutMins: number;
   returnPolicyDays: number;
   footerCategories: any;
+  marqueeText: string;
 }
 
 interface SettingsStore {
@@ -83,6 +84,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   reservationTimeoutMins: 15,
   returnPolicyDays: 7,
   footerCategories: [],
+  marqueeText: 'Free Delivery',
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({

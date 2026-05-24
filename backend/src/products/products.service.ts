@@ -31,6 +31,8 @@ export class ProductsService {
       color,
       isNewArrival,
       search,
+      hasReel,
+      isBestseller,
     } = filters;
 
     const skip = (page - 1) * limit;
@@ -50,6 +52,15 @@ export class ProductsService {
 
     if (isNewArrival === 'true') {
       where.isNewArrival = true;
+    }
+
+    if (isBestseller === 'true') {
+      where.isBestseller = true;
+    }
+
+    // Filter for products that have an Instagram reel URL (for featured videos)
+    if (hasReel === 'true') {
+      where.instagramReelUrl = { not: null };
     }
 
     if (minPrice || maxPrice) {
@@ -249,7 +260,7 @@ export class ProductsService {
           // Update existing variant
           await this.prisma.productVariant.update({
             where: { id: v.id },
-            data: { size: v.size, stock: v.stock, sku: v.sku },
+            data: { size: v.size, color: v.color || null, stock: v.stock, sku: v.sku },
           });
         } else {
           // Create new variant
@@ -257,6 +268,7 @@ export class ProductsService {
             data: {
               productId: id,
               size: v.size,
+              color: v.color || null,
               stock: v.stock,
               sku: v.sku || `${id.substring(0, 4)}-${v.size}-${Date.now()}`.toUpperCase(),
             },
