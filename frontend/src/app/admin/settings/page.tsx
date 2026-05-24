@@ -426,6 +426,7 @@ export default function AdminSettingsPage() {
     footerCategories: '[]',
     marqueeText: 'Free Delivery on All Orders',
     heroImageUrl: '',
+    heroLeftImageUrl: '',
     heroTitle: 'Make Every Occasion Special',
     heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
   });
@@ -693,12 +694,20 @@ export default function AdminSettingsPage() {
               <div className="border-t pt-4 space-y-4">
                 <h3 className="text-base font-bold">Hero Banner</h3>
                 <p className="text-sm text-muted-foreground -mt-2">Customise the large banner that appears at the top of the homepage.</p>
-                <Field label="Hero Image" hint="Upload an image from your computer (saved to S3). Recommended: portrait, 900×1200px minimum.">
-                  <HeroImageUploader
-                    value={formData.heroImageUrl || ''}
-                    onChange={url => setFormData((p: any) => ({ ...p, heroImageUrl: url }))}
-                  />
-                </Field>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Field label="Hero Left Image" hint="Placed at the left side of the hero section. Recommended: portrait, 900×1200px.">
+                    <HeroImageUploader
+                      value={formData.heroLeftImageUrl || ''}
+                      onChange={url => setFormData((p: any) => ({ ...p, heroLeftImageUrl: url }))}
+                    />
+                  </Field>
+                  <Field label="Hero Right (Model) Image" hint="Placed at the right side of the hero section. Recommended: portrait, 900×1200px.">
+                    <HeroImageUploader
+                      value={formData.heroImageUrl || ''}
+                      onChange={url => setFormData((p: any) => ({ ...p, heroImageUrl: url }))}
+                    />
+                  </Field>
+                </div>
                 <Field label="Hero Title" hint="Main heading on the hero banner.">
                   <TextInput value={formData.heroTitle || ''} onChange={set('heroTitle')} placeholder="Make Every Occasion Special" />
                 </Field>
@@ -706,6 +715,46 @@ export default function AdminSettingsPage() {
                   <TextInput value={formData.heroSubtitle || ''} onChange={set('heroSubtitle')} placeholder="Designer Lehengas & Elegant Gowns for Festive Looks" />
                 </Field>
               </div>
+
+              {/* ── STORE INFO / FOOTER ───────────────────────────────────── */}
+              <div className="mt-6 border-t pt-6">
+                <h3 className="font-bold text-base mb-1">Store Info &amp; Footer</h3>
+                <p className="text-sm text-muted-foreground mb-4">This information appears in the website footer.</p>
+                <div className="space-y-4">
+                  <Field label="Store Description (Footer tagline)">
+                    <textarea rows={2} value={formData.storeDescription}
+                      onChange={e => setFormData(prev => ({ ...prev, storeDescription: e.target.value }))}
+                      placeholder="Premium women's fashion celebrating Indian aesthetics..."
+                      className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none" />
+                  </Field>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="Contact Email">
+                      <input type="email" value={formData.contactEmail}
+                        onChange={e => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
+                        placeholder="support@yourstore.com"
+                        className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
+                    </Field>
+                    <Field label="Contact Phone">
+                      <input type="tel" value={formData.contactPhone}
+                        onChange={e => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
+                        placeholder="+91 9876543210"
+                        className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
+                    </Field>
+                  </div>
+                  <Field label="Return Policy Window (days)" hint="Customers see this in the footer and on product pages">
+                    <input type="number" min={1} max={90} value={formData.returnPolicyDays}
+                      onChange={e => setFormData(prev => ({ ...prev, returnPolicyDays: parseInt(e.target.value) || 7 }))}
+                      className="w-32 px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
+                  </Field>
+                  <Field label="Footer Category Links (JSON)" hint='e.g. [{"name":"Sarees","slug":"sarees"},{"name":"New","slug":"new"}]'>
+                    <textarea rows={3} value={formData.footerCategories}
+                      onChange={e => setFormData(prev => ({ ...prev, footerCategories: e.target.value }))}
+                      placeholder='[{"name":"New Arrivals","slug":"new"},{"name":"Sarees","slug":"sarees"}]'
+                      className="w-full px-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-primary resize-none" />
+                  </Field>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -1057,46 +1106,7 @@ export default function AdminSettingsPage() {
             </div>
           )}
 
-          {/* ── STORE INFO / FOOTER ───────────────────────────────────── */}
-          {activeSection === 'Regional' && (
-            <div className="mt-6 border-t pt-6">
-              <h3 className="font-bold text-base mb-1">Store Info &amp; Footer</h3>
-              <p className="text-sm text-muted-foreground mb-4">This information appears in the website footer.</p>
-              <div className="space-y-4">
-                <Field label="Store Description (Footer tagline)">
-                  <textarea rows={2} value={formData.storeDescription}
-                    onChange={e => setFormData(prev => ({ ...prev, storeDescription: e.target.value }))}
-                    placeholder="Premium women's fashion celebrating Indian aesthetics..."
-                    className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none" />
-                </Field>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Contact Email">
-                    <input type="email" value={formData.contactEmail}
-                      onChange={e => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
-                      placeholder="support@yourstore.com"
-                      className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
-                  </Field>
-                  <Field label="Contact Phone">
-                    <input type="tel" value={formData.contactPhone}
-                      onChange={e => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
-                      placeholder="+91 9876543210"
-                      className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
-                  </Field>
-                </div>
-                <Field label="Return Policy Window (days)" hint="Customers see this in the footer and on product pages">
-                  <input type="number" min={1} max={90} value={formData.returnPolicyDays}
-                    onChange={e => setFormData(prev => ({ ...prev, returnPolicyDays: parseInt(e.target.value) || 7 }))}
-                    className="w-32 px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
-                </Field>
-                <Field label="Footer Category Links (JSON)" hint='e.g. [{"name":"Sarees","slug":"sarees"},{"name":"New","slug":"new"}]'>
-                  <textarea rows={3} value={formData.footerCategories}
-                    onChange={e => setFormData(prev => ({ ...prev, footerCategories: e.target.value }))}
-                    placeholder='[{"name":"New Arrivals","slug":"new"},{"name":"Sarees","slug":"sarees"}]'
-                    className="w-full px-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-primary resize-none" />
-                </Field>
-              </div>
-            </div>
-          )}
+
 
           {/* ── COUPONS ───────────────────────────────────────────────── */}
           {activeSection === 'Coupons' && <CouponManagement />}

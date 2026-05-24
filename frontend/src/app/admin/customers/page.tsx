@@ -215,9 +215,13 @@ export default function AdminCustomersPage() {
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                             user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
                               ? 'bg-purple-50 text-purple-700 border-purple-100' 
+                              : user.role === 'ORDER_MANAGER'
+                              ? 'bg-orange-50 text-orange-700 border-orange-100'
+                              : user.role === 'STOCK_MANAGER'
+                              ? 'bg-teal-50 text-teal-700 border-teal-100'
                               : 'bg-gray-50 text-gray-700 border-gray-100'
                           }`}>
-                            {user.role}
+                            {user.role === 'STOCK_MANAGER' ? 'PRODUCT_MANAGER' : user.role}
                           </span>
                         </div>
                       </div>
@@ -295,7 +299,8 @@ export default function AdminCustomersPage() {
                 <select className="w-full px-4 py-2.5 bg-muted/20 border-transparent rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm transition-all" value={addForm.role} onChange={e => setAddForm({ ...addForm, role: e.target.value })}>
                   <option value="CUSTOMER">Customer</option>
                   <option value="ADMIN">Admin</option>
-                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="ORDER_MANAGER">Order Manager</option>
+                  <option value="STOCK_MANAGER">Product Manager</option>
                 </select>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
@@ -343,7 +348,8 @@ export default function AdminCustomersPage() {
                 <select className="w-full px-4 py-2.5 bg-muted/20 border-transparent rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm transition-all" value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })}>
                   <option value="CUSTOMER">Customer</option>
                   <option value="ADMIN">Admin</option>
-                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="ORDER_MANAGER">Order Manager</option>
+                  <option value="STOCK_MANAGER">Product Manager</option>
                 </select>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">

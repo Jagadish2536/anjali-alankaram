@@ -97,7 +97,7 @@ function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; in
 
   return (
     <div
-      className="fixed inset-0 z-[200] bg-black/97 flex flex-col items-center justify-center"
+      className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center"
       onClick={onClose}
       // Touch swipe inside lightbox
       onTouchStart={e => {
@@ -746,9 +746,9 @@ export default function ProductDetailPage() {
                 {selectedVariant ? `${selectedVariant.stock > 0 ? selectedVariant.stock : 0} In Stock` : '100 In Stock'}
               </span>
             </div>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Eye className="w-3.5 h-3.5" />
-              {viewerCount} people are viewing this right now
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground font-medium">
+              <Eye className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{viewerCount} people are viewing this right now</span>
             </p>
           </div>
 

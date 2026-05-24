@@ -98,6 +98,14 @@ export class OrdersController {
     return this.ordersService.findAll({ status, search, page, limit });
   }
 
+  @Get('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles(...ADMIN_ROLES)
+  @ApiOperation({ summary: 'Get order details for admin' })
+  async findOneAdmin(@Param('id') id: string) {
+    return this.ordersService.findOne(id);
+  }
+
   @Get('admin/:id/history')
   @UseGuards(RolesGuard)
   @Roles(...ADMIN_ROLES)

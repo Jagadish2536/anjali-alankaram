@@ -148,14 +148,22 @@ export default function AdminCategoriesPage() {
           <h1 className="text-3xl font-outfit font-bold">Category Management</h1>
           <p className="text-muted-foreground mt-1">Create and manage your store's departments.</p>
         </div>
-        {!showForm && (
+        <div className="flex gap-4">
           <button
-            onClick={openCreate}
-            className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors"
+            onClick={() => fetchCategories()}
+            className="px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors"
           >
-            <Plus className="w-5 h-5" /> Add Category
+            Refresh
           </button>
-        )}
+          {!showForm && (
+            <button
+              onClick={openCreate}
+              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-5 h-5" /> Add Category
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && (

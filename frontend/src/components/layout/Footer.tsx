@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Instagram, MessageCircle, Mail, Phone, ArrowUp, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { api } from '@/lib/api';
@@ -45,6 +46,7 @@ function FooterAccordion({ title, children }: { title: string; children: React.R
 }
 
 export default function Footer() {
+  const pathname = usePathname();
   const { settings, fetchSettings } = useSettingsStore();
   const s = settings as any;
   const [footerCats, setFooterCats] = useState<{ name: string; slug: string }[]>([]);
@@ -59,6 +61,10 @@ export default function Footer() {
       }
     }).catch(() => {});
   }, [fetchSettings]);
+
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   const storeName = s.storeName || 'Anjali Alankaram';
   const storeDesc = s.storeDescription || `Shop Sarees, Lehengas, Kurtis, Gowns, Kids Wear, Stretchable Blouses & Jewellery — All in One Place at ${storeName}`;

@@ -1,0 +1,738 @@
+'use client';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import Image from 'next/image';
+import {
+  ArrowLeft, X, Package, MapPin, CreditCard, Check, Clock, Truck,
+  CheckCircle2, XCircle, RotateCcw, Loader2, RefreshCw, History,
+  PackageCheck, ArrowRight, Eye, Printer, QrCode, ScanLine,
+  ChevronDown, ChevronUp, Save
+} from 'lucide-react';
+import { api } from '@/lib/api';
+import { formatPrice } from '@/lib/utils';
+
+// ── Delivery Partners ────────────────────────────────────────────
+const DELIVERY_PARTNERS = [
+  { id: 'india_post', name: 'India Post', trackingBase: 'https://www.indiapost.gov.in/VAS/Pages/trackconsignment.aspx' },
+  { id: 'dtdc',       name: 'DTDC',       trackingBase: 'https://www.dtdc.in/tracking.asp' },
+  { id: 'bluedart',   name: 'BlueDart',   trackingBase: 'https://www.bluedart.com/tracking' },
+  { id: 'delhivery',  name: 'Delhivery',  trackingBase: 'https://www.delhivery.com/track/' },
+  { id: 'ekart',      name: 'Ekart',      trackingBase: 'https://ekartlogistics.com/shipmenttrack/' },
+  { id: 'xpressbees', name: 'XpressBees', trackingBase: 'https://www.xpressbees.com/shipment/tracking' },
+  { id: 'other',      name: 'Other',      trackingBase: '' },
+];
+
+const STATUS_COLOR: Record<string, string> = {
+  DELIVERED:          'bg-green-50 text-green-700 border-green-200',
+  CANCELLED:          'bg-red-50 text-red-700 border-red-200',
+  REFUNDED:           'bg-gray-100 text-gray-600 border-gray-200',
+  PENDING_PAYMENT:    'bg-orange-50 text-orange-700 border-orange-200',
+  PAYMENT_VERIFIED:   'bg-blue-50 text-blue-700 border-blue-200',
+  CONFIRMED:          'bg-indigo-50 text-indigo-700 border-indigo-200',
+  INVENTORY_RESERVED: 'bg-violet-50 text-violet-700 border-violet-200',
+  PROCESSING:         'bg-yellow-50 text-yellow-700 border-yellow-200',
+  PICKING:            'bg-amber-50 text-amber-700 border-amber-200',
+  PACKED:             'bg-lime-50 text-lime-700 border-lime-200',
+  READY_FOR_SHIPMENT: 'bg-teal-50 text-teal-700 border-teal-200',
+  SHIPPED:            'bg-cyan-50 text-cyan-700 border-cyan-200',
+  IN_TRANSIT:         'bg-sky-50 text-sky-700 border-sky-200',
+  OUT_FOR_DELIVERY:   'bg-blue-50 text-blue-700 border-blue-200',
+  RETURN_REQUESTED:   'bg-yellow-50 text-yellow-700 border-yellow-200',
+  RETURN_APPROVED:    'bg-teal-50 text-teal-700 border-teal-200',
+  PICKUP_SCHEDULED:   'bg-blue-50 text-blue-700 border-blue-200',
+  RETURNED:           'bg-purple-50 text-purple-700 border-purple-200',
+  REFUND_INITIATED:   'bg-orange-50 text-orange-700 border-orange-200',
+  RETURN_REJECTED:    'bg-rose-50 text-rose-700 border-rose-200',
+};
+
+const ALL_STATUSES = [
+  { id: 'PENDING_PAYMENT', name: 'Pending Payment' },
+  { id: 'PAYMENT_VERIFIED', name: 'Payment Verified' },
+  { id: 'CONFIRMED', name: 'Confirmed' },
+  { id: 'INVENTORY_RESERVED', name: 'Inventory Reserved' },
+  { id: 'PROCESSING', name: 'Processing' },
+  { id: 'PICKING', name: 'Picking' },
+  { id: 'PACKED', name: 'Packed' },
+  { id: 'READY_FOR_SHIPMENT', name: 'Ready for Shipment' },
+  { id: 'SHIPPED', name: 'Shipped' },
+  { id: 'IN_TRANSIT', name: 'In Transit' },
+  { id: 'OUT_FOR_DELIVERY', name: 'Out for Delivery' },
+  { id: 'DELIVERED', name: 'Delivered' },
+  { id: 'CANCELLED', name: 'Cancelled' },
+  { id: 'RETURN_REQUESTED', name: 'Return Requested' },
+  { id: 'RETURN_APPROVED', name: 'Return Approved' },
+  { id: 'RETURN_REJECTED', name: 'Return Rejected' },
+  { id: 'PICKUP_SCHEDULED', name: 'Pickup Scheduled' },
+  { id: 'RETURNED', name: 'Returned' },
+  { id: 'REFUND_INITIATED', name: 'Refund Initiated' },
+  { id: 'REFUNDED', name: 'Refunded' },
+];
+
+const ADMIN_ORDER_STEPS = [
+  { label: 'Order Placed',     keys: ['PENDING_PAYMENT', 'PAYMENT_VERIFIED'] },
+  { label: 'Confirmed',        keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING'] },
+  { label: 'Packed',           keys: ['PACKED', 'READY_FOR_SHIPMENT'] },
+  { label: 'Shipped',          keys: ['SHIPPED'] },
+  { label: 'In Transit',       keys: ['IN_TRANSIT'] },
+  { label: 'Out for Delivery', keys: ['OUT_FOR_DELIVERY'] },
+  { label: 'Delivered',        keys: ['DELIVERED'] },
+];
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full border ${STATUS_COLOR[status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+      {status?.replace(/_/g, ' ')}
+    </span>
+  );
+}
+
+// ── Print Label ────────────────────────────────────────────────────
+function printOrderLabel(order: any) {
+  const w = window.open('', '_blank', 'width=600,height=800');
+  if (!w) return;
+  const items = (order.items || []).map((it: any) =>
+    `<tr><td style="padding:4px 8px;border:1px solid #e5e7eb;">${it.productName}</td>
+     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${(it.variantInfo?.size || '')}${it.variantInfo?.color ? ' / ' + it.variantInfo.color : ''}</td>
+     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${it.quantity}</td>
+     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">₹${Number(it.totalPrice || it.unitPrice * it.quantity).toLocaleString('en-IN')}</td></tr>`
+  ).join('');
+  w.document.write(`<!DOCTYPE html><html><head><title>Order Label — ${order.orderNumber}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:24px;}
+  h2{margin:0 0 4px;font-size:18px;}
+  .section{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:12px 0;}
+  .label{font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;}
+  table{width:100%;border-collapse:collapse;margin-top:8px;}
+  th{background:#f3f4f6;padding:6px 8px;font-size:11px;text-align:left;border:1px solid #e5e7eb;}
+  .total-row td{font-weight:700;border-top:2px solid #111;}
+  .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
+  @media print{button{display:none;}}
+  </style></head><body>
+  <button onclick="window.print()" style="margin-bottom:16px;padding:8px 20px;background:#8B0030;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
+  <div style="border:2px solid #111;border-radius:8px;padding:20px;">
+    <h2>📦 Anjali Alankaram</h2>
+    <p style="margin:0;font-size:12px;color:#6b7280;">Order Management Label</p>
+    <hr class="divider"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="label">Order Info</div>
+        <p style="margin:6px 0;font-size:16px;font-weight:700;font-family:monospace;">#${order.orderNumber}</p>
+        <p style="margin:2px 0;font-size:12px;">Date: ${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        <p style="margin:2px 0;font-size:12px;">Payment: ${order.paymentMethod === 'RAZORPAY' ? 'Online (Paid)' : 'Cash on Delivery'}</p>
+        ${order.awbCode ? `<p style="margin:6px 0;font-size:12px;"><strong>AWB:</strong> ${order.awbCode}</p>` : ''}
+        ${order.courierName ? `<p style="margin:2px 0;font-size:12px;"><strong>Courier:</strong> ${order.courierName}</p>` : ''}
+      </div>
+      <div class="section">
+        <div class="label">Customer</div>
+        <p style="margin:6px 0;font-weight:700;">${order.user?.name || 'Customer'}</p>
+        <p style="margin:2px 0;font-size:12px;">${order.user?.phone || ''}</p>
+        <p style="margin:2px 0;font-size:12px;">${order.user?.email || ''}</p>
+      </div>
+    </div>
+    <div class="section">
+      <div class="label">📍 Delivery Address</div>
+      <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
+      <p style="margin:2px 0;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
+      <p style="margin:2px 0;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
+      <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
+    </div>
+    <div class="section">
+      <div class="label">Order Items</div>
+      <table>
+        <thead><tr>
+          <th>Product</th><th style="text-align:center;">Variant</th>
+          <th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th>
+        </tr></thead>
+        <tbody>${items}
+        <tr class="total-row">
+          <td colspan="3" style="padding:6px 8px;border:1px solid #e5e7eb;text-align:right;">Total</td>
+          <td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:right;">₹${Number(order.totalAmount).toLocaleString('en-IN')}</td>
+        </tr></tbody>
+      </table>
+    </div>
+  </div>
+  </body></html>`);
+  w.document.close();
+}
+
+// ── History Log component ─────────────────────────────────────────
+function HistoryPanel({ orderId }: { orderId: string }) {
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const fetchHistory = () => {
+    setLoading(true);
+    api.get(`/orders/admin/${orderId}/history`)
+      .then(r => setHistory(r.data))
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchHistory();
+    // Listen for custom status updates to refresh history
+    window.addEventListener('order-status-history-refresh', fetchHistory);
+    return () => window.removeEventListener('order-status-history-refresh', fetchHistory);
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="py-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading status logs…
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+      {history.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">No status changes logged yet</p>
+      ) : (
+        history.map((h, i) => (
+          <div key={i} className="flex gap-3 relative pb-4 last:pb-0 border-l border-gray-100 pl-4 ml-2">
+            <div className="absolute left-[-5px] top-1.5 w-2 h-2 rounded-full bg-primary" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {h.fromStatus && <StatusBadge status={h.fromStatus} />}
+                {h.fromStatus && <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                <StatusBadge status={h.toStatus} />
+              </div>
+              {h.notes && <p className="text-xs text-muted-foreground mt-1 bg-muted/30 p-2 rounded-lg italic">"{h.notes}"</p>}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Role: <span className="font-semibold text-foreground">{h.actorRole || 'SYSTEM'}</span> · {new Date(h.createdAt).toLocaleString('en-IN')}
+              </p>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+export default function OrderDetailPage() {
+  const router = useRouter();
+  const { id } = useParams() as { id: string };
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showHistory, setShowHistory] = useState(true);
+
+  // Form Fields for Status & Shipment Fulfillment
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedPartner, setSelectedPartner] = useState('');
+  const [awbCode, setAwbCode] = useState('');
+  const [trackingUrl, setTrackingUrl] = useState('');
+  const [notes, setNotes] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const [pickupSlot, setPickupSlot] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [toast, setToast] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const awbRef = useRef<HTMLInputElement>(null);
+
+  const fetchOrder = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/orders/admin/${id}`);
+      setOrder(data);
+      setSelectedStatus(data.status || '');
+      setAwbCode(data.awbCode || '');
+      setTrackingUrl(data.trackingUrl || '');
+      // Look up courier base
+      const courierPartner = DELIVERY_PARTNERS.find(p => p.name.toLowerCase() === (data.courierName || '').toLowerCase());
+      setSelectedPartner(courierPartner ? courierPartner.id : data.courierName ? 'other' : '');
+      setSelectedCourierCustomName(courierPartner ? '' : data.courierName || '');
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load order details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [selectedCourierCustomName, setSelectedCourierCustomName] = useState('');
+
+  useEffect(() => {
+    if (id) {
+      fetchOrder();
+    }
+  }, [id]);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 4000);
+  };
+
+  const handleScanFocus = () => {
+    setScanning(true);
+    awbRef.current?.focus();
+  };
+
+  const handlePartnerChange = (partnerId: string) => {
+    setSelectedPartner(partnerId);
+    if (partnerId && partnerId !== 'other') {
+      const p = DELIVERY_PARTNERS.find(item => item.id === partnerId);
+      if (p?.trackingBase && awbCode.trim()) {
+        setTrackingUrl(`${p.trackingBase}?awb=${awbCode.trim()}`);
+      }
+    }
+  };
+
+  const handleAwbChange = (code: string) => {
+    setAwbCode(code);
+    if (selectedPartner && selectedPartner !== 'other') {
+      const p = DELIVERY_PARTNERS.find(item => item.id === selectedPartner);
+      if (p?.trackingBase && code.trim()) {
+        setTrackingUrl(`${p.trackingBase}?awb=${code.trim()}`);
+      }
+    }
+  };
+
+  const handleFulfillmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStatus) {
+      alert('Please select a status');
+      return;
+    }
+    setUpdating(true);
+    try {
+      const partnerObj = DELIVERY_PARTNERS.find(p => p.id === selectedPartner);
+      const courierName = selectedPartner === 'other' ? selectedCourierCustomName : (partnerObj?.name || '');
+
+      const payload: any = {
+        status: selectedStatus,
+        notes: notes || undefined,
+        awbCode: awbCode.trim() || undefined,
+        trackingUrl: trackingUrl.trim() || undefined,
+        courierName: courierName || undefined,
+        cancelReason: selectedStatus === 'CANCELLED' ? (cancelReason || 'Admin Cancelled') : undefined,
+        pickupSlot: (selectedStatus === 'RETURN_APPROVED' || selectedStatus === 'PICKUP_SCHEDULED') ? pickupSlot : undefined,
+      };
+
+      await api.put(`/orders/admin/${id}/status`, payload);
+      showToast('Order fulfillment & tracking details saved successfully!');
+      
+      // Reload order and trigger history list update
+      const { data } = await api.get(`/orders/admin/${id}`);
+      setOrder(data);
+      setNotes('');
+      window.dispatchEvent(new Event('order-status-history-refresh'));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update order status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 min-h-screen gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground font-medium">Fetching order details…</p>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="max-w-xl mx-auto py-20 text-center space-y-4">
+        <XCircle className="w-16 h-16 text-red-500 mx-auto" />
+        <h2 className="text-2xl font-bold font-outfit">Error Loading Order</h2>
+        <p className="text-muted-foreground">{error || 'Order not found.'}</p>
+        <button onClick={() => router.push('/admin/orders')} className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow hover:bg-primary/90">
+          Back to Orders
+        </button>
+      </div>
+    );
+  }
+
+  const curIdx = ADMIN_ORDER_STEPS.findIndex(s => s.keys.includes(order.status));
+  const isReturnFlow = ['RETURN_REQUESTED','RETURN_APPROVED','PICKUP_SCHEDULED','RETURNED','REFUND_INITIATED','REFUNDED'].includes(order.status);
+
+  return (
+    <div className="min-h-screen bg-gray-50/50 pb-20">
+      <div className="max-w-6xl mx-auto p-4 sm:p-8">
+        
+        {/* Back and Actions Top Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <button
+            onClick={() => router.push('/admin/orders')}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group text-sm font-semibold"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Back to Orders
+          </button>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => printOrderLabel(order)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold border bg-white rounded-xl hover:bg-gray-50 shadow-sm transition-all"
+            >
+              <Printer className="w-4 h-4" /> Print Label
+            </button>
+            <button
+              onClick={fetchOrder}
+              className="flex items-center justify-center p-2 border bg-white rounded-xl hover:bg-gray-50 shadow-sm transition-all"
+              title="Refresh order"
+            >
+              <RefreshCw className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+
+        {toast && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl mb-6 flex items-center gap-2 text-sm font-medium animate-in slide-in-from-top-3">
+            <Check className="w-4 h-4 shrink-0" />
+            {toast}
+          </div>
+        )}
+
+        {/* Hero title block */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-outfit font-black">Order #{order.orderNumber}</h1>
+            <StatusBadge status={order.status} />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">Placed on {new Date(order.createdAt).toLocaleString('en-IN')}</p>
+        </div>
+
+        {/* Timeline banner */}
+        {!isReturnFlow && order.status !== 'CANCELLED' && (
+          <div className="bg-white rounded-2xl p-6 border shadow-sm mb-8 overflow-x-auto">
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Order Pipeline</h2>
+            <div className="flex items-center min-w-max">
+              {ADMIN_ORDER_STEPS.map((step, i) => {
+                const done = i <= curIdx;
+                const active = i === curIdx;
+                return (
+                  <div key={step.label} className="flex items-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all ${
+                        done ? 'bg-primary border-primary text-white font-bold' : 'bg-white border-gray-200 text-gray-400'
+                      } ${active ? 'ring-4 ring-primary/20 scale-110' : ''}`}>
+                        {done ? <Check className="w-3.5 h-3.5" /> : <span className="text-[10px] font-bold">{i + 1}</span>}
+                      </div>
+                      <p className={`text-[10px] text-center leading-tight w-14 mt-1 font-semibold ${done ? 'text-primary' : 'text-gray-400'}`}>{step.label}</p>
+                    </div>
+                    {i < ADMIN_ORDER_STEPS.length - 1 && (
+                      <div className={`w-12 h-0.5 mx-2 mb-6 shrink-0 ${i < curIdx ? 'bg-primary' : 'bg-gray-200'}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* LEFT 2 COLUMNS: Info and Details */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Items checklist */}
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b bg-muted/10">
+                <h3 className="font-bold font-outfit text-sm uppercase tracking-wider">Order Items ({order.items?.length})</h3>
+              </div>
+              <div className="p-6 divide-y divide-gray-100">
+                {order.items?.map((item: any) => (
+                  <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex gap-4 items-center">
+                    {(item.imageUrl || item.product?.images?.[0]) && (
+                      <div className="relative w-14 h-20 rounded-xl overflow-hidden bg-accent/10 border shrink-0">
+                        <Image src={item.imageUrl || item.product.images[0]} alt="" fill className="object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm leading-snug text-foreground line-clamp-2">{item.productName}</p>
+                      <p className="text-xs text-muted-foreground mt-1 font-medium">
+                        Size: <span className="text-foreground font-semibold">{item.variantInfo?.size}</span>
+                        {item.variantInfo?.color && <> · Color: <span className="text-foreground font-semibold">{item.variantInfo.color}</span></>}
+                        {' '}· Qty: <span className="text-foreground font-bold">{item.quantity}</span>
+                      </p>
+                      {item.sku && <p className="text-[10px] text-muted-foreground font-mono mt-0.5">SKU: {item.sku}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-sm">{formatPrice(item.totalPrice || item.unitPrice * item.quantity)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{formatPrice(item.unitPrice)} each</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Delivery address */}
+            {order.address && (
+              <div className="border-2 border-primary/20 bg-primary/5 rounded-2xl p-6 shadow-sm">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-bold text-xs text-primary uppercase tracking-widest flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4" /> Delivery Address
+                  </h3>
+                  <span className="text-[10px] font-bold bg-white text-primary border border-primary/20 px-2 py-0.5 rounded-full">SHIP TO</span>
+                </div>
+                <p className="font-black text-lg text-foreground">{order.address.name}</p>
+                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                  {order.address.line1}{order.address.line2 && `, ${order.address.line2}`}
+                  <br />
+                  {order.address.city}, {order.address.state} — <strong className="text-foreground font-bold">{order.address.pincode}</strong>
+                  <br />
+                  {order.address.country || 'India'}
+                </p>
+                <div className="mt-4 pt-4 border-t border-primary/10 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Phone number:</span>
+                  <a href={`tel:${order.address.phone}`} className="text-base font-bold text-foreground hover:underline">
+                    📞 {order.address.phone}
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Summary */}
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b bg-muted/10">
+                <h3 className="font-bold font-outfit text-sm uppercase tracking-wider">Payment Summary</h3>
+              </div>
+              <div className="p-6 space-y-3.5 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="font-medium text-foreground">{formatPrice(order.subtotal)}</span>
+                </div>
+                {Number(order.discountAmount) > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount {order.couponCode && `(${order.couponCode})`}</span>
+                    <span className="font-bold">-{formatPrice(order.discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Shipping</span>
+                  <span className="font-medium text-foreground">{Number(order.shippingCharge) > 0 ? formatPrice(order.shippingCharge) : 'Free'}</span>
+                </div>
+                {Number(order.codCharges) > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>COD Convenience Charge</span>
+                    <span className="font-medium text-foreground">{formatPrice(order.codCharges)}</span>
+                  </div>
+                )}
+                {Number(order.platformFee) > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Platform Fee</span>
+                    <span className="font-medium text-foreground">{formatPrice(order.platformFee)}</span>
+                  </div>
+                )}
+                {Number(order.gstAmount) > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>GST Tax</span>
+                    <span className="font-medium text-foreground">{formatPrice(order.gstAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-black text-base border-t pt-3.5">
+                  <span>Total Amount</span>
+                  <span className="text-primary">{formatPrice(order.totalAmount)}</span>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t pt-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Method:</span>
+                    <span className="font-bold text-foreground">{order.paymentMethod === 'RAZORPAY' ? 'Razorpay Online' : 'Cash on Delivery'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Gateway status:</span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${order.paymentStatus === 'PAID' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}>
+                      {order.paymentStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Timeline history log */}
+            {showHistory && (
+              <div className="bg-white rounded-2xl border shadow-sm p-6">
+                <h3 className="font-bold font-outfit text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <History className="w-4 h-4 text-primary" /> Status Transition Logs
+                </h3>
+                <HistoryPanel orderId={order.id} />
+              </div>
+            )}
+
+          </div>
+
+          {/* RIGHT COLUMN: Unified Fulfillment & Tracking */}
+          <div className="space-y-8">
+            
+            {/* Fulfillment form card */}
+            <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-6">
+              <div>
+                <h3 className="font-bold font-outfit text-base text-foreground flex items-center gap-2 border-b pb-3">
+                  <PackageCheck className="w-5 h-5 text-primary" /> Fulfillment &amp; Status
+                </h3>
+                <p className="text-xs text-muted-foreground mt-2">Manage the order lifecycle, enter tracking codes, and configure carrier assignments.</p>
+              </div>
+
+              <form onSubmit={handleFulfillmentSubmit} className="space-y-4">
+                
+                {/* Status selection */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Order Status *</label>
+                  <select
+                    value={selectedStatus}
+                    onChange={e => setSelectedStatus(e.target.value)}
+                    className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none bg-white font-medium"
+                    required
+                  >
+                    <option value="">Select status…</option>
+                    {ALL_STATUSES.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Courier selection */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Delivery Partner</label>
+                  <select
+                    value={selectedPartner}
+                    onChange={e => handlePartnerChange(e.target.value)}
+                    className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none bg-white font-medium mb-2"
+                  >
+                    <option value="">No carrier selected</option>
+                    {DELIVERY_PARTNERS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  
+                  {selectedPartner === 'other' && (
+                    <input
+                      type="text"
+                      placeholder="Enter custom carrier name"
+                      value={selectedCourierCustomName}
+                      onChange={e => setSelectedCourierCustomName(e.target.value)}
+                      className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none mt-2"
+                    />
+                  )}
+                </div>
+
+                {/* AWB / Tracking code input */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">
+                    AWB / Tracking Number
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      ref={awbRef}
+                      value={awbCode}
+                      onChange={e => { handleAwbChange(e.target.value); setScanning(false); }}
+                      placeholder={scanning ? '▌ Scan barcode now…' : 'Enter AWB / tracking code'}
+                      className={`flex-1 border-2 rounded-xl px-3 py-2 text-sm outline-none transition-all ${
+                        scanning ? 'border-primary bg-primary/5 ring-2 ring-primary/20 font-mono text-primary font-bold' : 'border-border focus:border-primary'
+                      }`}
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleScanFocus}
+                      title="Ready barcode scanner"
+                      className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all shrink-0 ${
+                        scanning ? 'border-primary bg-primary text-white' : 'border-border hover:border-primary hover:text-primary'
+                      }`}
+                    >
+                      <ScanLine className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {scanning && (
+                    <p className="text-[10px] text-primary mt-1.5 animate-pulse font-medium">
+                      USB Barcode Scanner ready. Scan label now.
+                    </p>
+                  )}
+                </div>
+
+                {/* Tracking URL */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Tracking Link</label>
+                  <input
+                    type="url"
+                    value={trackingUrl}
+                    onChange={e => setTrackingUrl(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none"
+                  />
+                </div>
+
+                {/* Conditional Cancel Reason */}
+                {selectedStatus === 'CANCELLED' && (
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Cancellation Reason *</label>
+                    <input
+                      value={cancelReason}
+                      onChange={e => setCancelReason(e.target.value)}
+                      placeholder="e.g. Customer cancelled order"
+                      className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none"
+                      required
+                    />
+                  </div>
+                )}
+
+                {/* Conditional Pickup slot */}
+                {(selectedStatus === 'RETURN_APPROVED' || selectedStatus === 'PICKUP_SCHEDULED') && (
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Return Pickup Slot</label>
+                    <input
+                      value={pickupSlot}
+                      onChange={e => setPickupSlot(e.target.value)}
+                      placeholder="e.g. 26 May, 10AM - 1PM"
+                      className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Admin Status Note */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Admin Note</label>
+                  <textarea
+                    rows={2.5}
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="Provide a reason or audit note for this change…"
+                    className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
+                  />
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-md shadow-primary/10 mt-6"
+                >
+                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save Tracking &amp; Status
+                </button>
+
+              </form>
+            </div>
+
+            {/* Customer card */}
+            <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-4">
+              <h3 className="font-bold font-outfit text-sm uppercase tracking-wider border-b pb-2">Customer Profile</h3>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base shrink-0">
+                  {order.user?.name?.[0]?.toUpperCase() || 'C'}
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-foreground">{order.user?.name || 'Customer'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{order.user?.email || 'No email provided'}</p>
+                </div>
+              </div>
+              
+              <div className="text-xs space-y-2 pt-2 border-t text-muted-foreground">
+                <div className="flex justify-between"><span>User Account ID:</span><span className="font-mono text-[10px] text-foreground">{order.user?.id}</span></div>
+                <div className="flex justify-between"><span>Registered phone:</span><span className="text-foreground">{order.user?.phone || 'N/A'}</span></div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}

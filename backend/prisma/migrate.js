@@ -245,6 +245,7 @@ async function main() {
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "couponsEnabled" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "giftEnabled" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "giftAmount" FLOAT NOT NULL DEFAULT 35`,
+    `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "heroLeftImageUrl" TEXT`,
   ];
 
   for (const sql of alterations) {

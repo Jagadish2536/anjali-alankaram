@@ -19,7 +19,7 @@ const STEPS = ['BAG', 'ADDRESS', 'PAYMENT'];
 
 function StepBar({ step }: { step: number }) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-8">
+    <div className="flex items-center justify-center gap-0">
       {STEPS.map((s, i) => (
         <div key={s} className="flex items-center">
           <div className="flex flex-col items-center gap-1">
@@ -35,7 +35,7 @@ function StepBar({ step }: { step: number }) {
             </span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className={`w-20 h-0.5 mx-1 mb-5 ${i < step ? 'bg-green-400' : 'bg-gray-200'}`} />
+            <div className={`w-10 sm:w-20 h-0.5 mx-1 mb-5 ${i < step ? 'bg-green-400' : 'bg-gray-200'}`} />
           )}
         </div>
       ))}
@@ -285,10 +285,12 @@ export default function CheckoutPage() {
 
       {/* Top bar */}
       <div className="bg-white border-b sticky top-0 z-40 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="font-outfit text-2xl font-bold text-primary">Anjali Alankaram</Link>
-          <StepBar step={step} />
-          <div className="flex items-center gap-1.5 text-green-700 text-xs font-bold">
+        <div className="max-w-6xl mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-4">
+          <Link href="/" className="font-outfit text-xl md:text-2xl font-bold text-primary hidden md:block">Anjali Alankaram</Link>
+          <div className="flex-1 md:flex-none flex justify-center">
+            <StepBar step={step} />
+          </div>
+          <div className="hidden md:flex items-center gap-1.5 text-green-700 text-xs font-bold">
             <ShieldCheck className="w-4 h-4" /> 100% SECURE
           </div>
         </div>

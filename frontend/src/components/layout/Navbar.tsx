@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Search, ShoppingBag, X, Menu, ChevronRight, LogOut, ShieldAlert,
 } from 'lucide-react';
@@ -23,6 +23,7 @@ const STATIC_NAV_CATEGORIES = [
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, user, logout } = useAuthStore();
   const { settings, fetchSettings } = useSettingsStore();
   const { items: cartItems } = useCartStore();
@@ -63,6 +64,10 @@ export default function Navbar() {
     setShowSearch(false);
     router.push(`/products?search=${encodeURIComponent(q)}`);
   };
+
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   const storeName = settings.storeName || 'Anjali Alankaram';
   const marqueeText = (settings as any).marqueeText || 'Free Delivery on all Orders';

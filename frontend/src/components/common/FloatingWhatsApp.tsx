@@ -1,14 +1,20 @@
 'use client';
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function FloatingWhatsApp() {
+  const pathname = usePathname();
   const { settings, fetchSettings } = useSettingsStore();
 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   const number = settings.whatsappNumber.replace(/[^0-9]/g, '');
   if (!number) return null;

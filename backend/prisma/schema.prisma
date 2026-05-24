@@ -709,6 +709,7 @@ model StoreSettings {
   // Homepage configurable
   marqueeText             String?  @default("Free Delivery on All Orders")
   heroImageUrl            String?
+  heroLeftImageUrl        String?
   heroTitle               String?  @default("Make Every Occasion Special")
   heroSubtitle            String?  @default("Designer Lehengas & Elegant Gowns for Festive Looks")
   updatedAt               DateTime @updatedAt

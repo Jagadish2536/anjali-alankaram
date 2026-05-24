@@ -65,7 +65,7 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
-  const [editVariants, setEditVariants] = useState<{ id?: string; size: string; color: string; stock: number; sku: string }[]>([]);
+  const [editVariants, setEditVariants] = useState<{ id?: string; size: string; color: string; colorHex?: string; stock: number; sku: string; images?: string[] }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
@@ -127,8 +127,16 @@ export default function AdminProductsPage() {
       sizeGuide: product.sizeGuide || [],
     });
     setEditVariants(product.variants?.length > 0
-      ? product.variants.map((v: any) => ({ id: v.id, size: v.size, color: v.color || '', stock: v.stock, sku: v.sku || '' }))
-      : [{ size: '', color: '', stock: 0, sku: '' }]
+      ? product.variants.map((v: any) => ({
+          id: v.id,
+          size: v.size,
+          color: v.color || '',
+          colorHex: v.colorHex || '#000000',
+          stock: v.stock,
+          sku: v.sku || '',
+          images: v.images || [],
+        }))
+      : [{ size: '', color: '', colorHex: '#000000', stock: 0, sku: '', images: [] }]
     );
   };
 
@@ -160,8 +168,10 @@ export default function AdminProductsPage() {
           ...(v.id ? { id: v.id } : {}),
           size: v.size,
           color: v.color || null,
+          colorHex: v.colorHex || '#000000',
           stock: Number(v.stock),
           sku: v.sku || `${editForm.name.substring(0, 3).toUpperCase()}-${v.size}-${Date.now()}`,
+          images: v.images || [],
         })),
       };
       if (editForm.salePrice) payload.salePrice = Number(editForm.salePrice);
@@ -385,61 +395,7 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* Delivery & Returns */}
-              <div className="border rounded-xl overflow-hidden">
-                <div className="px-4 py-3 bg-blue-50 border-b flex items-center gap-2">
-                  <span className="text-sm font-bold text-blue-800">🚚 Delivery & Returns</span>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Cash on Delivery (COD)</p>
-                      <p className="text-xs text-muted-foreground">Allow customers to pay on delivery</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm({ ...editForm, codAvailable: !editForm.codAvailable })}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${editForm.codAvailable ? 'bg-primary' : 'bg-gray-300'}`}
-                    >
-                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${editForm.codAvailable ? 'translate-x-5' : ''}`} />
-                    </button>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Return Window (days)</label>
-                    <input
-                      type="number" min={0} max={90}
-                      className="w-32 px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
-                      value={editForm.returnDays}
-                      onChange={e => setEditForm({ ...editForm, returnDays: e.target.value })}
-                    />
-                    <span className="ml-2 text-sm text-muted-foreground">days (0 = no returns)</span>
-                  </div>
 
-                  {/* Return toggle */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Return Available</p>
-                      <p className="text-xs text-muted-foreground">Allow customers to return this product within the window</p>
-                    </div>
-                    <button type="button" onClick={() => setEditForm({ ...editForm, returnEnabled: !editForm.returnEnabled })}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${editForm.returnEnabled ? 'bg-primary' : 'bg-gray-300'}`}>
-                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${editForm.returnEnabled ? 'translate-x-5' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Replacement toggle */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Replacement Available</p>
-                      <p className="text-xs text-muted-foreground">Allow customers to request a size/product replacement</p>
-                    </div>
-                    <button type="button" onClick={() => setEditForm({ ...editForm, replaceEnabled: !editForm.replaceEnabled })}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${editForm.replaceEnabled ? 'bg-primary' : 'bg-gray-300'}`}>
-                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${editForm.replaceEnabled ? 'translate-x-5' : ''}`} />
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* Size Guide */}
               <div className="border rounded-xl overflow-hidden">
@@ -505,30 +461,39 @@ export default function AdminProductsPage() {
               {/* Variants / Sizes & Stock */}
               <div className="border rounded-xl overflow-hidden">
                 <div className="px-4 py-3 bg-green-50 border-b flex items-center justify-between">
-                  <span className="text-sm font-bold text-green-800">📦 Sizes & Stock</span>
+                  <span className="text-sm font-bold text-green-800">📦 Sizes &amp; Stock</span>
                   <button
                     type="button"
-                    onClick={() => setEditVariants([...editVariants, { size: '', color: '', stock: 0, sku: '' }])}
+                    onClick={() => setEditVariants([...editVariants, { size: '', color: '', colorHex: '#000000', stock: 0, sku: '', images: [] }])}
                     className="text-xs font-bold text-green-700 flex items-center gap-1 hover:underline"
                   >
                     <PlusCircle className="w-3 h-3" /> Add Size
                   </button>
                 </div>
-                <div className="p-4">
-                  <div className="grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground uppercase mb-2 px-1">
-                    <div className="col-span-4">Size</div>
-                    <div className="col-span-4">Colour</div>
-                    <div className="col-span-3">Stock</div>
-                    <div className="col-span-1"></div>
-                  </div>
-                  <div className="space-y-2">
-                    {editVariants.map((v, i) => (
-                      <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-4">
+                <div className="p-4 space-y-4">
+                  {editVariants.map((v, i) => (
+                    <div key={i} className="border rounded-xl p-3 bg-muted/5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Variant {i + 1}</span>
+                        {editVariants.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setEditVariants(editVariants.filter((_, idx) => idx !== i))}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Size *</label>
                           <input
+                            required
                             type="text"
-                            placeholder="e.g. S, M, L, XL"
-                            className="w-full px-3 py-2 bg-muted/20 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="e.g. S, M, L"
+                            className="w-full px-2 py-1.5 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
                             value={v.size}
                             onChange={e => {
                               const updated = [...editVariants];
@@ -537,22 +502,12 @@ export default function AdminProductsPage() {
                             }}
                           />
                         </div>
-                        <div className="col-span-4 flex items-center gap-2">
-                          <input
-                            type="color"
-                            className="w-9 h-9 rounded-lg border cursor-pointer shrink-0"
-                            value={v.color || '#8B0030'}
-                            onChange={e => {
-                              const updated = [...editVariants];
-                              updated[i] = { ...updated[i], color: e.target.value };
-                              setEditVariants(updated);
-                            }}
-                            title="Pick colour"
-                          />
+                        <div>
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Colour Name</label>
                           <input
                             type="text"
                             placeholder="e.g. Red"
-                            className="w-full px-2 py-2 bg-muted/20 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-2 py-1.5 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
                             value={v.color || ''}
                             onChange={e => {
                               const updated = [...editVariants];
@@ -561,11 +516,29 @@ export default function AdminProductsPage() {
                             }}
                           />
                         </div>
-                        <div className="col-span-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Colour Swatch</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              className="w-8 h-8 rounded border cursor-pointer shrink-0"
+                              value={v.colorHex || '#000000'}
+                              onChange={e => {
+                                const updated = [...editVariants];
+                                updated[i] = { ...updated[i], colorHex: e.target.value };
+                                setEditVariants(updated);
+                              }}
+                            />
+                            <span className="text-[10px] text-muted-foreground">{v.colorHex || '#000000'}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Stock</label>
                           <input
-                            type="number" min={0}
+                            type="number"
+                            min={0}
                             placeholder="0"
-                            className="w-full px-3 py-2 bg-muted/20 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-2 py-1.5 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
                             value={v.stock}
                             onChange={e => {
                               const updated = [...editVariants];
@@ -574,20 +547,44 @@ export default function AdminProductsPage() {
                             }}
                           />
                         </div>
-                        <div className="col-span-1 flex justify-end">
-                          {editVariants.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setEditVariants(editVariants.filter((_, idx) => idx !== i))}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                      </div>
+
+                      {/* Variant images uploader */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Variant Images</label>
+                        <div className="flex flex-wrap gap-2">
+                          {(v.images || []).map((imgUrl: string, imgIdx: number) => (
+                            <div key={imgIdx} className="relative w-12 h-12 rounded overflow-hidden border bg-muted/10">
+                              {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
+                              <button type="button" onClick={() => {
+                                const updated = [...editVariants];
+                                updated[i].images = (updated[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
+                                setEditVariants(updated);
+                              }} className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center">
+                                <X className="w-2.5 h-2.5 text-white" />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="w-12 h-12 rounded border border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+                            {isUploading === (i + 100) ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Plus className="w-4 h-4 text-muted-foreground" />}
+                            <span className="text-[8px] text-muted-foreground mt-0.5">Add</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              setIsUploading(i + 100);
+                              try {
+                                const fd = new FormData(); fd.append('file', file);
+                                const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                                const updated = [...editVariants];
+                                updated[i].images = [...(updated[i].images || []), data.url];
+                                setEditVariants(updated);
+                              } catch (err: any) { alert('Upload failed'); }
+                              finally { setIsUploading(null); }
+                            }} />
+                          </label>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

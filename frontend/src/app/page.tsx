@@ -379,6 +379,7 @@ export default function Home() {
 
   const marqueeText = s.marqueeText || 'Free Delivery on All Orders';
   const heroImage = s.heroImageUrl || '';
+  const heroLeftImage = s.heroLeftImageUrl || '';
   const heroTitle = s.heroTitle || 'Make Every Occasion Special';
   const heroSubtitle = s.heroSubtitle || 'Designer Lehengas & Elegant Gowns for Festive Looks';
 
@@ -395,6 +396,14 @@ export default function Home() {
         aria-label="Hero banner"
       >
         <div className="absolute inset-0" style={{ backgroundImage: lilyBg, backgroundSize: '140px 140px', opacity: 0.25 }} />
+
+        {/* Left side hero image */}
+        {heroLeftImage && (
+          <div className="absolute left-0 top-0 h-full w-1/2 md:w-[45%] opacity-90">
+            <Image src={heroLeftImage} alt="Hero Left" fill className="object-cover object-top" priority />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-primary/30 to-primary/95" />
+          </div>
+        )}
 
         {/* Model / hero image — admin can set heroImageUrl in settings */}
         <div className="absolute right-0 top-0 h-full w-1/2 md:w-[45%] opacity-90">

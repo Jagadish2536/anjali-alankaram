@@ -91,7 +91,7 @@ const config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-out",
-        "marquee": "marquee-scroll 22s linear infinite",
+        "marquee": "marquee-scroll 70s linear infinite",
         "slide-in-left": "slide-in-left 0.4s ease-out",
       },
     },

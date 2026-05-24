@@ -41,7 +41,7 @@ export class SettingsController {
       lowStockThreshold, reservationTimeoutMins,
       storeDescription, contactEmail, contactPhone,
       returnPolicyDays, footerCategories,
-      marqueeText, heroImageUrl, heroTitle, heroSubtitle,
+      marqueeText, heroImageUrl, heroLeftImageUrl, heroTitle, heroSubtitle,
     } = data;
 
     // Build clean payload with only defined values (skip undefined)
@@ -80,6 +80,7 @@ export class SettingsController {
     safe('footerCategories', footerCategories);
     safe('marqueeText', marqueeText);
     safe('heroImageUrl', heroImageUrl);
+    safe('heroLeftImageUrl', heroLeftImageUrl);
     safe('heroTitle', heroTitle);
     safe('heroSubtitle', heroSubtitle);
 

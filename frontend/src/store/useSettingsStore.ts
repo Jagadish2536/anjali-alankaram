@@ -40,6 +40,7 @@ interface StoreSettings {
   footerCategories: any;
   marqueeText: string;
   heroImageUrl: string;
+  heroLeftImageUrl: string;
   heroTitle: string;
   heroSubtitle: string;
 }
@@ -89,6 +90,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   footerCategories: [],
   marqueeText: 'Free Delivery on All Orders',
   heroImageUrl: '',
+  heroLeftImageUrl: '',
   heroTitle: 'Make Every Occasion Special',
   heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
 };
