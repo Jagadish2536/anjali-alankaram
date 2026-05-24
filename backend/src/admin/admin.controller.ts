@@ -4,6 +4,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ConfigService } from '@nestjs/config';
+import {
+  CostExplorerClient,
+  GetCostAndUsageCommand,
+  GetCostAndUsageCommandInput,
+} from '@aws-sdk/client-cost-explorer';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -11,7 +17,20 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @Roles('ADMIN', 'SUPER_ADMIN')
 @ApiBearerAuth()
 export class AdminController {
-  constructor(private prisma: PrismaService) {}
+  private costExplorer: CostExplorerClient;
+
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+  ) {
+    this.costExplorer = new CostExplorerClient({
+      region: 'us-east-1', // Cost Explorer API is global, always us-east-1
+      credentials: {
+        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID') || '',
+        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY') || '',
+      },
+    });
+  }
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get admin dashboard stats' })
@@ -131,5 +150,87 @@ export class AdminController {
       recentOrders,
       chartData,
     };
+  }
+
+  @Get('billing')
+  @ApiOperation({ summary: 'Get AWS billing summary for last 12 months' })
+  async getAwsBilling() {
+    try {
+      // Build last 12 months worth of monthly windows
+      const months: { start: string; end: string; label: string }[] = [];
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        const end = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
+        const label = d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        months.push({ start, end, label });
+      }
+
+      // Fetch total cost and usage per month
+      const input: GetCostAndUsageCommandInput = {
+        TimePeriod: {
+          Start: months[0].start,
+          End: months[months.length - 1].end,
+        },
+        Granularity: 'MONTHLY',
+        Metrics: ['BlendedCost', 'UsageQuantity'],
+        GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }],
+      };
+
+      const command = new GetCostAndUsageCommand(input);
+      const response = await this.costExplorer.send(command);
+
+      const billing = (response.ResultsByTime || []).map((result) => {
+        const periodStart = result.TimePeriod?.Start || '';
+        const d = new Date(periodStart + 'T00:00:00Z');
+        const label = d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+
+        const services = (result.Groups || []).map((g) => ({
+          name: g.Keys?.[0] || 'Other',
+          cost: Number(g.Metrics?.BlendedCost?.Amount || 0),
+          unit: g.Metrics?.BlendedCost?.Unit || 'USD',
+        })).filter(s => s.cost > 0).sort((a, b) => b.cost - a.cost);
+
+        const totalCost = services.reduce((sum, s) => sum + s.cost, 0);
+
+        return {
+          period: periodStart,
+          label,
+          totalCost: Number(totalCost.toFixed(4)),
+          currency: 'USD',
+          services,
+        };
+      });
+
+      const grandTotal = billing.reduce((sum, b) => sum + b.totalCost, 0);
+      const currentMonthCost = billing[billing.length - 1]?.totalCost || 0;
+      const lastMonthCost = billing[billing.length - 2]?.totalCost || 0;
+      const trend = lastMonthCost > 0
+        ? Number((((currentMonthCost - lastMonthCost) / lastMonthCost) * 100).toFixed(1))
+        : 0;
+
+      return {
+        success: true,
+        summary: {
+          grandTotal: Number(grandTotal.toFixed(4)),
+          currentMonthCost: Number(currentMonthCost.toFixed(4)),
+          lastMonthCost: Number(lastMonthCost.toFixed(4)),
+          trend,
+          currency: 'USD',
+          accountId: this.config.get('AWS_ACCOUNT_ID') || null,
+          region: this.config.get('AWS_REGION') || 'ap-south-2',
+        },
+        billing,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to fetch billing data',
+        billing: [],
+        summary: null,
+      };
+    }
   }
 }

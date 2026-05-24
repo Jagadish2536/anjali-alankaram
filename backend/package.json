@@ -25,6 +25,7 @@
     "secrets:pull": "node scripts/pull-secrets.js"
   },
   "dependencies": {
+    "@aws-sdk/client-cost-explorer": "^3.1053.0",
     "@aws-sdk/client-ses": "^3.1053.0",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.1.1",

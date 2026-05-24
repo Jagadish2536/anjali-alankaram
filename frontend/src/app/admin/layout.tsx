@@ -16,6 +16,7 @@ import {
   Loader2,
   Bell,
   Tag,
+  CreditCard,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
@@ -28,6 +29,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Orders',        icon: ShoppingBag,      href: '/admin/orders',         roles: ['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER'] },
   { name: 'Customers',     icon: Users,             href: '/admin/customers',      roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Notifications', icon: Bell,              href: '/admin/notifications',  roles: ['ADMIN', 'SUPER_ADMIN'] },
+  { name: 'AWS Billing',   icon: CreditCard,        href: '/admin/billing',        roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Settings',      icon: Settings,          href: '/admin/settings',       roles: ['ADMIN', 'SUPER_ADMIN'] },
 ];
 
