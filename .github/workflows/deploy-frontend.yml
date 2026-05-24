@@ -35,28 +35,6 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    # ── Pre-deployment DB Snapshot ─────────────────────────────────────────
-    # Safety snapshot before every deployment. Kept 24h then auto-deleted.
-    - name: Snapshot RDS before deployment
-      id: snapshot
-      run: |
-        TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
-        SNAPSHOT_ID="pre-deploy-frontend-${TIMESTAMP}"
-        echo "snapshot_id=$SNAPSHOT_ID" >> $GITHUB_OUTPUT
-
-        echo "📸 Creating RDS snapshot: $SNAPSHOT_ID"
-        aws rds create-db-snapshot \
-          --db-instance-identifier ${{ env.RDS_INSTANCE }} \
-          --db-snapshot-identifier $SNAPSHOT_ID \
-          --region ${{ env.AWS_REGION }}
-
-        echo "⏳ Waiting for snapshot to be available..."
-        aws rds wait db-snapshot-available \
-          --db-snapshot-identifier $SNAPSHOT_ID \
-          --region ${{ env.AWS_REGION }}
-
-        echo "✅ Snapshot ready: $SNAPSHOT_ID"
-
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
@@ -120,31 +98,3 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
-
-    # ── Auto-delete snapshots older than 24 hours ──────────────────────────
-    - name: Cleanup old pre-deploy snapshots (keep 24h)
-      if: success()
-      run: |
-        echo "🧹 Cleaning up pre-deploy-frontend snapshots older than 24 hours..."
-
-        CUTOFF=$(date -u -d '24 hours ago' +%s 2>/dev/null || date -u -v-24H +%s)
-
-        SNAPSHOTS=$(aws rds describe-db-snapshots \
-          --region ${{ env.AWS_REGION }} \
-          --snapshot-type manual \
-          --query "DBSnapshots[?starts_with(DBSnapshotIdentifier, 'pre-deploy-frontend-')].{id:DBSnapshotIdentifier,time:SnapshotCreateTime}" \
-          --output json)
-
-        echo "$SNAPSHOTS" | jq -r '.[] | "\(.time) \(.id)"' | while read SNAP_TIME SNAP_ID; do
-          SNAP_EPOCH=$(date -u -d "$SNAP_TIME" +%s 2>/dev/null || echo 0)
-          if [ "$SNAP_EPOCH" -lt "$CUTOFF" ] && [ "$SNAP_EPOCH" -gt 0 ]; then
-            echo "🗑️  Deleting: $SNAP_ID"
-            aws rds delete-db-snapshot \
-              --db-snapshot-identifier "$SNAP_ID" \
-              --region ${{ env.AWS_REGION }}
-          else
-            echo "✅ Keeping: $SNAP_ID (within 24h)"
-          fi
-        done
-
-        echo "🧹 Cleanup complete"

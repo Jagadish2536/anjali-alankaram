@@ -506,7 +506,8 @@ export default function ProductDetailPage() {
         </button>
       </div>
 
-      <div className="container py-4">
+      {/* Extra padding so content isn't hidden behind sticky bars on mobile */}
+      <div className="container py-4 pb-[140px] md:pb-[80px]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
 
           {/* ── Images ─────────────────────────────────────────────────── */}
@@ -529,19 +530,29 @@ export default function ProductDetailPage() {
                   )}
                 </div>
 
-                {/* Touch swipe handlers */}
+                {/* Touch swipe handlers — overlay on top of image track */}
                 <div
-                  className="absolute inset-0"
-                  onTouchStart={e => { (e.currentTarget as any)._touchX = e.touches[0].clientX; }}
+                  className="absolute inset-0 z-10"
+                  onTouchStart={e => {
+                    const t = e.touches[0];
+                    (e.currentTarget as HTMLDivElement).dataset.touchX = String(t.clientX);
+                    (e.currentTarget as HTMLDivElement).dataset.touchY = String(t.clientY);
+                  }}
                   onTouchEnd={e => {
-                    const startX = (e.currentTarget as any)._touchX;
-                    if (startX === undefined) return;
-                    const diff = startX - e.changedTouches[0].clientX;
-                    if (Math.abs(diff) > 40) {
-                      if (diff > 0) setActiveImage(i => Math.min(i + 1, allImages.length - 1));
+                    const el = e.currentTarget as HTMLDivElement;
+                    const startX = Number(el.dataset.touchX ?? 0);
+                    const startY = Number(el.dataset.touchY ?? 0);
+                    const dx = startX - e.changedTouches[0].clientX;
+                    const dy = startY - e.changedTouches[0].clientY;
+                    // Only swipe if horizontal movement dominates
+                    if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                      if (dx > 0) setActiveImage(i => Math.min(i + 1, allImages.length - 1));
                       else setActiveImage(i => Math.max(i - 1, 0));
                     }
+                    delete el.dataset.touchX;
+                    delete el.dataset.touchY;
                   }}
+                  style={{ touchAction: 'pan-y' }}
                 />
 
                 {/* Discount badge */}
@@ -1135,8 +1146,51 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* ── Sticky bottom buy bar ─────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg py-2.5 px-4 flex items-center gap-3">
+      {/* ── Sticky bottom buy bar — shown on mobile only, above bottom nav ─── */}
+      <div className="md:hidden fixed bottom-[60px] left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border shadow-lg py-2.5 px-3 flex items-center gap-2">
+        {allImages[0] && (
+          <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
+            <Image src={allImages[0]} alt={product.name} fill className="object-cover" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-foreground line-clamp-1">{product.name}</p>
+          <p className="text-xs font-bold text-primary">₹ {Number(currentPrice).toLocaleString('en-IN')}</p>
+        </div>
+        {/* Variant selector */}
+        {product.variants?.length > 0 && selectedVariant && (
+          <select
+            value={selectedVariant.id}
+            onChange={e => setSelectedVariant(product.variants.find((v: any) => v.id === e.target.value))}
+            className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary shrink-0 max-w-[100px]"
+          >
+            {product.variants.map((v: any) => (
+              <option key={v.id} value={v.id} disabled={v.stock === 0}>
+                {v.size || v.color || 'Default'}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          onClick={handleBuyNow}
+          disabled={isBuyingNow || !selectedVariant || selectedVariant?.stock === 0}
+          className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 whitespace-nowrap"
+        >
+          {isBuyingNow ? 'Wait…' : 'Buy Now'}
+        </button>
+        <button
+          onClick={handleAddToCart}
+          disabled={isCartLoading || !selectedVariant || selectedVariant?.stock === 0}
+          className={`shrink-0 text-xs font-bold px-4 py-2.5 rounded-xl border-2 transition-colors disabled:opacity-50 whitespace-nowrap ${
+            addedToCart ? 'border-green-500 text-green-600 bg-green-50' : 'border-primary text-primary hover:bg-primary/5'
+          }`}
+        >
+          {addedToCart ? '✓ Added' : 'Cart'}
+        </button>
+      </div>
+
+      {/* ── Desktop sticky buy bar — hidden on mobile ─────────────────────── */}
+      <div className="hidden md:flex fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg py-2.5 px-4 items-center gap-3">
         {allImages[0] && (
           <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
             <Image src={allImages[0]} alt={product.name} fill className="object-cover" />
@@ -1145,7 +1199,6 @@ export default function ProductDetailPage() {
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground line-clamp-1">{product.name}</p>
         </div>
-        {/* Variant selector */}
         {product.variants?.length > 0 && selectedVariant && (
           <select
             value={selectedVariant.id}
@@ -1159,7 +1212,6 @@ export default function ProductDetailPage() {
             ))}
           </select>
         )}
-        {/* Quantity stepper */}
         <div className="flex items-center border border-border rounded-lg h-8 gap-0 shrink-0">
           <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-7 h-full flex items-center justify-center text-muted-foreground hover:text-foreground border-r border-border"><Minus className="w-3 h-3" /></button>
           <span className="w-7 text-center text-xs font-semibold">{quantity}</span>
