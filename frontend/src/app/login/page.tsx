@@ -15,9 +15,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   const redirectAfterLogin = (userObj: any, defaultUrl: string) => {
     let targetUrl = defaultUrl;
     if (targetUrl === '/profile' || targetUrl === '/admin' || targetUrl === '/admin/') {
-      if (['ADMIN', 'SUPER_ADMIN'].includes(userObj.role)) {
-        targetUrl = '/admin';
-      } else if (['ORDER_MANAGER', 'STOCK_MANAGER', 'WAREHOUSE_STAFF'].includes(userObj.role)) {
+      if (['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER', 'STOCK_MANAGER', 'WAREHOUSE_STAFF'].includes(userObj.role)) {
         targetUrl = '/';
       }
     }

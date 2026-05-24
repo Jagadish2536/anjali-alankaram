@@ -8,8 +8,10 @@ import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import {
   Plus, Edit2, Trash2, Search, AlertCircle, CheckCircle2,
-  Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink, AlertTriangle
+  Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink, AlertTriangle,
+  BarChart3, Printer, FileDown, RefreshCw, PackageCheck, PackageX
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 // ── Confirm Dialog ───────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }: {
@@ -70,6 +72,13 @@ export default function AdminProductsPage() {
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
+  // ── Inventory Report state ────────────────────────────────────────
+  const [showReport, setShowReport] = useState(false);
+  const [reportData, setReportData] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSearch, setReportSearch] = useState('');
+  const [reportFilter, setReportFilter] = useState<'all' | 'mismatch' | 'match'>('all');
+
   useEffect(() => {
     if (!isAuthenticated) return router.push('/login?returnUrl=/admin/products');
     const allowed = ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'];
@@ -96,6 +105,118 @@ export default function AdminProductsPage() {
       const { data } = await api.get('/categories');
       setCategories(Array.isArray(data) ? data : data.data || []);
     } catch (e) {}
+  };
+
+  // ── Inventory Report functions ────────────────────────────────────
+  const fetchInventoryReport = async () => {
+    setReportLoading(true);
+    try {
+      const { data } = await api.get('/admin/inventory-report');
+      setReportData(data);
+    } catch (e) {
+      console.error('Failed to fetch inventory report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const openReport = async () => {
+    setShowReport(true);
+    setReportSearch('');
+    setReportFilter('all');
+    if (!reportData) await fetchInventoryReport();
+  };
+
+  const downloadExcel = () => {
+    if (!reportData) return;
+    const rows = reportData.rows.map((r: any) => ({
+      'Product Name': r.productName,
+      'Category': r.category,
+      'SKU': r.sku,
+      'Size': r.size,
+      'Colour': r.color,
+      'Online Stock': r.onlineStock,
+      'Reserved Stock': r.reservedStock,
+      'Available Stock': r.availableStock,
+      'Warehouse Stock': r.warehouseStock,
+      'Variance (WH - Online)': r.variance,
+      'Status': r.isMatch ? 'MATCH ✓' : 'MISMATCH ⚠',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Auto column widths
+    const colWidths = Object.keys(rows[0] || {}).map(key => ({
+      wch: Math.max(key.length, 15)
+    }));
+    ws['!cols'] = colWidths;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory Report');
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `inventory-report-${dateStr}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    const rows = reportData?.rows || [];
+    const generatedAt = reportData?.generatedAt
+      ? new Date(reportData.generatedAt).toLocaleString('en-IN')
+      : '';
+    const tableRows = rows
+      .map((r: any) => `
+        <tr class="${r.isMatch ? '' : 'mismatch'}">
+          <td>${r.productName}</td>
+          <td>${r.category}</td>
+          <td>${r.sku}</td>
+          <td>${r.size}${r.color ? ' / ' + r.color : ''}</td>
+          <td>${r.onlineStock}</td>
+          <td>${r.reservedStock}</td>
+          <td>${r.availableStock}</td>
+          <td>${r.warehouseStock}</td>
+          <td class="${r.variance !== 0 ? (r.variance > 0 ? 'pos' : 'neg') : ''}">${r.variance > 0 ? '+' : ''}${r.variance}</td>
+          <td class="status">${r.isMatch ? '✓ Match' : '⚠ Mismatch'}</td>
+        </tr>`
+      )
+      .join('');
+
+    const html = `<!DOCTYPE html><html><head><title>Inventory Report</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 10px; margin: 20px; }
+        h1 { font-size: 16px; margin-bottom: 4px; }
+        p.meta { color: #666; font-size: 9px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a1a2e; color: white; padding: 6px 8px; text-align: left; font-size: 9px; }
+        td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; }
+        tr.mismatch td { background: #fff7ed; }
+        td.status { font-weight: bold; }
+        tr:not(.mismatch) td.status { color: #16a34a; }
+        tr.mismatch td.status { color: #d97706; }
+        td.pos { color: #16a34a; font-weight: bold; }
+        td.neg { color: #dc2626; font-weight: bold; }
+        .summary { display: flex; gap: 24px; margin-bottom: 16px; }
+        .card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 14px; min-width: 100px; }
+        .card h3 { font-size: 18px; margin: 0; }
+        .card p { font-size: 8px; color: #666; margin: 2px 0 0; }
+      </style></head><body>
+      <h1>📦 Inventory Report — Anjali Alankaram</h1>
+      <p class="meta">Generated: ${generatedAt} &nbsp;|&nbsp; Total Variants: ${reportData?.summary?.totalVariants || 0} &nbsp;|&nbsp; Mismatches: ${reportData?.summary?.mismatches || 0}</p>
+      <div class="summary">
+        <div class="card"><h3>${reportData?.summary?.totalVariants || 0}</h3><p>Total Variants</p></div>
+        <div class="card"><h3 style="color:#16a34a">${reportData?.summary?.matches || 0}</h3><p>Matched</p></div>
+        <div class="card"><h3 style="color:#d97706">${reportData?.summary?.mismatches || 0}</h3><p>Mismatched</p></div>
+        <div class="card"><h3>${reportData?.summary?.totalOnlineStock || 0}</h3><p>Total Online Stock</p></div>
+        <div class="card"><h3>${reportData?.summary?.totalWarehouseStock || 0}</h3><p>Total Warehouse Stock</p></div>
+      </div>
+      <table><thead><tr>
+        <th>Product</th><th>Category</th><th>SKU</th><th>Size / Colour</th>
+        <th>Online Stock</th><th>Reserved</th><th>Available</th>
+        <th>Warehouse Stock</th><th>Variance</th><th>Status</th>
+      </tr></thead><tbody>${tableRows}</tbody></table>
+      </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
   };
 
   const toggleFeature = async (productId: string, field: 'isNewArrival' | 'isFeatured' | 'isBestseller', currentValue: boolean) => {
@@ -233,12 +354,19 @@ export default function AdminProductsPage() {
           <h1 className="text-3xl font-outfit font-bold text-foreground">Catalogue Management</h1>
           <p className="text-muted-foreground mt-1">Manage inventory, mark new arrivals, and track out-of-stock items.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3 flex-wrap">
           <button
             onClick={() => fetchProducts(true)}
-            className="px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors"
+            className="px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors flex items-center gap-2"
           >
-            Refresh
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+          <button
+            id="inventory-report-btn"
+            onClick={openReport}
+            className="px-5 py-2.5 rounded-lg border-2 border-amber-400 bg-amber-50 text-amber-800 font-bold flex items-center gap-2 hover:bg-amber-100 transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" /> Inventory Report
           </button>
           <Link href="/admin/products/new" className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors">
             <Plus className="w-5 h-5" /> Add New Product
@@ -704,6 +832,183 @@ export default function AdminProductsPage() {
           </table>
         </div>
       </div>
+
+      {/* ── Inventory Report Modal ──────────────────────────────── */}
+      {showReport && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-6">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-outfit font-black">Inventory Report</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {reportData ? `${reportData.summary.totalVariants} variants · Generated ${new Date(reportData.generatedAt).toLocaleString('en-IN')}` : 'Online Stock vs Warehouse Stock'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchInventoryReport}
+                  disabled={reportLoading}
+                  className="p-2 rounded-lg border hover:bg-muted transition-colors disabled:opacity-50"
+                  title="Refresh report"
+                >
+                  <RefreshCw className={`w-4 h-4 ${reportLoading ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={downloadExcel}
+                  disabled={!reportData}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors disabled:opacity-40"
+                  id="download-excel-btn"
+                >
+                  <FileDown className="w-4 h-4" /> Excel
+                </button>
+                <button
+                  onClick={handlePrint}
+                  disabled={!reportData}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-40"
+                  id="print-report-btn"
+                >
+                  <Printer className="w-4 h-4" /> Print
+                </button>
+                <button onClick={() => setShowReport(false)} className="p-2 rounded-lg hover:bg-muted transition-colors ml-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            {reportData && (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5 border-b bg-muted/5">
+                {[
+                  { label: 'Total Variants', value: reportData.summary.totalVariants, color: 'text-foreground' },
+                  { label: 'Matched', value: reportData.summary.matches, color: 'text-green-600' },
+                  { label: 'Mismatched', value: reportData.summary.mismatches, color: 'text-amber-600' },
+                  { label: 'Online Stock Total', value: reportData.summary.totalOnlineStock, color: 'text-blue-600' },
+                  { label: 'Warehouse Stock Total', value: reportData.summary.totalWarehouseStock, color: 'text-purple-600' },
+                ].map(card => (
+                  <div key={card.label} className="bg-white border rounded-xl p-4 text-center shadow-sm">
+                    <p className={`text-2xl font-outfit font-black ${card.color}`}>{card.value}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 font-medium">{card.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 p-5 border-b">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search SKU, product, size..."
+                  value={reportSearch}
+                  onChange={e => setReportSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div className="flex gap-2">
+                {(['all', 'match', 'mismatch'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setReportFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                      reportFilter === f
+                        ? f === 'mismatch' ? 'bg-amber-500 text-white border-amber-500'
+                          : f === 'match' ? 'bg-green-500 text-white border-green-500'
+                          : 'bg-primary text-primary-foreground border-primary'
+                        : 'hover:bg-muted border-border'
+                    }`}
+                  >
+                    {f === 'all' ? 'All Variants' : f === 'match' ? '✓ Matched' : '⚠ Mismatched'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-auto" style={{ maxHeight: '50vh' }}>
+              {reportLoading ? (
+                <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
+                  <Loader2 className="w-7 h-7 animate-spin text-amber-500" />
+                  <p className="text-sm">Loading inventory data...</p>
+                </div>
+              ) : reportData && (() => {
+                const filtered = reportData.rows.filter((r: any) => {
+                  const q = reportSearch.toLowerCase();
+                  const matchesSearch = !q || r.productName.toLowerCase().includes(q) ||
+                    r.sku.toLowerCase().includes(q) || r.size.toLowerCase().includes(q) ||
+                    (r.color || '').toLowerCase().includes(q) || r.category.toLowerCase().includes(q);
+                  const matchesFilter = reportFilter === 'all' ||
+                    (reportFilter === 'match' && r.isMatch) ||
+                    (reportFilter === 'mismatch' && !r.isMatch);
+                  return matchesSearch && matchesFilter;
+                });
+
+                if (filtered.length === 0) return (
+                  <div className="text-center py-16 text-muted-foreground text-sm">No variants found matching your filters.</div>
+                );
+
+                return (
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-gray-900 text-white">
+                        {['Product', 'Category', 'SKU', 'Size / Colour', 'Online Stock', 'Reserved', 'Available', 'Warehouse Stock', 'Variance', 'Status'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {filtered.map((r: any, i: number) => (
+                        <tr key={i} className={`transition-colors ${
+                          r.isMatch ? 'hover:bg-green-50/40' : 'bg-amber-50 hover:bg-amber-100/60'
+                        }`}>
+                          <td className="px-4 py-3 font-medium max-w-[180px] truncate" title={r.productName}>{r.productName}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{r.category}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{r.sku}</td>
+                          <td className="px-4 py-3">
+                            <span className="font-medium">{r.size}</span>
+                            {r.color && <span className="text-muted-foreground"> / {r.color}</span>}
+                          </td>
+                          <td className="px-4 py-3 font-bold text-center">{r.onlineStock}</td>
+                          <td className="px-4 py-3 text-center text-orange-600">{r.reservedStock}</td>
+                          <td className="px-4 py-3 text-center text-blue-600 font-medium">{r.availableStock}</td>
+                          <td className="px-4 py-3 font-bold text-center">{r.warehouseStock}</td>
+                          <td className={`px-4 py-3 text-center font-bold ${
+                            r.variance === 0 ? 'text-muted-foreground'
+                            : r.variance > 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {r.variance > 0 ? '+' : ''}{r.variance}
+                          </td>
+                          <td className="px-4 py-3">
+                            {r.isMatch ? (
+                              <span className="flex items-center gap-1 text-green-700 font-bold">
+                                <PackageCheck className="w-3.5 h-3.5" /> Match
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-amber-700 font-bold">
+                                <PackageX className="w-3.5 h-3.5" /> Mismatch
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+
+            <div className="p-4 border-t text-xs text-muted-foreground text-right">
+              Variance = Warehouse Stock − Online Stock &nbsp;·&nbsp; Positive variance means more stock in warehouse than online
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

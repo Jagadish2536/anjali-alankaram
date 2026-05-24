@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -10,13 +10,17 @@ import {
   GetCostAndUsageCommand,
   GetCostAndUsageCommandInput,
 } from '@aws-sdk/client-cost-explorer';
+import { Cron } from '@nestjs/schedule';
+import axios from 'axios';
 
 @ApiTags('Admin')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'SUPER_ADMIN')
 @ApiBearerAuth()
-export class AdminController {
+export class AdminController implements OnModuleInit {
+  private readonly logger = new Logger(AdminController.name);
+  private usdToInrRate = 83.5; // default fallback
   private costExplorer: CostExplorerClient;
 
   constructor(
@@ -38,6 +42,32 @@ export class AdminController {
     }
 
     this.costExplorer = new CostExplorerClient(clientConfig);
+  }
+
+  async onModuleInit() {
+    await this.updateExchangeRate();
+  }
+
+  @Cron('0 1 * * 0') // Every Sunday at 1:00 AM
+  async handleWeeklyExchangeRateUpdate() {
+    this.logger.log('Starting scheduled weekly exchange rate update...');
+    await this.updateExchangeRate();
+  }
+
+  private async updateExchangeRate() {
+    try {
+      this.logger.log('Fetching live USD to INR exchange rate...');
+      const response = await axios.get('https://open.er-api.com/v6/latest/USD', { timeout: 5000 });
+      const rate = response.data?.rates?.INR;
+      if (rate && typeof rate === 'number') {
+        this.usdToInrRate = rate;
+        this.logger.log(`Exchange rate updated successfully. 1 USD = ${rate} INR`);
+      } else {
+        this.logger.warn(`Invalid response format from exchange rate API. Keeping rate: ${this.usdToInrRate}`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to fetch live exchange rate: ${err.message}. Keeping rate: ${this.usdToInrRate}`);
+    }
   }
 
   @Get('dashboard')
@@ -192,24 +222,35 @@ export class AdminController {
       const command = new GetCostAndUsageCommand(input);
       const response = await this.costExplorer.send(command);
 
+      const USD_TO_INR = this.usdToInrRate;
       const billing = (response.ResultsByTime || []).map((result) => {
         const periodStart = result.TimePeriod?.Start || '';
         const d = new Date(periodStart + 'T00:00:00Z');
         const label = d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 
-        const services = (result.Groups || []).map((g) => ({
-          name: g.Keys?.[0] || 'Other',
-          cost: Number(g.Metrics?.BlendedCost?.Amount || 0),
-          unit: g.Metrics?.BlendedCost?.Unit || 'USD',
-        })).filter(s => s.cost > 0).sort((a, b) => b.cost - a.cost);
+        const services = (result.Groups || []).map((g) => {
+          const costInUsd = Number(g.Metrics?.BlendedCost?.Amount || 0);
+          return {
+            name: g.Keys?.[0] || 'Other',
+            cost: Number((costInUsd * USD_TO_INR).toFixed(2)),
+            unit: 'INR',
+          };
+        }).filter(s => s.cost > 0).sort((a, b) => b.cost - a.cost);
 
         const totalCost = services.reduce((sum, s) => sum + s.cost, 0);
+
+        // Current calendar month is Unpaid (accruing/pending payment).
+        // Past months are Paid.
+        const now = new Date();
+        const isCurrentMonth = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        const status = isCurrentMonth ? 'Unpaid' : 'Paid';
 
         return {
           period: periodStart,
           label,
-          totalCost: Number(totalCost.toFixed(4)),
-          currency: 'USD',
+          totalCost: Number(totalCost.toFixed(2)),
+          currency: 'INR',
+          status,
           services,
         };
       });
@@ -224,11 +265,11 @@ export class AdminController {
       return {
         success: true,
         summary: {
-          grandTotal: Number(grandTotal.toFixed(4)),
-          currentMonthCost: Number(currentMonthCost.toFixed(4)),
-          lastMonthCost: Number(lastMonthCost.toFixed(4)),
+          grandTotal: Number(grandTotal.toFixed(2)),
+          currentMonthCost: Number(currentMonthCost.toFixed(2)),
+          lastMonthCost: Number(lastMonthCost.toFixed(2)),
           trend,
-          currency: 'USD',
+          currency: 'INR',
           accountId: this.config.get('AWS_ACCOUNT_ID') || null,
           region: this.config.get('AWS_REGION') || 'ap-south-2',
         },
@@ -243,4 +284,75 @@ export class AdminController {
       };
     }
   }
+
+  @Get('inventory-report')
+  @ApiOperation({ summary: 'Get inventory report comparing online stock vs warehouse stock' })
+  async getInventoryReport() {
+    // Fetch all active variants with product + warehouse inventory
+    const variants = await this.prisma.productVariant.findMany({
+      where: { isActive: true },
+      include: {
+        product: {
+          select: {
+            name: true,
+            status: true,
+            category: { select: { name: true } },
+          },
+        },
+        warehouseInventory: {
+          select: { quantity: true, reserved: true },
+        },
+      },
+      orderBy: [
+        { product: { name: 'asc' } },
+        { size: 'asc' },
+        { color: 'asc' },
+      ],
+    });
+
+    const rows = variants.map((v) => {
+      const warehouseStock = v.warehouseInventory.reduce(
+        (sum, wi) => sum + wi.quantity,
+        0,
+      );
+      const onlineStock = v.stock;
+      const reservedStock = v.reservedStock;
+      const availableStock = Math.max(0, onlineStock - reservedStock);
+      const isMatch = onlineStock === warehouseStock;
+
+      return {
+        productName: v.product.name,
+        category: v.product.category?.name || '',
+        productStatus: v.product.status,
+        sku: v.sku,
+        size: v.size,
+        color: v.color || '',
+        colorHex: v.colorHex || '',
+        onlineStock,
+        reservedStock,
+        availableStock,
+        warehouseStock,
+        isMatch,
+        variance: warehouseStock - onlineStock,
+      };
+    });
+
+    const totalVariants = rows.length;
+    const mismatches = rows.filter((r) => !r.isMatch).length;
+    const totalOnlineStock = rows.reduce((sum, r) => sum + r.onlineStock, 0);
+    const totalWarehouseStock = rows.reduce((sum, r) => sum + r.warehouseStock, 0);
+
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalVariants,
+        mismatches,
+        matches: totalVariants - mismatches,
+        totalOnlineStock,
+        totalWarehouseStock,
+      },
+      rows,
+    };
+  }
 }
+

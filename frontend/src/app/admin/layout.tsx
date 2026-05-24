@@ -17,6 +17,7 @@ import {
   Bell,
   Tag,
   CreditCard,
+  Globe,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
@@ -143,6 +144,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const NavItems = ({ collapsed = false }: { collapsed?: boolean }) => (
     <nav className="flex-1 py-4 px-2 space-y-1">
+      <Link
+        href="/"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 mb-2"
+      >
+        <Globe className="w-5 h-5 shrink-0" />
+        {!collapsed && <span className="font-bold text-sm">View Store</span>}
+      </Link>
+      <div className="border-b border-gray-100 my-2 mx-2" />
       {sidebarItems.map((item) => {
         const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
         const Icon = item.icon;

@@ -2,14 +2,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import {
-  Cloud, DollarSign, TrendingUp, TrendingDown, RefreshCw,
+  Cloud, IndianRupee, TrendingUp, TrendingDown, RefreshCw,
   AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Server,
   BarChart3, Loader2, CreditCard,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
-function usd(amount: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(amount);
+function inr(amount: number) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 }
 
 // ── Mini bar chart ───────────────────────────────────────────────────
@@ -27,7 +27,7 @@ function TinyBarChart({ data }: { data: { label: string; totalCost: number }[] }
               style={{ height: '100%' }}
             />
             <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 whitespace-nowrap bg-white shadow px-1 rounded">
-              {usd(d.totalCost)}
+              {inr(d.totalCost)}
             </span>
           </div>
           <span className="text-[8px] text-muted-foreground rotate-[-35deg] translate-y-1 whitespace-nowrap">{d.label.split(' ')[0]}</span>
@@ -46,7 +46,7 @@ function ServiceRow({ name, cost, pct }: { name: string; cost: number; pct: numb
           <Server className="w-3.5 h-3.5 text-primary shrink-0" />
           <span className="text-xs font-medium truncate">{name}</span>
         </div>
-        <span className="text-xs font-bold ml-4 shrink-0">{usd(cost)}</span>
+        <span className="text-xs font-bold ml-4 shrink-0">{inr(cost)}</span>
       </div>
       <div className="h-1 bg-muted/30 rounded-full overflow-hidden">
         <div className="h-full bg-primary/60 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -73,11 +73,21 @@ function MonthCard({ month }: { month: any }) {
           </div>
           <div className="text-left">
             <p className="font-bold text-sm">{month.label}</p>
-            <p className="text-xs text-muted-foreground">{month.services.length} AWS service{month.services.length !== 1 ? 's' : ''}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-muted-foreground">{month.services.length} AWS service{month.services.length !== 1 ? 's' : ''}</span>
+              <span className="text-[10px] text-muted-foreground">•</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                month.status === 'Paid'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {month.status || 'Paid'}
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-black text-base text-primary">{usd(month.totalCost)}</span>
+          <span className="font-black text-base text-primary">{inr(month.totalCost)}</span>
           {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </div>
       </button>
@@ -186,26 +196,28 @@ export default function AdminBillingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-green-50 text-green-600">
-                  <DollarSign className="w-5 h-5" />
+                <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
+                  <IndianRupee className="w-5 h-5" />
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Unpaid
+                </span>
               </div>
               <p className="text-xs text-muted-foreground font-medium">This Month</p>
-              <h3 className="text-xl font-outfit font-black mt-0.5">{usd(data.summary.currentMonthCost)}</h3>
+              <h3 className="text-xl font-outfit font-black mt-0.5">{inr(data.summary.currentMonthCost)}</h3>
             </div>
 
             <div className="bg-white border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
-                  <BarChart3 className="w-5 h-5" />
+                <div className="p-2.5 rounded-xl bg-green-50 text-green-600">
+                  <IndianRupee className="w-5 h-5" />
                 </div>
-                {data.summary.trend > 0
-                  ? <TrendingUp className="w-4 h-4 text-red-400" />
-                  : <TrendingDown className="w-4 h-4 text-green-400" />}
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+                  Paid
+                </span>
               </div>
               <p className="text-xs text-muted-foreground font-medium">Last Month</p>
-              <h3 className="text-xl font-outfit font-black mt-0.5">{usd(data.summary.lastMonthCost)}</h3>
+              <h3 className="text-xl font-outfit font-black mt-0.5">{inr(data.summary.lastMonthCost)}</h3>
               {data.summary.trend !== 0 && (
                 <p className={`text-[10px] font-bold mt-1 ${data.summary.trend > 0 ? 'text-red-500' : 'text-green-600'}`}>
                   {data.summary.trend > 0 ? '+' : ''}{data.summary.trend}% vs last month
@@ -216,12 +228,12 @@ export default function AdminBillingPage() {
             <div className="col-span-2 bg-white border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600">
-                  <Cloud className="w-5 h-5" />
+                  <IndianRupee className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">12 months</span>
               </div>
               <p className="text-xs text-muted-foreground font-medium">Total Billed (12 months)</p>
-              <h3 className="text-2xl font-outfit font-black mt-0.5">{usd(data.summary.grandTotal)}</h3>
+              <h3 className="text-2xl font-outfit font-black mt-0.5">{inr(data.summary.grandTotal)}</h3>
               {data.summary.accountId && (
                 <p className="text-[10px] text-muted-foreground mt-1">Account: {data.summary.accountId} · Region: {data.summary.region}</p>
               )}
@@ -234,7 +246,7 @@ export default function AdminBillingPage() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="font-outfit font-bold text-base">Monthly Cost Trend</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Blended cost per month (USD)</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Blended cost per month (INR)</p>
                 </div>
                 <TrendingUp className="w-5 h-5 text-primary" />
               </div>
