@@ -113,29 +113,30 @@ function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; in
         delete el.dataset.lbX;
       }}
     >
-      {/* Close button */}
+      {/* Close button — large, solid, always visible, safe-area aware */}
       <button
-        className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10"
+        className="absolute top-safe right-4 w-12 h-12 rounded-full bg-black/70 border border-white/20 flex items-center justify-center z-[210] shadow-xl"
+        style={{ top: 'max(env(safe-area-inset-top, 0px) + 12px, 20px)' }}
         onClick={e => { e.stopPropagation(); onClose(); }}
         aria-label="Close"
       >
         <X className="w-6 h-6 text-white" />
       </button>
 
-      {/* Counter */}
-      <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium z-10 select-none">
+      {/* Counter — offset right to not clash with close button */}
+      <div className="absolute top-5 left-4 text-white/70 text-sm font-medium z-10 select-none bg-black/40 px-3 py-1 rounded-full">
         {current + 1} / {images.length}
       </div>
 
       {/* Main image */}
       <div
-        className="relative w-full max-w-2xl px-12 md:px-16 flex items-center justify-center"
+        className="relative w-full max-w-2xl px-8 md:px-16 flex items-center justify-center"
         style={{ maxHeight: '80vh' }}
         onClick={e => e.stopPropagation()}
       >
         {images.length > 1 && (
           <button
-            className="absolute left-1 md:left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10"
+            className="absolute left-0 md:left-2 w-10 h-10 rounded-full bg-black/50 border border-white/20 flex items-center justify-center transition-colors z-10"
             onClick={() => setCurrent(c => (c - 1 + images.length) % images.length)}
             aria-label="Previous image"
           >
@@ -159,7 +160,7 @@ function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; in
 
         {images.length > 1 && (
           <button
-            className="absolute right-1 md:right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10"
+            className="absolute right-0 md:right-2 w-10 h-10 rounded-full bg-black/50 border border-white/20 flex items-center justify-center transition-colors z-10"
             onClick={() => setCurrent(c => (c + 1) % images.length)}
             aria-label="Next image"
           >
@@ -190,9 +191,12 @@ function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; in
         </div>
       )}
 
-      {/* Swipe hint on first open (mobile) */}
-      <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/30 text-xs md:hidden select-none">
-        ← Swipe to browse · Tap outside to close →
+      {/* Swipe hint on mobile — safe-area aware bottom */}
+      <p
+        className="absolute text-white/30 text-xs md:hidden select-none left-1/2 -translate-x-1/2"
+        style={{ bottom: 'max(env(safe-area-inset-bottom, 0px) + 8px, 16px)' }}
+      >
+        ← Swipe images · Tap outside to close →
       </p>
     </div>
   );
@@ -624,10 +628,9 @@ export default function ProductDetailPage() {
                   style={{ touchAction: 'pan-y' }}
                 />
 
-                {/* Expand/zoom hint icon */}
-                <div className="absolute bottom-3 left-3 bg-black/30 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 pointer-events-none z-20">
-                  <Eye className="w-3 h-3 text-white" />
-                  <span className="text-white text-[10px] font-medium">Tap to expand</span>
+                {/* Expand hint icon — only shown on first view, subtle corner icon */}
+                <div className="absolute bottom-3 left-3 bg-black/25 backdrop-blur-sm rounded-full p-1.5 pointer-events-none z-20 opacity-60">
+                  <Eye className="w-3.5 h-3.5 text-white" />
                 </div>
 
                 {/* Discount badge */}
