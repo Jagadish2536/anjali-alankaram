@@ -1,0 +1,80 @@
+name: Cleanup Old Pre-Deploy Snapshots
+
+# Runs every day at midnight IST (18:30 UTC) regardless of deployments.
+# Deletes all pre-deploy-* RDS snapshots older than 24 hours.
+# This ensures no stale snapshots accumulate even if no deployment happens.
+
+on:
+  schedule:
+    - cron: '30 18 * * *'   # 18:30 UTC = 12:00 AM IST daily
+
+  # Allow manual trigger from GitHub Actions UI if needed
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-2
+  RDS_INSTANCE: anjali-alankaram-db-wiped
+
+jobs:
+  cleanup:
+    name: Delete snapshots older than 24h
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Delete pre-deploy snapshots older than 24 hours
+      run: |
+        echo "🧹 Daily cleanup — $(date -u '+%Y-%m-%d %H:%M UTC')"
+        echo "Scanning for pre-deploy-* snapshots older than 24 hours..."
+
+        # Cutoff = now minus 24 hours
+        CUTOFF=$(date -u -d '24 hours ago' +%s)
+
+        # Fetch all manual pre-deploy snapshots
+        SNAPSHOTS=$(aws rds describe-db-snapshots \
+          --region ${{ env.AWS_REGION }} \
+          --snapshot-type manual \
+          --query "DBSnapshots[?starts_with(DBSnapshotIdentifier, 'pre-deploy-')].{id:DBSnapshotIdentifier,time:SnapshotCreateTime,status:Status}" \
+          --output json)
+
+        TOTAL=$(echo "$SNAPSHOTS" | jq length)
+        echo "Found $TOTAL pre-deploy snapshot(s) total"
+
+        if [ "$TOTAL" -eq 0 ]; then
+          echo "✅ No pre-deploy snapshots found. Nothing to clean up."
+          exit 0
+        fi
+
+        DELETED=0
+        KEPT=0
+
+        echo "$SNAPSHOTS" | jq -r '.[] | "\(.time) \(.id) \(.status)"' | while read SNAP_TIME SNAP_ID SNAP_STATUS; do
+          # Parse snapshot creation time to epoch
+          SNAP_EPOCH=$(date -u -d "$SNAP_TIME" +%s 2>/dev/null || echo 0)
+
+          if [ "$SNAP_EPOCH" -eq 0 ]; then
+            echo "⚠️  Could not parse time for $SNAP_ID — skipping"
+            continue
+          fi
+
+          AGE_HOURS=$(( ($(date -u +%s) - SNAP_EPOCH) / 3600 ))
+
+          if [ "$SNAP_EPOCH" -lt "$CUTOFF" ]; then
+            echo "🗑️  Deleting: $SNAP_ID (age: ${AGE_HOURS}h, status: $SNAP_STATUS)"
+            aws rds delete-db-snapshot \
+              --db-snapshot-identifier "$SNAP_ID" \
+              --region ${{ env.AWS_REGION }}
+            echo "   ✅ Deleted"
+          else
+            echo "✅ Keeping: $SNAP_ID (age: ${AGE_HOURS}h — within 24h window)"
+          fi
+        done
+
+        echo ""
+        echo "🧹 Daily cleanup complete"
