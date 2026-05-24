@@ -23,6 +23,7 @@ import { BannersModule } from './banners/banners.module';
 import { RedisModule } from './redis/redis.module';
 import { SettingsModule } from './settings/settings.module';
 import { WarehouseModule } from './warehouse/warehouse.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { WarehouseModule } from './warehouse/warehouse.module';
     BannersModule,
     SettingsModule,
     WarehouseModule,
+    EmailModule,
   ],
 })
 export class AppModule {}

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import * as crypto from 'crypto';
@@ -19,6 +20,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private notificationsService: NotificationsService,
+    private emailService: EmailService,
   ) {}
 
   // ── OTP Auth ──────────────────────────────────────────
@@ -322,11 +324,12 @@ export class AuthService {
       },
     });
 
-    // Send via SMS or log to console
+    // Send via SMS or email
     if (isPhone) {
       await this.sendSmsViaMSG91(formattedPhone.replace('+91', ''), code);
     } else {
-      console.log(`[DEV] Forgot Password OTP for ${formattedEmail}: ${code}`);
+      // Send via AWS SES
+      await this.emailService.sendOtpEmail(formattedEmail, code, 'reset');
     }
 
     return { message: 'Reset code sent successfully' };

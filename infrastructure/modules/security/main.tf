@@ -176,3 +176,16 @@ resource "aws_iam_role_policy" "ecs_s3_access" {
     ]
   })
 }
+# -- AWS SES: Allow ECS tasks to send transactional emails --
+resource "aws_iam_role_policy" "ecs_ses_access" {
+  name = "${var.project_name}-ecs-ses-policy"
+  role = aws_iam_role.ecs_task_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = "*"
+    }]
+  })
+}

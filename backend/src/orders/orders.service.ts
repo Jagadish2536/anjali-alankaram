@@ -6,6 +6,7 @@ import { CartService } from '../cart/cart.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusHistoryService } from './order-status-history.service';
 import { InventoryService } from './inventory.service';
@@ -23,6 +24,7 @@ export class OrdersService {
     private notificationsService: NotificationsService,
     private statusHistory: OrderStatusHistoryService,
     private inventory: InventoryService,
+    private emailService: EmailService,
   ) {}
 
   // ─────────────────────────────────────────────
@@ -194,6 +196,29 @@ export class OrdersService {
         customerName: address.name || 'Customer',
       })
       .catch(() => {});
+
+    // Email confirmation via AWS SES
+    this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+      .then(user => {
+        if (user?.email) {
+          this.emailService.sendOrderConfirmation(user.email, {
+            customerName: user.name || 'Customer',
+            orderNumber,
+            items: order.items.map((i: any) => ({
+              name: i.productName,
+              size: i.variantInfo?.size || '',
+              qty: i.quantity,
+              price: Number(i.unitPrice),
+            })),
+            subtotal: Number(order.subtotal),
+            discount: Number(order.discountAmount),
+            shipping: Number(order.shippingCharge),
+            total: Number(order.totalAmount),
+            paymentMethod: dto.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online Payment',
+            address: `${address.name}, ${address.addressLine1}, ${address.city} - ${address.pincode}`,
+          }).catch(() => {});
+        }
+      }).catch(() => {});
 
     if (dto.paymentMethod === 'COD') {
       this.shippingService.createShipment(order.id).catch(console.error);
@@ -447,6 +472,34 @@ export class OrdersService {
       await this.notificationsService
         .sendOrderNotification(order.userId, notifType as any, id, order.orderNumber)
         .catch(() => {});
+    }
+
+    // AWS SES transactional emails per status
+    if (order.user?.email) {
+      const email = order.user.email;
+      const name = order.user.name || 'Customer';
+      const orderNum = order.orderNumber;
+
+      if (toStatus === 'SHIPPED') {
+        this.emailService.sendOrderShipped(email, {
+          customerName: name,
+          orderNumber: orderNum,
+          courier: extra?.courierName || 'Courier Partner',
+          awbCode: extra?.awbCode || 'N/A',
+          trackingUrl: extra?.trackingUrl,
+        }).catch(() => {});
+      } else if (toStatus === 'DELIVERED') {
+        this.emailService.sendOrderDelivered(email, {
+          customerName: name,
+          orderNumber: orderNum,
+        }).catch(() => {});
+      } else if (toStatus === 'CANCELLED') {
+        this.emailService.sendOrderCancelled(email, {
+          customerName: name,
+          orderNumber: orderNum,
+          reason: extra?.cancelReason,
+        }).catch(() => {});
+      }
     }
 
     return updated;
