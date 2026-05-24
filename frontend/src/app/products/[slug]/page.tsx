@@ -75,71 +75,125 @@ function FaqAccordion() {
   );
 }
 
-// ── Image Lightbox Modal ──────────────────────────────────────────────────
+// ── Image Lightbox Modal ────────────────────────────────────────────────────
 function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; initialIndex: number; onClose: () => void }) {
   const [current, setCurrent] = useState(initialIndex);
 
+  // Keyboard navigation + body scroll lock
   useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowRight') setCurrent(c => (c + 1) % images.length);
       if (e.key === 'ArrowLeft') setCurrent(c => (c - 1 + images.length) % images.length);
     };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      document.body.style.overflow = prev;
+    };
   }, [images.length, onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[200] bg-black/97 flex flex-col items-center justify-center"
+      onClick={onClose}
+      // Touch swipe inside lightbox
+      onTouchStart={e => {
+        (e.currentTarget as HTMLDivElement).dataset.lbX = String(e.touches[0].clientX);
+      }}
+      onTouchEnd={e => {
+        const el = e.currentTarget as HTMLDivElement;
+        const dx = Number(el.dataset.lbX ?? 0) - e.changedTouches[0].clientX;
+        if (Math.abs(dx) > 40) {
+          if (dx > 0) setCurrent(c => (c + 1) % images.length);
+          else setCurrent(c => (c - 1 + images.length) % images.length);
+        }
+        delete el.dataset.lbX;
+      }}
+    >
       {/* Close button */}
-      <button className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors" onClick={onClose}>
+      <button
+        className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10"
+        onClick={e => { e.stopPropagation(); onClose(); }}
+        aria-label="Close"
+      >
         <X className="w-6 h-6 text-white" />
       </button>
 
       {/* Counter */}
-      <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium">
+      <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium z-10 select-none">
         {current + 1} / {images.length}
       </div>
 
       {/* Main image */}
-      <div className="relative w-full max-w-3xl max-h-[80vh] flex items-center justify-center px-16" onClick={e => e.stopPropagation()}>
+      <div
+        className="relative w-full max-w-2xl px-12 md:px-16 flex items-center justify-center"
+        style={{ maxHeight: '80vh' }}
+        onClick={e => e.stopPropagation()}
+      >
         {images.length > 1 && (
           <button
-            className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors"
+            className="absolute left-1 md:left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10"
             onClick={() => setCurrent(c => (c - 1 + images.length) % images.length)}
+            aria-label="Previous image"
           >
-            <span className="text-white text-xl">‹</span>
+            <span className="text-white text-2xl leading-none">‹</span>
           </button>
         )}
-        <div className="relative w-full" style={{ aspectRatio: '3/4', maxHeight: '80vh' }}>
-          <Image src={images[current]} alt={`Image ${current + 1}`} fill className="object-contain" priority />
+
+        <div
+          className="relative w-full transition-opacity duration-200"
+          style={{ aspectRatio: '3/4', maxHeight: '78vh' }}
+        >
+          <Image
+            src={images[current]}
+            alt={`Image ${current + 1}`}
+            fill
+            className="object-contain select-none"
+            priority
+            draggable={false}
+          />
         </div>
+
         {images.length > 1 && (
           <button
-            className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors"
+            className="absolute right-1 md:right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10"
             onClick={() => setCurrent(c => (c + 1) % images.length)}
+            aria-label="Next image"
           >
-            <span className="text-white text-xl">›</span>
+            <span className="text-white text-2xl leading-none">›</span>
           </button>
         )}
       </div>
 
       {/* Thumbnail strip */}
       {images.length > 1 && (
-        <div className="flex gap-2 mt-4 px-4 overflow-x-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="flex gap-2 mt-4 px-4 overflow-x-auto max-w-full"
+          onClick={e => e.stopPropagation()}
+          style={{ scrollbarWidth: 'none' }}
+        >
           {images.map((img, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
               className={`relative shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                current === i ? 'border-white scale-110' : 'border-white/20 opacity-60 hover:opacity-100'
+                current === i ? 'border-white scale-110 shadow-lg' : 'border-white/20 opacity-50 hover:opacity-100'
               }`}
+              aria-label={`View image ${i + 1}`}
             >
               <Image src={img} alt="" fill className="object-cover" />
             </button>
           ))}
         </div>
       )}
+
+      {/* Swipe hint on first open (mobile) */}
+      <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/30 text-xs md:hidden select-none">
+        ← Swipe to browse · Tap outside to close →
+      </p>
     </div>
   );
 }
@@ -530,13 +584,19 @@ export default function ProductDetailPage() {
                   )}
                 </div>
 
-                {/* Touch swipe handlers — overlay on top of image track */}
+                {/* Touch swipe handlers + tap-to-open lightbox */}
                 <div
                   className="absolute inset-0 z-10"
                   onTouchStart={e => {
                     const t = e.touches[0];
                     (e.currentTarget as HTMLDivElement).dataset.touchX = String(t.clientX);
                     (e.currentTarget as HTMLDivElement).dataset.touchY = String(t.clientY);
+                    (e.currentTarget as HTMLDivElement).dataset.moved = '0';
+                  }}
+                  onTouchMove={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    const dx = Math.abs(Number(el.dataset.touchX ?? 0) - e.touches[0].clientX);
+                    if (dx > 8) el.dataset.moved = '1';
                   }}
                   onTouchEnd={e => {
                     const el = e.currentTarget as HTMLDivElement;
@@ -544,27 +604,38 @@ export default function ProductDetailPage() {
                     const startY = Number(el.dataset.touchY ?? 0);
                     const dx = startX - e.changedTouches[0].clientX;
                     const dy = startY - e.changedTouches[0].clientY;
-                    // Only swipe if horizontal movement dominates
-                    if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                    const moved = el.dataset.moved === '1';
+                    if (!moved && Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                      // Tap — open lightbox
+                      setLightboxOpen(true);
+                    } else if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                      // Swipe — change image
                       if (dx > 0) setActiveImage(i => Math.min(i + 1, allImages.length - 1));
                       else setActiveImage(i => Math.max(i - 1, 0));
                     }
                     delete el.dataset.touchX;
                     delete el.dataset.touchY;
+                    delete el.dataset.moved;
                   }}
                   style={{ touchAction: 'pan-y' }}
                 />
 
+                {/* Expand/zoom hint icon */}
+                <div className="absolute bottom-3 left-3 bg-black/30 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 pointer-events-none z-20">
+                  <Eye className="w-3 h-3 text-white" />
+                  <span className="text-white text-[10px] font-medium">Tap to expand</span>
+                </div>
+
                 {/* Discount badge */}
                 {discountPct > 0 && (
-                  <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5 rounded-full shadow">{discountPct}% OFF</div>
+                  <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5 rounded-full shadow z-20">{discountPct}% OFF</div>
                 )}
 
                 {/* Wishlist button */}
                 <button
-                  onClick={handleWishlist}
+                  onClick={e => { e.stopPropagation(); handleWishlist(); }}
                   disabled={wishlistLoading}
-                  className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md ${
+                  className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md z-20 ${
                     isWishlisted ? 'bg-primary text-primary-foreground' : 'bg-white/90 text-foreground'
                   }`}
                   aria-label="Wishlist"
