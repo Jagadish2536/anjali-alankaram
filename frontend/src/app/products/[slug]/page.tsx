@@ -570,14 +570,14 @@ export default function ProductDetailPage() {
 
       {/* Extra padding so content isn't hidden behind sticky bars on mobile */}
       <div className="container py-4 pb-[140px] md:pb-[80px]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 isolate">
 
           {/* ── Images ─────────────────────────────────────────────────── */}
-          <div className="md:sticky md:top-4 md:self-start">
+          <div className="relative z-0 md:sticky md:top-4 md:self-start isolate">
 
             {/* MOBILE: full-width swipe carousel with dots */}
             <div className="md:hidden">
-              <div className="relative w-full overflow-hidden bg-muted/10" style={{ aspectRatio: '3/4' }}>
+              <div className="relative w-full bg-muted/10" style={{ aspectRatio: '3/4', overflow: 'hidden' }}>
                 {/* Image track — swipe via touch */}
                 <div
                   className="flex h-full transition-transform duration-300 ease-out"
@@ -628,8 +628,7 @@ export default function ProductDetailPage() {
                   style={{ touchAction: 'pan-y' }}
                 />
 
-                {/* Expand hint icon — only shown on first view, subtle corner icon */}
-                <div className="absolute bottom-3 left-3 bg-black/25 backdrop-blur-sm rounded-full p-1.5 pointer-events-none z-20 opacity-60">
+                <div className="absolute bottom-3 left-3 bg-black/30 rounded-full p-1.5 pointer-events-none z-20 opacity-50">
                   <Eye className="w-3.5 h-3.5 text-white" />
                 </div>
 
