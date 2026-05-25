@@ -62,7 +62,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   const handleForgotPasswordRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmailOrPhone.trim()) {
-      setError('Please enter your email or phone number');
+      setError('Please enter your email or WhatsApp number');
       return;
     }
 
@@ -153,8 +153,8 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   // Submit Registration
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Email and password are required');
+    if (!email || !password || !phone) {
+      setError('Email, password, and WhatsApp number are required');
       return;
     }
     if (password.length < 6) {
@@ -188,7 +188,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.length < 10) {
-      setError('Please enter a valid 10-digit phone number');
+      setError('Please enter a valid 10-digit WhatsApp number');
       return;
     }
     
@@ -439,7 +439,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
 
             <div>
               <label htmlFor="reg-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                Phone Number (Optional)
+                WhatsApp Number
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
@@ -447,7 +447,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                   id="reg-phone"
                   type="tel"
                   maxLength={10}
-                  placeholder="Enter 10-digit number"
+                  placeholder="Enter 10-digit WhatsApp number"
                   className="w-full h-12 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
@@ -492,7 +492,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
               <form onSubmit={handleSendOtp} className="space-y-5">
                 <div>
                   <label htmlFor="otp-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    Phone Number
+                    WhatsApp Number
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
@@ -502,7 +502,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                       required
                       maxLength={10}
                       className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
-                      placeholder="Enter 10-digit number"
+                      placeholder="Enter 10-digit WhatsApp number"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                     />
@@ -534,7 +534,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                   </div>
                   <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    Sent code to +91 {phone}
+                    Sent code to WhatsApp number +91 {phone}
                   </p>
                   <input
                     id="otp-code"
@@ -567,7 +567,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
               <form onSubmit={handleForgotPasswordRequest} className="space-y-5">
                 <div>
                   <label htmlFor="forgot-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    Email Address or Phone
+                    Email Address or WhatsApp Number
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-muted-foreground">
@@ -577,7 +577,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                       id="forgot-email"
                       type="text"
                       required
-                      placeholder="name@example.com or 9876543210"
+                      placeholder="name@example.com or 10-digit WhatsApp number"
                       className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
                       value={forgotEmailOrPhone}
                       onChange={(e) => setForgotEmailOrPhone(e.target.value)}

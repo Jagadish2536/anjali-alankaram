@@ -326,7 +326,7 @@ export class AuthService {
 
     // Send via SMS or email
     if (isPhone) {
-      await this.sendSmsViaMSG91(formattedPhone.replace('+91', ''), code);
+      await this.sendSmsViaMSG91(formattedPhone.replace('+91', ''), code, true);
     } else {
       // Send via AWS SES
       await this.emailService.sendOtpEmail(formattedEmail, code, 'reset');
@@ -427,20 +427,73 @@ export class AuthService {
     };
   }
 
-  private async sendSmsViaMSG91(phone: string, code: string): Promise<void> {
+  private async sendSmsViaMSG91(phone: string, code: string, isForgotPassword = false): Promise<void> {
     const authKey = this.config.get('MSG91_AUTH_KEY');
-    const templateId = this.config.get('MSG91_TEMPLATE_ID');
+    const templateId = isForgotPassword 
+      ? (this.config.get('MSG91_FORGOT_PASSWORD_TEMPLATE_ID') || this.config.get('MSG91_TEMPLATE_ID'))
+      : this.config.get('MSG91_TEMPLATE_ID');
+    const whatsappTemplateName = isForgotPassword
+      ? (this.config.get('MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME') || this.config.get('MSG91_WHATSAPP_OTP_TEMPLATE_NAME'))
+      : this.config.get('MSG91_WHATSAPP_OTP_TEMPLATE_NAME');
+    const whatsappSender = this.config.get('MSG91_WHATSAPP_SENDER');
 
     if (!authKey || process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] OTP for ${phone}: ${code}`);
+      console.log(`[DEV] WhatsApp OTP for ${phone}: ${code} [Template: ${whatsappTemplateName || 'none'}, DLT/SMS Template: ${templateId || 'none'}]`);
       return;
+    }
+
+    // Clean phone number: remove non-digits, ensure it has 91 prefix
+    let cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    // If WhatsApp Template Name and WhatsApp Sender are configured, send via WhatsApp Outbound API
+    if (whatsappTemplateName && whatsappSender) {
+      try {
+        await axios.post(
+          'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/',
+          {
+            integrated_number: whatsappSender,
+            recipient_number: cleanPhone,
+            content_type: 'template',
+            template: {
+              name: whatsappTemplateName,
+              language: {
+                code: 'en',
+              },
+              components: [
+                {
+                  type: 'body',
+                  parameters: [
+                    {
+                      type: 'text',
+                      text: code,
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            headers: {
+              authkey: authKey,
+              'content-type': 'application/json',
+            },
+          },
+        );
+        return;
+      } catch (error) {
+        console.error('WhatsApp OTP send failed:', error.response?.data?.message || error.message);
+        // Fall back to standard OTP endpoint if WhatsApp outbound fails
+      }
     }
 
     try {
       await axios.post(
         'https://api.msg91.com/api/v5/otp',
         {
-          mobile: `91${phone}`,
+          mobile: cleanPhone,
           otp: code,
           template_id: templateId,
         },

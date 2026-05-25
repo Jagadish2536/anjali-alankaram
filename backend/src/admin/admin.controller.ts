@@ -285,6 +285,79 @@ export class AdminController implements OnModuleInit {
     }
   }
 
+  @Get('msg91-balance')
+  @ApiOperation({ summary: 'Get MSG91 SMS and WhatsApp balance' })
+  async getMsg91Balance() {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const whatsappSender = this.config.get<string>('MSG91_WHATSAPP_SENDER');
+
+    if (!authKey) {
+      return {
+        success: false,
+        error: 'MSG91_AUTH_KEY is not configured',
+      };
+    }
+
+    let accountBalance = null;
+    let whatsappBalance = null;
+    let errorMsg = null;
+
+    try {
+      const accountRes = await axios.get('https://control.msg91.com/api/v1/account', {
+        headers: { authkey: authKey },
+        timeout: 5000,
+      });
+      accountBalance = accountRes.data?.cash_credits || 0;
+    } catch (err: any) {
+      this.logger.error(`Failed to fetch MSG91 account balance: ${err.message}`);
+      errorMsg = `Account Balance Error: ${err.message}`;
+    }
+
+    if (whatsappSender) {
+      try {
+        const cleanSender = whatsappSender.replace(/\D/g, '');
+        const waRes = await axios.post(
+          'https://control.msg91.com/api/v5/subscriptions/fetchPrepaidBalance',
+          {
+            integrated_number: cleanSender,
+            service: 'whatsapp',
+          },
+          {
+            headers: {
+              authkey: authKey,
+              'content-type': 'application/json',
+            },
+            timeout: 5000,
+          },
+        );
+        whatsappBalance = waRes.data;
+      } catch (err: any) {
+        this.logger.error(`Failed to fetch MSG91 WhatsApp balance: ${err.message}`);
+        errorMsg = errorMsg 
+          ? `${errorMsg} | WhatsApp Balance Error: ${err.message}` 
+          : `WhatsApp Balance Error: ${err.message}`;
+      }
+    }
+
+    return {
+      success: true,
+      accountBalance,
+      whatsappBalance,
+      whatsappSenderConfigured: !!whatsappSender,
+      whatsappSender,
+      error: errorMsg,
+      billingGuide: {
+        title: 'How to view detailed bills, invoices & recharge history',
+        steps: [
+          'Log in to your MSG91 Dashboard.',
+          'Click the dropdown menu next to your username (top-left).',
+          'Select "Transaction Logs".',
+          'Click on "Invoice & Ledger" at the top-right to view all recharges, detailed billing statements, and download invoices.'
+        ]
+      }
+    };
+  }
+
   @Get('inventory-report')
   @ApiOperation({ summary: 'Get inventory report comparing online stock vs warehouse stock' })
   async getInventoryReport() {

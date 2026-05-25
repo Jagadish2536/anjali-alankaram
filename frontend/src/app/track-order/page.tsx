@@ -21,10 +21,10 @@ export default function TrackOrderPage() {
             />
           </div>
           <div>
-            <label className="block font-medium mb-2">Registered Email or Phone Number</label>
+            <label className="block font-medium mb-2">Registered Email or WhatsApp Number</label>
             <input 
               type="text" 
-              placeholder="Enter email or phone"
+              placeholder="Enter email or WhatsApp number"
               className="w-full h-14 px-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary outline-none"
             />
           </div>
@@ -50,7 +50,7 @@ export default function TrackOrderPage() {
           <CheckCircle2 className="w-8 h-8 text-primary shrink-0" />
           <div>
             <h3 className="font-bold mb-1">Assured Updates</h3>
-            <p className="text-sm text-muted-foreground">We send SMS and Email updates at every step.</p>
+            <p className="text-sm text-muted-foreground">We send WhatsApp and Email updates at every step.</p>
           </div>
         </div>
       </div>

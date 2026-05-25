@@ -79,7 +79,7 @@ function AddressModal({ onClose, onSave, initial }: {
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
           <p className="text-xs font-black tracking-widest text-gray-500 uppercase">Contact Details</p>
           <FloatInput label="Name*" value={form.name} onChange={set('name')} />
-          <FloatInput label="Mobile No*" value={form.phone} onChange={set('phone')} type="tel" />
+          <FloatInput label="WhatsApp Number*" value={form.phone} onChange={set('phone')} type="tel" />
 
           <p className="text-xs font-black tracking-widest text-gray-500 uppercase pt-2">Address</p>
           <FloatInput label="Pin Code*" value={form.pincode} onChange={set('pincode')} />
@@ -297,11 +297,11 @@ export default function ProfilePage() {
             <div className="border border-gray-200 rounded-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 bg-white">
               {isEditingPhone ? (
                 <div className="flex-1 w-full">
-                  <FloatInput label="Mobile Number" value={form.phone} onChange={v => setForm(p => ({ ...p, phone: v }))} />
+                  <FloatInput label="WhatsApp Number" value={form.phone} onChange={v => setForm(p => ({ ...p, phone: v }))} />
                 </div>
               ) : (
                 <div>
-                  <p className="text-[10px] text-gray-400 mb-0.5">Mobile Number*</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">WhatsApp Number*</p>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">{form.phone ? `+91 ${form.phone}` : 'Not set'}</span>
                     {user?.phone && <CheckCircle2 className="w-4 h-4 text-green-500" />}

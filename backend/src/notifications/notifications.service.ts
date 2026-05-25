@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as admin from 'firebase-admin';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
+import axios from 'axios';
 
 @Injectable()
 export class NotificationsService {
@@ -65,13 +66,48 @@ export class NotificationsService {
       },
     });
 
+    // Send WhatsApp notification if user has a phone number
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true, name: true },
+    });
+
+    if (user?.phone) {
+      let templateName = '';
+      let params: string[] = [];
+      const userName = user.name || 'Customer';
+
+      switch (type) {
+        case 'ORDER_PLACED':
+          templateName = this.config.get('MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE') || 'anjali_order_placed';
+          params = [userName, orderNumber];
+          break;
+        case 'ORDER_SHIPPED':
+          templateName = this.config.get('MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE') || 'anjali_order_shipped';
+          params = [userName, orderNumber];
+          break;
+        case 'ORDER_DELIVERED':
+          templateName = this.config.get('MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE') || 'anjali_order_delivered';
+          params = [userName, orderNumber];
+          break;
+        case 'ORDER_CANCELLED':
+          templateName = this.config.get('MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE') || 'anjali_order_cancelled';
+          params = [userName, orderNumber];
+          break;
+      }
+
+      if (templateName) {
+        await this.sendWhatsAppMessage(user.phone, templateName, params);
+      }
+    }
+
     // Send push notification
     if (this.firebaseInitialized) {
-      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { fcmToken: true } });
-      if (user?.fcmToken) {
+      const userWithFcm = await this.prisma.user.findUnique({ where: { id: userId }, select: { fcmToken: true } });
+      if (userWithFcm?.fcmToken) {
         try {
           await admin.messaging().send({
-            token: user.fcmToken,
+            token: userWithFcm.fcmToken,
             notification: { title, body },
             data: { orderId, type },
           });
@@ -166,6 +202,56 @@ export class NotificationsService {
           }
         }
       }
+    }
+  }
+
+  private async sendWhatsAppMessage(recipientPhone: string, templateName: string, parameters: string[]): Promise<void> {
+    const authKey = this.config.get('MSG91_AUTH_KEY');
+    const sender = this.config.get('MSG91_WHATSAPP_SENDER');
+
+    if (!authKey || !sender || process.env.NODE_ENV === 'development') {
+      this.logger.log(`[DEV] WhatsApp to ${recipientPhone} [Template: ${templateName}]: ${JSON.stringify(parameters)}`);
+      return;
+    }
+
+    // Clean phone number: remove non-digits, ensure it starts with 91 for Indian numbers
+    let cleanPhone = recipientPhone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    try {
+      await axios.post(
+        'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/',
+        {
+          integrated_number: sender,
+          recipient_number: cleanPhone,
+          content_type: 'template',
+          template: {
+            name: templateName,
+            language: {
+              code: 'en',
+            },
+            components: [
+              {
+                type: 'body',
+                parameters: parameters.map((param) => ({
+                  type: 'text',
+                  text: param,
+                })),
+              },
+            ],
+          },
+        },
+        {
+          headers: {
+            authkey: authKey,
+            'content-type': 'application/json',
+          },
+        },
+      );
+    } catch (error) {
+      this.logger.error(`WhatsApp send failed to ${cleanPhone}: ${error.response?.data?.message || error.message}`);
     }
   }
 }

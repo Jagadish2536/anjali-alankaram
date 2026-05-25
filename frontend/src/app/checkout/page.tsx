@@ -697,7 +697,7 @@ export default function CheckoutPage() {
                   <input type="text" placeholder="Name*"
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                     value={newAddress.name} onChange={e => setNewAddress(p => ({ ...p, name: e.target.value }))} />
-                  <input type="tel" placeholder="Mobile No*" maxLength={10}
+                  <input type="tel" placeholder="WhatsApp Number*" maxLength={10}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                     value={newAddress.phone} onChange={e => setNewAddress(p => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))} />
                 </div>
