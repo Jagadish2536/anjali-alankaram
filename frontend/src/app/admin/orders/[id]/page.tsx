@@ -236,6 +236,78 @@ function HistoryPanel({ orderId }: { orderId: string }) {
   );
 }
 
+function OrderTransactionsPanel({ orderId }: { orderId: string }) {
+  const [txs, setTxs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTransactions = () => {
+    setLoading(true);
+    api.get(`/admin/orders/${orderId}/transactions`)
+      .then(r => setTxs(r.data))
+      .catch(() => setTxs([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+    window.addEventListener('order-transactions-refresh', fetchTransactions);
+    return () => window.removeEventListener('order-transactions-refresh', fetchTransactions);
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="py-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading transactions...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+      {txs.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">No gateway logs for this order</p>
+      ) : (
+        txs.map((tx, i) => (
+          <div key={i} className="border rounded-xl p-3.5 text-xs bg-muted/5 relative">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className={`px-2 py-0.5 font-bold rounded-md uppercase text-[9px] ${
+                tx.type === 'CHARGE' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-orange-50 text-orange-700 border border-orange-200'
+              }`}>
+                {tx.type}
+              </span>
+              <span className="font-mono text-muted-foreground text-[10px]">{tx.gatewayRef}</span>
+            </div>
+            
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-muted-foreground">Amount:</span>
+              <span className="font-black text-sm text-foreground">{formatPrice(Number(tx.amount))}</span>
+            </div>
+
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-muted-foreground">Status:</span>
+              <span className={`px-1.5 py-0.5 rounded-full font-bold uppercase text-[9px] ${
+                tx.status === 'SUCCESS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              }`}>
+                {tx.status}
+              </span>
+            </div>
+
+            {tx.failReason && (
+              <div className="mt-2 bg-red-50 text-red-700 border border-red-100 p-2 rounded-lg leading-relaxed text-[10px]">
+                <strong>Error Description:</strong> {tx.failReason}
+              </div>
+            )}
+            
+            <p className="text-[10px] text-muted-foreground text-right mt-2">
+              {new Date(tx.createdAt).toLocaleString('en-IN')}
+            </p>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 export default function OrderDetailPage() {
   const router = useRouter();
   const { id } = useParams() as { id: string };
@@ -359,6 +431,7 @@ export default function OrderDetailPage() {
       setOrder(data);
       setNotes('');
       window.dispatchEvent(new Event('order-status-history-refresh'));
+      window.dispatchEvent(new Event('order-transactions-refresh'));
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to update order status');
     } finally {
@@ -627,6 +700,16 @@ export default function OrderDetailPage() {
                   <History className="w-4 h-4 text-primary" /> Status Transition Logs
                 </h3>
                 <HistoryPanel orderId={order.id} />
+              </div>
+            )}
+
+            {/* Gateway Transactions history log */}
+            {order.paymentMethod === 'RAZORPAY' && (
+              <div className="bg-white rounded-2xl border shadow-sm p-6">
+                <h3 className="font-bold font-outfit text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-primary" /> Gateway Transaction History
+                </h3>
+                <OrderTransactionsPanel orderId={order.id} />
               </div>
             )}
 

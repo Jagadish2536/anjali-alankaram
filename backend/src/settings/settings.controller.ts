@@ -42,6 +42,7 @@ export class SettingsController {
       storeDescription, contactEmail, contactPhone,
       returnPolicyDays, footerCategories,
       marqueeText, heroImageUrl, heroLeftImageUrl, heroTitle, heroSubtitle,
+      bankName, accountNumber, ifscCode, accountHolderName,
     } = data;
 
     // Build clean payload with only defined values (skip undefined)
@@ -83,6 +84,10 @@ export class SettingsController {
     safe('heroLeftImageUrl', heroLeftImageUrl);
     safe('heroTitle', heroTitle);
     safe('heroSubtitle', heroSubtitle);
+    safe('bankName', bankName);
+    safe('accountNumber', accountNumber);
+    safe('ifscCode', ifscCode);
+    safe('accountHolderName', accountHolderName);
 
     const settings = await this.prisma.storeSettings.findFirst();
 

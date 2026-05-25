@@ -27,6 +27,7 @@ import {
   Check,
   Upload,
   ImageIcon,
+  Landmark,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -429,6 +430,11 @@ export default function AdminSettingsPage() {
     heroLeftImageUrl: '',
     heroTitle: 'Make Every Occasion Special',
     heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
+    // Bank Details
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
+    accountHolderName: '',
   });
 
   // ── Payment form state ────────────────────────────────────────────────────
@@ -590,6 +596,7 @@ export default function AdminSettingsPage() {
     { name: 'Security', icon: Shield, desc: 'Admin roles and permissions.' },
     { name: 'Notifications', icon: Bell, desc: 'Email and SMS alerts.' },
     { name: 'Payments', icon: CreditCard, desc: 'Razorpay integration.' },
+    { name: 'Bank Details', icon: Landmark, desc: 'Change store bank details.' },
     { name: 'Regional', icon: Globe, desc: 'Tax and shipping settings.' },
     { name: 'Coupons', icon: Tag, desc: 'Create and manage coupon codes.' },
     { name: 'Profile', icon: User, desc: 'Your account settings.' },
@@ -1107,6 +1114,50 @@ export default function AdminSettingsPage() {
           )}
 
 
+
+          {/* ── BANK DETAILS ─────────────────────────────────────────── */}
+          {activeSection === 'Bank Details' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-bold mb-1">Bank Account Details</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Manage the bank details used for payouts, direct transfers, or custom display on the website.
+                </p>
+                <div className="space-y-4">
+                  <Field label="Account Holder Name" hint="The exact name as registered in the bank record">
+                    <TextInput
+                      value={formData.accountHolderName || ''}
+                      onChange={set('accountHolderName')}
+                      placeholder="e.g. Anjali Alankaram Private Limited"
+                    />
+                  </Field>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Field label="Bank Name">
+                      <TextInput
+                        value={formData.bankName || ''}
+                        onChange={set('bankName')}
+                        placeholder="e.g. State Bank of India"
+                      />
+                    </Field>
+                    <Field label="IFSC Code" hint="11-character alphanumeric bank branch code">
+                      <TextInput
+                        value={formData.ifscCode || ''}
+                        onChange={set('ifscCode')}
+                        placeholder="e.g. SBIN0001234"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Account Number">
+                    <TextInput
+                      value={formData.accountNumber || ''}
+                      onChange={set('accountNumber')}
+                      placeholder="e.g. 123456789012"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── COUPONS ───────────────────────────────────────────────── */}
           {activeSection === 'Coupons' && <CouponManagement />}

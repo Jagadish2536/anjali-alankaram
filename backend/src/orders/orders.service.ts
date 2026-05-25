@@ -231,7 +231,10 @@ export class OrdersService {
       this.shippingService.createShipment(order.id).catch(console.error);
     }
 
-    return { order, razorpayOrderId };
+    const rzpConfig = (this.paymentsService as any).getRazorpayConfig ? (this.paymentsService as any).getRazorpayConfig() : null;
+    const razorpayKeyId = rzpConfig ? rzpConfig.keyId : undefined;
+
+    return { order, razorpayOrderId, razorpayKeyId };
   }
 
   // ─────────────────────────────────────────────

@@ -43,6 +43,11 @@ interface StoreSettings {
   heroLeftImageUrl: string;
   heroTitle: string;
   heroSubtitle: string;
+  // Bank Details
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  accountHolderName: string;
 }
 
 interface SettingsStore {
@@ -93,6 +98,11 @@ const DEFAULT_SETTINGS: StoreSettings = {
   heroLeftImageUrl: '',
   heroTitle: 'Make Every Occasion Special',
   heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
+  // Bank Details
+  bankName: '',
+  accountNumber: '',
+  ifscCode: '',
+  accountHolderName: '',
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({

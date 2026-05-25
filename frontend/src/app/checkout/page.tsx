@@ -236,7 +236,7 @@ export default function CheckoutPage() {
         router.push(`/orders/${data.order.id}/success`);
       } else if (data.razorpayOrderId) {
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          key: data.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: Math.round(data.order.totalAmount * 100),
           currency: 'INR',
           name: 'Anjali Alankaram',

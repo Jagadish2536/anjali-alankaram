@@ -691,6 +691,11 @@ model StoreSettings {
   shippingCharge          Float    @default(49)
   codEnabled              Boolean  @default(true)
   codCharges              Float    @default(0)
+  // Bank Details
+  bankName                String   @default("")
+  accountNumber           String   @default("")
+  ifscCode                String   @default("")
+  accountHolderName       String   @default("")
   // Features
   couponsEnabled          Boolean  @default(true)
   giftEnabled             Boolean  @default(false)

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, OnModuleInit, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, OnModuleInit, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,6 +12,7 @@ import {
 } from '@aws-sdk/client-cost-explorer';
 import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
+import { PaymentsService } from '../payments/payments.service';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -26,6 +27,7 @@ export class AdminController implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private paymentsService: PaymentsService,
   ) {
     const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
     const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
@@ -462,6 +464,148 @@ export class AdminController implements OnModuleInit {
         totalWarehouseStock,
       },
       rows,
+    };
+  }
+
+  @Get('orders/:id/transactions')
+  @ApiOperation({ summary: 'Get payment transactions for a specific order' })
+  async getOrderTransactions(@Param('id') id: string) {
+    return this.paymentsService.getTransactionHistory(id);
+  }
+
+  @Get('razorpay/transactions')
+  @ApiOperation({ summary: 'Get all payment transactions' })
+  async getRazorpayTransactions(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('type') type?: string,
+  ) {
+    const skip = (page - 1) * limit;
+    
+    // Build query where conditions
+    const where: any = {};
+    
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+    
+    if (type && type !== 'ALL') {
+      where.type = type;
+    }
+
+    if (search) {
+      where.OR = [
+        { gatewayRef: { contains: search, mode: 'insensitive' } },
+        { failReason: { contains: search, mode: 'insensitive' } },
+        {
+          order: {
+            OR: [
+              { orderNumber: { contains: search, mode: 'insensitive' } },
+              { user: { name: { contains: search, mode: 'insensitive' } } },
+              { user: { phone: { contains: search } } },
+            ]
+          }
+        }
+      ];
+    }
+
+    const [transactions, total] = await Promise.all([
+      this.prisma.paymentTransaction.findMany({
+        where,
+        include: {
+          order: {
+            select: {
+              orderNumber: true,
+              totalAmount: true,
+              status: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.paymentTransaction.count({ where }),
+    ]);
+
+    return {
+      transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  @Get('razorpay/stats')
+  @ApiOperation({ summary: 'Get payment and refund statistics' })
+  async getRazorpayStats() {
+    // 1. Total Charges (SUCCESS)
+    const totalCharges = await this.prisma.paymentTransaction.aggregate({
+      where: { type: 'CHARGE', status: 'SUCCESS' },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    // 2. Total Refunds (SUCCESS)
+    const totalRefunds = await this.prisma.paymentTransaction.aggregate({
+      where: { type: 'REFUND', status: 'SUCCESS' },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    // 3. Failed Charges
+    const failedCharges = await this.prisma.paymentTransaction.count({
+      where: { type: 'CHARGE', status: 'FAILED' }
+    });
+
+    // 4. Failed Refunds
+    const failedRefunds = await this.prisma.paymentTransaction.count({
+      where: { type: 'REFUND', status: 'FAILED' }
+    });
+
+    return {
+      totalCapturedAmount: Number(totalCharges._sum.amount || 0),
+      totalCapturedCount: totalCharges._count || 0,
+      totalRefundedAmount: Number(totalRefunds._sum.amount || 0),
+      totalRefundedCount: totalRefunds._count || 0,
+      failedChargesCount: failedCharges,
+      failedRefundsCount: failedRefunds,
+    };
+  }
+
+  @Post('razorpay/refund')
+  @ApiOperation({ summary: 'Manually trigger a refund for an order' })
+  async triggerManualRefund(
+    @Body() body: { orderId: string; amount?: number },
+  ) {
+    if (!body.orderId) {
+      throw new BadRequestException('orderId is required');
+    }
+    
+    const refund = await this.paymentsService.processRefund(body.orderId, body.amount);
+    
+    // Log in order status history
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO "order_status_history" ("id","orderId","fromStatus","toStatus","actorRole","notes","metadata","createdAt")
+       VALUES (gen_random_uuid(),$1,'CANCELLED'::"OrderStatus",'REFUND_INITIATED'::"OrderStatus",'ADMIN',
+       'Manual refund triggered from Razorpay Manager',$2::jsonb,NOW())`,
+      body.orderId, JSON.stringify({ refundId: refund.id, amount: body.amount })
+    );
+
+    return {
+      success: true,
+      message: 'Refund initiated successfully',
+      refundId: refund.id,
     };
   }
 }

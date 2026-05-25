@@ -2,28 +2,83 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 const Razorpay = require('razorpay');
 import { ShippingService } from '../shipping/shipping.service';
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private razorpay: any;
+  private lastEnvMtime = 0;
+  private cachedConfig: { keyId: string; keySecret: string; webhookSecret: string } | null = null;
 
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
     private shippingService: ShippingService,
-  ) {
-    const key_id = this.config.get('RAZORPAY_KEY_ID');
-    const key_secret = this.config.get('RAZORPAY_KEY_SECRET');
-    if (key_id && key_secret) {
-      this.razorpay = new Razorpay({ key_id, key_secret });
+  ) {}
+
+  private getRazorpayConfig() {
+    const envPath = path.resolve(process.cwd(), '.env');
+    let shouldRead = false;
+    let mtime = 0;
+
+    try {
+      if (fs.existsSync(envPath)) {
+        const stat = fs.statSync(envPath);
+        mtime = stat.mtimeMs;
+        if (mtime !== this.lastEnvMtime || !this.cachedConfig) {
+          shouldRead = true;
+        }
+      } else if (!this.cachedConfig) {
+        shouldRead = true;
+      }
+    } catch {
+      shouldRead = true;
     }
+
+    if (shouldRead) {
+      let keyId = '';
+      let keySecret = '';
+      let webhookSecret = '';
+
+      try {
+        if (fs.existsSync(envPath)) {
+          const content = fs.readFileSync(envPath, 'utf-8');
+          const matchId = content.match(/^RAZORPAY_KEY_ID="?([^"\n]*)"?/m);
+          const matchSecret = content.match(/^RAZORPAY_KEY_SECRET="?([^"\n]*)"?/m);
+          const matchWebhook = content.match(/^RAZORPAY_WEBHOOK_SECRET="?([^"\n]*)"?/m);
+          
+          if (matchId) keyId = matchId[1];
+          if (matchSecret) keySecret = matchSecret[1];
+          if (matchWebhook) webhookSecret = matchWebhook[1];
+        }
+      } catch (e) {
+        this.logger.error(`Failed to read .env file: ${e.message}`);
+      }
+
+      if (!keyId) keyId = this.config.get('RAZORPAY_KEY_ID') || '';
+      if (!keySecret) keySecret = this.config.get('RAZORPAY_KEY_SECRET') || '';
+      if (!webhookSecret) webhookSecret = this.config.get('RAZORPAY_WEBHOOK_SECRET') || '';
+
+      this.cachedConfig = { keyId, keySecret, webhookSecret };
+      this.lastEnvMtime = mtime;
+    }
+
+    return this.cachedConfig!;
+  }
+
+  private getRazorpayClient() {
+    const { keyId, keySecret } = this.getRazorpayConfig();
+    if (!keyId || !keySecret) {
+      throw new BadRequestException('Razorpay is not configured (keys missing)');
+    }
+    return new Razorpay({ key_id: keyId, key_secret: keySecret });
   }
 
   async createRazorpayOrder(amount: number, userId: string) {
-    if (!this.razorpay) throw new BadRequestException('Razorpay is not configured');
+    const client = this.getRazorpayClient();
 
     const options = {
       amount: Math.round(amount * 100),
@@ -32,8 +87,9 @@ export class PaymentsService {
     };
 
     try {
-      return await this.razorpay.orders.create(options);
-    } catch {
+      return await client.orders.create(options);
+    } catch (e) {
+      this.logger.error(`Failed to create Razorpay order: ${e.message}`);
       throw new BadRequestException('Failed to create Razorpay order');
     }
   }
@@ -43,7 +99,7 @@ export class PaymentsService {
    * Called by Razorpay's webhook system.
    */
   async verifyWebhook(body: any, signature: string) {
-    const secret = this.config.get('RAZORPAY_WEBHOOK_SECRET');
+    const { webhookSecret: secret } = this.getRazorpayConfig();
     if (!secret) throw new BadRequestException('Webhook secret not configured');
 
     // Verify HMAC signature
@@ -215,7 +271,7 @@ export class PaymentsService {
     razorpayPaymentId: string;
     razorpaySignature: string;
   }) {
-    const keySecret = this.config.get('RAZORPAY_KEY_SECRET');
+    const { keySecret } = this.getRazorpayConfig();
     if (!keySecret) throw new BadRequestException('Razorpay not configured');
 
     const expectedSig = crypto
@@ -265,7 +321,7 @@ export class PaymentsService {
    * Process refund via Razorpay.
    */
   async processRefund(orderId: string, amount?: number) {
-    if (!this.razorpay) throw new BadRequestException('Razorpay not configured');
+    const client = this.getRazorpayClient();
 
     const payment = await this.prisma.payment.findUnique({
       where: { orderId },
@@ -290,7 +346,7 @@ export class PaymentsService {
       const refundOptions: any = {};
       if (amount || finalAmount) refundOptions.amount = Math.round(finalAmount * 100);
 
-      const refund = await this.razorpay.payments.refund(
+      const refund = await client.payments.refund(
         payment.razorpayPaymentId,
         refundOptions,
       );
@@ -324,6 +380,17 @@ export class PaymentsService {
     } catch (e) {
       const errMsg = e.response?.data?.error?.description || e.message || 'Unknown error';
       this.logger.error(`Refund failed for order ${orderId}: ${errMsg}`);
+      
+      try {
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO "payment_transactions" ("id","orderId","type","amount","status","gateway","gatewayRef","failReason","createdAt")
+           VALUES (gen_random_uuid(),$1,'REFUND',$2,'FAILED','RAZORPAY',$3,$4,NOW())`,
+          orderId, finalAmount, payment?.razorpayPaymentId || '', errMsg
+        );
+      } catch (logErr) {
+        this.logger.error(`Failed to log failed refund transaction: ${logErr.message}`);
+      }
+
       throw new BadRequestException(`Refund failed: ${errMsg}`);
     }
   }
