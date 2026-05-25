@@ -139,6 +139,71 @@ export class PaymentsService {
       }
     }
 
+    if (event === 'payment.refunded' || event === 'refund.created') {
+      const refundEntity = body.payload.refund.entity;
+      const paymentEntity = body.payload.payment.entity;
+
+      // Look up order by Razorpay Order ID or Payment ID
+      const order = await this.prisma.order.findFirst({
+        where: {
+          OR: [
+            { razorpayOrderId: paymentEntity.order_id },
+            { payment: { razorpayPaymentId: refundEntity.payment_id } },
+          ],
+        },
+      });
+
+      if (order) {
+        const refundAmount = refundEntity.amount / 100;
+        const targetStatus = refundAmount < Number(order.totalAmount) ? 'PARTIALLY_REFUNDED' : 'REFUNDED';
+
+        await this.prisma.payment.upsert({
+          where: { orderId: order.id },
+          create: {
+            orderId: order.id,
+            razorpayOrderId: order.razorpayOrderId || '',
+            razorpayPaymentId: refundEntity.payment_id,
+            refundId: refundEntity.id,
+            refundAmount,
+            refundedAt: new Date(),
+            status: targetStatus,
+            amount: Number(order.totalAmount),
+            method: 'RAZORPAY',
+          },
+          update: {
+            refundId: refundEntity.id,
+            refundAmount,
+            refundedAt: new Date(),
+            status: targetStatus,
+          },
+        });
+
+        const updateData: any = { paymentStatus: targetStatus };
+        if (order.status !== 'CANCELLED' && targetStatus === 'REFUNDED') {
+          updateData.status = 'CANCELLED';
+        }
+
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: updateData,
+        });
+
+        // Log transaction if not already logged
+        const existingTx = await this.prisma.$queryRawUnsafe<any[]>(
+          `SELECT id FROM "payment_transactions" WHERE "gatewayRef" = $1 AND "type" = 'REFUND'`,
+          refundEntity.id,
+        );
+
+        if (existingTx.length === 0) {
+          await this.prisma.$executeRawUnsafe(
+            `INSERT INTO "payment_transactions" ("id","orderId","type","amount","status","gateway","gatewayRef","createdAt")
+             VALUES (gen_random_uuid(),$1,'REFUND',$2,'SUCCESS','RAZORPAY',$3,NOW())`,
+            order.id, refundAmount, refundEntity.id,
+          );
+        }
+      }
+    }
+
     return { status: 'ok' };
   }
 
