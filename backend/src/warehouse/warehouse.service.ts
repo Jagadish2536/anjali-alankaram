@@ -100,7 +100,7 @@ export class WarehouseService {
       SELECT wi.*, 
         pv.sku, pv.size, pv.color, pv.stock as "globalStock",
         p.name as "productName", p.images as "productImages",
-        p.slug as "productSlug", p.id as "productId"
+        p.slug as "productSlug", p.id as "productId", p."categoryId"
       FROM "warehouse_inventory" wi
       JOIN "product_variants" pv ON pv.id = wi."variantId"
       JOIN "products" p ON p.id = pv."productId"
@@ -133,6 +133,13 @@ export class WarehouseService {
         warehouseId, variantId, quantity,
       );
     }
+
+    // Sync manual adjustments to global product variants stock
+    await this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: { stock: quantity },
+    });
+
     return { success: true };
   }
 

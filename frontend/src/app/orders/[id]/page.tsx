@@ -511,36 +511,8 @@ export default function OrderDetailPage() {
               Cancel
             </button>
           )}
-          {canReturn && (
-            <button onClick={() => setModal('return')} disabled={actionLoading}
-              className="px-4 py-1.5 text-sm font-bold text-orange-600 border border-orange-200 bg-orange-50 rounded-xl hover:bg-orange-100 transition-colors flex items-center gap-1.5">
-              <RotateCcw className="w-3.5 h-3.5" /> Return
-            </button>
-          )}
-          {canReplace && (
-            <button onClick={() => setModal('replace')} disabled={actionLoading}
-              className="px-4 py-1.5 text-sm font-bold text-teal-600 border border-teal-200 bg-teal-50 rounded-xl hover:bg-teal-100 transition-colors flex items-center gap-1.5">
-              <RefreshCw className="w-3.5 h-3.5" /> Replace
-            </button>
-          )}
         </div>
       </div>
-
-      {/* Return Window Notice */}
-      {isDelivered && !isReturnFlow && (
-        <div className={`mb-5 px-4 py-3 rounded-xl border text-sm flex items-start gap-3 ${
-          canReturn ? 'bg-green-50 border-green-200 text-green-800' :
-          returnExpired ? 'bg-gray-50 border-gray-200 text-gray-500' :
-          'bg-gray-50 border-gray-200 text-gray-500'
-        }`}>
-          <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${canReturn ? 'text-green-600' : 'text-gray-400'}`} />
-          <p>
-            {canReturn && <><strong>{itemReturnDays - (daysSince || 0)} days left</strong> to return or replace this order.</>}
-            {returnExpired && <>Return window of <strong>{itemReturnDays} days</strong> has expired.</>}
-            {!itemReturnEnabled && !returnExpired && <>This product is not eligible for returns.</>}
-          </p>
-        </div>
-      )}
 
       {/* Main tracking card */}
       <div className="bg-white border rounded-2xl shadow-sm mb-6 overflow-hidden">
@@ -548,9 +520,22 @@ export default function OrderDetailPage() {
         {isCancelled && (
           <div className="flex items-center gap-3 text-red-700 bg-red-50 p-5 border-b border-red-100">
             <XCircle className="w-6 h-6 shrink-0" />
-            <div>
+            <div className="flex-1">
               <p className="font-bold">Order Cancelled</p>
               {order.cancelReason && <p className="text-sm opacity-80 mt-0.5">Reason: {order.cancelReason}</p>}
+              {order.paymentMethod === 'RAZORPAY' && (
+                <div className="mt-2 pt-2 border-t border-red-200/50 text-xs font-semibold space-y-1">
+                  {order.paymentStatus === 'REFUNDED' && (
+                    <p className="text-emerald-700">Refund successfully processed to your original payment method.</p>
+                  )}
+                  {order.paymentStatus === 'REFUND_INITIATED' && (
+                    <p className="text-amber-800">Refund initiated. You'll receive it within 5-7 business days.</p>
+                  )}
+                  {order.paymentStatus === 'PAID' && (
+                    <p className="text-amber-800">Refund is pending. It will be initiated shortly.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

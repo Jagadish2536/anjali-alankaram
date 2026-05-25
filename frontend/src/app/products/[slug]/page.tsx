@@ -329,8 +329,48 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
-  const [viewerCount] = useState(() => Math.floor(Math.random() * 25) + 8);
+  const [viewerCount, setViewerCount] = useState(() => Math.floor(Math.random() * 25) + 8);
   const [activeDetailTab, setActiveDetailTab] = useState<'description' | 'shipping'>('description');
+
+  // Real-time active viewer counter heartbeat
+  useEffect(() => {
+    if (!params.slug) return;
+
+    // Get or generate a unique visitor ID stored in localStorage
+    let visitorId = '';
+    if (typeof window !== 'undefined') {
+      try {
+        visitorId = localStorage.getItem('product_visitor_id') || '';
+        if (!visitorId) {
+          visitorId = 'vis_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          localStorage.setItem('product_visitor_id', visitorId);
+        }
+      } catch (e) {
+        visitorId = 'vis_' + Math.random().toString(36).substring(2, 15);
+      }
+    }
+
+    const sendHeartbeat = async () => {
+      try {
+        const { data } = await api.post(`/products/${params.slug}/viewers`, { visitorId });
+        if (data && typeof data.count === 'number') {
+          setViewerCount(data.count);
+        }
+      } catch (err) {
+        console.error('Failed to send viewer heartbeat:', err);
+      }
+    };
+
+    // Ping immediately on mount/slug change
+    sendHeartbeat();
+
+    // Ping every 20 seconds
+    const interval = setInterval(sendHeartbeat, 20000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [params.slug]);
 
   // Wishlist
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -362,7 +402,19 @@ export default function ProductDetailPage() {
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
-  const { addItem, isLoading: isCartLoading } = useCartStore();
+  const { addItem, isLoading: isCartLoading, items: cartItems, fetchCart } = useCartStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCart().catch(() => {});
+    }
+  }, [isAuthenticated, fetchCart]);
+
+  const isAlreadyInCart = selectedVariant 
+    ? (cartItems || []).some((item: any) => item.variant?.id === selectedVariant.id)
+    : false;
+
+  const hasColour = product?.variants?.some((v: any) => v.color && v.color.trim() !== '') || false;
 
   // ── Fetch product ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -558,15 +610,25 @@ export default function ProductDetailPage() {
         )}
         {/* Add to Cart */}
         <button
-          onClick={handleAddToCart}
-          disabled={isCartLoading || !selectedVariant || selectedVariant?.stock === 0}
+          onClick={isAlreadyInCart ? () => router.push('/cart') : handleAddToCart}
+          disabled={isCartLoading || (!isAlreadyInCart && (!selectedVariant || selectedVariant?.stock === 0))}
           className={`flex-[1.5] h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 ${
-            addedToCart
+            isAlreadyInCart
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              : addedToCart
               ? 'bg-green-600 text-white'
               : 'bg-primary text-primary-foreground hover:bg-primary/90'
           }`}
         >
-          {addedToCart ? <><CheckCircle2 className="w-4 h-4" />Added!</> : isCartLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add to cart'}
+          {isAlreadyInCart ? (
+            <>Go to cart</>
+          ) : addedToCart ? (
+            <><CheckCircle2 className="w-4 h-4" />Added!</>
+          ) : isCartLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            'Add to cart'
+          )}
         </button>
       </div>
 
@@ -835,20 +897,22 @@ export default function ProductDetailPage() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2.5">
-                    {product.variants.map((v: any) => (
-                      <button
-                        key={v.id}
-                        onClick={() => setSelectedVariant(v)}
-                        disabled={v.stock === 0}
-                        className={`h-11 px-5 rounded-full border-2 text-sm font-semibold transition-all ${
-                          selectedVariant?.id === v.id
-                            ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                            : v.stock === 0 ? 'border-muted text-muted-foreground bg-muted/30 cursor-not-allowed line-through' : 'border-input hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {v.size}{v.color && hasColour && v.color !== selectedVariant?.color ? '' : ''}{v.stock === 0 && ' ✕'}
-                      </button>
-                    ))}
+                    {product.variants
+                      .filter((v: any) => !hasColour || v.color === selectedVariant?.color)
+                      .map((v: any) => (
+                        <button
+                          key={v.id}
+                          onClick={() => setSelectedVariant(v)}
+                          disabled={v.stock === 0}
+                          className={`h-11 px-5 rounded-full border-2 text-sm font-semibold transition-all ${
+                            selectedVariant?.id === v.id
+                              ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                              : v.stock === 0 ? 'border-muted text-muted-foreground bg-muted/30 cursor-not-allowed line-through' : 'border-input hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {v.size}{v.stock === 0 && ' ✕'}
+                        </button>
+                      ))}
                   </div>
                   {selectedVariant && (
                     <p className="text-xs text-muted-foreground mt-2">
@@ -875,11 +939,25 @@ export default function ProductDetailPage() {
             <div className="flex gap-3">
               <button
                 id="add-to-cart-btn"
-                onClick={handleAddToCart}
-                disabled={isCartLoading || !selectedVariant || selectedVariant?.stock === 0}
-                className={`flex-1 h-12 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 ${addedToCart ? 'border-green-500 text-green-600 bg-green-50' : 'border-primary text-primary hover:bg-primary/5'}`}
+                onClick={isAlreadyInCart ? () => router.push('/cart') : handleAddToCart}
+                disabled={isCartLoading || (!isAlreadyInCart && (!selectedVariant || selectedVariant?.stock === 0))}
+                className={`flex-1 h-12 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 ${
+                  isAlreadyInCart
+                    ? 'border-emerald-500 text-emerald-600 bg-emerald-50 hover:bg-emerald-100/50'
+                    : addedToCart
+                    ? 'border-green-500 text-green-600 bg-green-50'
+                    : 'border-primary text-primary hover:bg-primary/5'
+                }`}
               >
-                {addedToCart ? <><CheckCircle2 className="w-4 h-4" />Added!</> : isCartLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add to cart'}
+                {isAlreadyInCart ? (
+                  <>Go to cart</>
+                ) : addedToCart ? (
+                  <><CheckCircle2 className="w-4 h-4" />Added!</>
+                ) : isCartLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Add to cart'
+                )}
               </button>
             </div>
             <button
@@ -1221,11 +1299,13 @@ export default function ProductDetailPage() {
             onChange={e => setSelectedVariant(product.variants.find((v: any) => v.id === e.target.value))}
             className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary shrink-0 max-w-[100px]"
           >
-            {product.variants.map((v: any) => (
-              <option key={v.id} value={v.id} disabled={v.stock === 0}>
-                {v.size || v.color || 'Default'}
-              </option>
-            ))}
+            {product.variants
+              .filter((v: any) => !hasColour || v.color === selectedVariant?.color)
+              .map((v: any) => (
+                <option key={v.id} value={v.id} disabled={v.stock === 0}>
+                  {v.size || 'Default'}
+                </option>
+              ))}
           </select>
         )}
         <button
@@ -1236,13 +1316,17 @@ export default function ProductDetailPage() {
           {isBuyingNow ? 'Wait…' : 'Buy Now'}
         </button>
         <button
-          onClick={handleAddToCart}
-          disabled={isCartLoading || !selectedVariant || selectedVariant?.stock === 0}
+          onClick={isAlreadyInCart ? () => router.push('/cart') : handleAddToCart}
+          disabled={isCartLoading || (!isAlreadyInCart && (!selectedVariant || selectedVariant?.stock === 0))}
           className={`shrink-0 text-xs font-bold px-4 py-2.5 rounded-xl border-2 transition-colors disabled:opacity-50 whitespace-nowrap ${
-            addedToCart ? 'border-green-500 text-green-600 bg-green-50' : 'border-primary text-primary hover:bg-primary/5'
+            isAlreadyInCart
+              ? 'border-emerald-500 text-emerald-600 bg-emerald-50'
+              : addedToCart
+              ? 'border-green-500 text-green-600 bg-green-50'
+              : 'border-primary text-primary hover:bg-primary/5'
           }`}
         >
-          {addedToCart ? '✓ Added' : 'Cart'}
+          {isAlreadyInCart ? 'Go to cart' : addedToCart ? '✓ Added' : 'Cart'}
         </button>
       </div>
 
@@ -1262,11 +1346,13 @@ export default function ProductDetailPage() {
             onChange={e => setSelectedVariant(product.variants.find((v: any) => v.id === e.target.value))}
             className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary shrink-0 max-w-[140px]"
           >
-            {product.variants.map((v: any) => (
-              <option key={v.id} value={v.id} disabled={v.stock === 0}>
-                {v.size || v.color || 'Default'} — ₹{Number(Number(product.salePrice || product.basePrice) + Number(v.extraPrice || 0)).toLocaleString('en-IN')}
-              </option>
-            ))}
+            {product.variants
+              .filter((v: any) => !hasColour || v.color === selectedVariant?.color)
+              .map((v: any) => (
+                <option key={v.id} value={v.id} disabled={v.stock === 0}>
+                  {v.size || 'Default'} — ₹{Number(Number(product.salePrice || product.basePrice) + Number(v.extraPrice || 0)).toLocaleString('en-IN')}
+                </option>
+              ))}
           </select>
         )}
         <div className="flex items-center border border-border rounded-lg h-8 gap-0 shrink-0">
@@ -1275,11 +1361,15 @@ export default function ProductDetailPage() {
           <button onClick={() => setQuantity(q => q + 1)} className="w-7 h-full flex items-center justify-center text-muted-foreground hover:text-foreground border-l border-border"><Plus className="w-3 h-3" /></button>
         </div>
         <button
-          onClick={handleAddToCart}
-          disabled={isCartLoading || !selectedVariant || selectedVariant?.stock === 0}
-          className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+          onClick={isAlreadyInCart ? () => router.push('/cart') : handleAddToCart}
+          disabled={isCartLoading || (!isAlreadyInCart && (!selectedVariant || selectedVariant?.stock === 0))}
+          className={`shrink-0 text-xs font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isAlreadyInCart
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          }`}
         >
-          Add to cart
+          {isAlreadyInCart ? 'Go to cart' : 'Add to cart'}
         </button>
       </div>
     </div>

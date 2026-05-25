@@ -207,7 +207,7 @@ export default function Footer() {
       {/* Scroll to top — above bottom nav on mobile */}
       <button
         onClick={scrollToTop}
-        className="fixed bottom-[76px] md:bottom-6 right-4 md:right-6 z-40 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
+        className="fixed bottom-[130px] md:bottom-6 right-4 md:right-6 z-40 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
         aria-label="Scroll to top"
       >
         <ArrowUp className="w-4 h-4" />

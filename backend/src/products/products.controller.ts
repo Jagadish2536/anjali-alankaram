@@ -68,6 +68,16 @@ export class ProductsController {
     return this.productsService.findBySlug(slug);
   }
 
+  @Post(':id/viewers')
+  @Public()
+  @ApiOperation({ summary: 'Register a product view heartbeat and get active viewers count' })
+  async heartbeat(
+    @Param('id') id: string,
+    @Body('visitorId') visitorId: string,
+  ) {
+    return this.productsService.trackViewer(id, visitorId || 'anonymous');
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')

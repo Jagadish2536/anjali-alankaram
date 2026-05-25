@@ -97,7 +97,7 @@ export class AdminController implements OnModuleInit {
         _sum: { totalAmount: true },
         where: {
           paymentStatus: 'PAID',
-          status: { notIn: ['CANCELLED', 'REFUNDED'] },
+          status: { notIn: ['CANCELLED', 'REFUNDED', 'REFUND_INITIATED'] },
         },
       }),
 
@@ -136,7 +136,7 @@ export class AdminController implements OnModuleInit {
         FROM "orders"
         WHERE 
           "createdAt" >= NOW() - INTERVAL '7 days'
-          AND status NOT IN ('CANCELLED', 'REFUNDED')
+          AND status NOT IN ('CANCELLED', 'REFUNDED', 'REFUND_INITIATED')
         GROUP BY DATE("createdAt")
         ORDER BY date ASC
       `),

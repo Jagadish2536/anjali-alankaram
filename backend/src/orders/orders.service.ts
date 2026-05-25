@@ -112,6 +112,11 @@ export class OrdersService {
       razorpayOrderId = rzpOrder.id;
     }
 
+    // 8.5. Get default warehouse
+    const defaultWarehouse = await this.prisma.warehouse.findFirst({
+      where: { isDefault: true, status: 'ACTIVE' },
+    });
+
     const orderNumber = `AA${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     // 9. Create order (status = PENDING_PAYMENT for Razorpay, PAYMENT_VERIFIED for COD)
@@ -124,6 +129,7 @@ export class OrdersService {
           orderNumber,
           userId,
           addressId: dto.addressId,
+          warehouseId: defaultWarehouse?.id || null,
           subtotal,
           discountAmount,
           shippingCharge,
@@ -597,15 +603,30 @@ export class OrdersService {
       throw new BadRequestException('Order cannot be cancelled at this stage');
     }
 
+    const isPaid = order.paymentMethod === 'RAZORPAY' && order.paymentStatus === 'PAID';
+
     await this.prisma.order.update({
       where: { id },
-      data: { status: 'CANCELLED', cancelReason: reason },
+      data: { 
+        status: 'CANCELLED', 
+        cancelReason: reason,
+        ...(isPaid && { paymentStatus: 'REFUND_INITIATED' }),
+      },
     });
 
     // Rollback inventory
     await this.inventory.rollback(id, userId).catch(e =>
       this.logger.error(`Inventory rollback on cancel failed for ${id}: ${e.message}`)
     );
+
+    // Process refund automatically if paid
+    if (isPaid) {
+      try {
+        await this.paymentsService.processRefund(id);
+      } catch (err) {
+        this.logger.error(`Auto refund failed on cancellation for order ${id}: ${err.message}`);
+      }
+    }
 
     // Log
     await this.statusHistory.append({

@@ -217,13 +217,22 @@ export class PaymentsService {
         refundOptions,
       );
 
+      const targetStatus = amount && amount < Number(payment.amount) ? 'PARTIALLY_REFUNDED' : 'REFUNDED';
+
       await this.prisma.payment.update({
         where: { orderId },
         data: {
           refundId: refund.id,
           refundAmount: amount ?? Number(payment.amount),
           refundedAt: new Date(),
-          status: amount && amount < Number(payment.amount) ? 'PARTIALLY_REFUNDED' : 'REFUNDED',
+          status: targetStatus,
+        },
+      });
+
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: targetStatus,
         },
       });
 

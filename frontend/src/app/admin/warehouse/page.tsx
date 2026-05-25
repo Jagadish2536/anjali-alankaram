@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import {
   Warehouse, Package, CheckCircle2, Loader2, Plus, Search,
   Box, Truck, RefreshCw, BarChart3, AlertCircle, Check,
-  ChevronDown, Edit3, MapPin, Phone, Mail, X
+  ChevronDown, Edit3, MapPin, Phone, Mail, X, ChevronRight
 } from 'lucide-react';
 
 // ─── Stat Card ─────────────────────────────────────────────────────
@@ -135,6 +135,114 @@ export default function AdminWarehousePage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Category drill-down states
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [editingStock, setEditingStock] = useState<Record<string, number>>({});
+  const [savingStock, setSavingStock] = useState<Record<string, boolean>>({});
+
+  // Load categories
+  useEffect(() => {
+    api.get('/categories')
+      .then(({ data }) => setCategories(data))
+      .catch(() => {});
+  }, []);
+
+  // Clear category/product filters if search query is entered
+  useEffect(() => {
+    if (inventorySearch.trim() !== '') {
+      setSelectedCategoryId(null);
+      setSelectedProductId(null);
+    }
+  }, [inventorySearch]);
+
+  const handleUpdateStock = async (variantId: string, newQty: number) => {
+    setSavingStock(prev => ({ ...prev, [variantId]: true }));
+    try {
+      await api.put(`/warehouse/${selectedWh.id}/inventory/${variantId}`, { quantity: newQty });
+      await fetchWarehouseData(selectedWh.id);
+      // Remove editing entry to reflect saved state
+      setEditingStock(prev => {
+        const copy = { ...prev };
+        delete copy[variantId];
+        return copy;
+      });
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to update stock');
+    } finally {
+      setSavingStock(prev => ({ ...prev, [variantId]: false }));
+    }
+  };
+
+  const getStockVal = (variantId: string, currentQty: number) => {
+    return editingStock[variantId] !== undefined ? editingStock[variantId] : currentQty;
+  };
+
+  const handleStockChange = (variantId: string, val: string) => {
+    const parsed = parseInt(val, 10);
+    setEditingStock(prev => ({ ...prev, [variantId]: isNaN(parsed) ? 0 : parsed }));
+  };
+
+  const handleStockAdjust = (variantId: string, currentQty: number, offset: number) => {
+    const currentVal = getStockVal(variantId, currentQty);
+    const newVal = Math.max(0, currentVal + offset);
+    setEditingStock(prev => ({ ...prev, [variantId]: newVal }));
+  };
+
+  const getCategoryProductCount = (catId: string) => {
+    const productIds = new Set(
+      inventory.filter((item: any) => item.categoryId === catId).map((item: any) => item.productId)
+    );
+    return productIds.size;
+  };
+
+  const getCategoryProducts = () => {
+    if (!selectedCategoryId) return [];
+    const productsMap = new Map();
+    inventory.forEach((item: any) => {
+      if (item.categoryId === selectedCategoryId) {
+        if (!productsMap.has(item.productId)) {
+          productsMap.set(item.productId, {
+            id: item.productId,
+            name: item.productName,
+            slug: item.productSlug,
+            images: item.productImages || [],
+            variantsCount: 0,
+            totalStock: 0,
+          });
+        }
+        const pObj = productsMap.get(item.productId);
+        pObj.variantsCount += 1;
+        pObj.totalStock += item.quantity;
+      }
+    });
+    return Array.from(productsMap.values());
+  };
+
+  const getProductVariants = () => {
+    if (!selectedProductId) return [];
+    return inventory.filter((item: any) => item.productId === selectedProductId);
+  };
+
+  const handleSelectCategory = (catId: string) => {
+    setInventorySearch('');
+    setSelectedCategoryId(catId);
+    setSelectedProductId(null);
+  };
+
+  const handleSelectProduct = (prodId: string) => {
+    setInventorySearch('');
+    setSelectedProductId(prodId);
+  };
+
+  const handleResetNavigation = () => {
+    setSelectedCategoryId(null);
+    setSelectedProductId(null);
+    setInventorySearch('');
+    setEditingStock({});
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'STOCK_MANAGER'].includes(user?.role || '')) {
@@ -444,58 +552,264 @@ export default function AdminWarehousePage() {
                     )}
 
                     {/* ── INVENTORY ── */}
-                    {activeTab === 'inventory' && (
-                      <div>
-                        <div className="relative mb-4">
-                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                          <input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)}
-                            placeholder="Search by product name or SKU..."
-                            className="w-full pl-9 pr-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary bg-gray-50" />
-                        </div>
-                        <div className="overflow-x-auto rounded-xl border">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50 border-b">
-                              <tr>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase">Product / SKU</th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Size</th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">WH Stock</th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Reserved</th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Global Stock</th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                              {inventory.map((inv: any) => (
-                                <tr key={inv.id} className="hover:bg-gray-50/50">
-                                  <td className="px-4 py-3">
-                                    <p className="font-medium leading-snug">{inv.productName}</p>
-                                    <p className="text-[10px] font-mono text-muted-foreground">{inv.sku}</p>
-                                  </td>
-                                  <td className="px-4 py-3 text-center">
-                                    <span className="font-mono text-xs">{inv.size}</span>
-                                  </td>
-                                  <td className="px-4 py-3 text-center font-bold">{inv.quantity}</td>
-                                  <td className="px-4 py-3 text-center text-muted-foreground">{inv.reserved}</td>
-                                  <td className="px-4 py-3 text-center text-muted-foreground">{inv.globalStock}</td>
-                                  <td className="px-4 py-3 text-center">
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                      inv.quantity <= 5 ? 'bg-red-50 text-red-600' :
-                                      inv.quantity <= 15 ? 'bg-amber-50 text-amber-600' :
-                                      'bg-green-50 text-green-600'
-                                    }`}>
-                                      {inv.quantity <= 5 ? 'Low' : inv.quantity <= 15 ? 'Medium' : 'Good'}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                              {inventory.length === 0 && (
-                                <tr><td colSpan={6} className="py-10 text-center text-muted-foreground text-sm">No inventory found</td></tr>
+                    {activeTab === 'inventory' && (() => {
+                      const activeCategory = categories.find(c => c.id === selectedCategoryId);
+                      const activeProduct = inventory.find(p => p.productId === selectedProductId);
+
+                      return (
+                        <div>
+                          {/* Search Input */}
+                          <div className="relative mb-4 flex gap-2">
+                            <div className="relative flex-1">
+                              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                              <input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)}
+                                 placeholder="Search by product name or SKU..."
+                                 className="w-full pl-9 pr-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary bg-gray-50" />
+                            </div>
+                            {(selectedCategoryId || selectedProductId || inventorySearch) && (
+                              <button
+                                onClick={handleResetNavigation}
+                                className="px-4 py-2 border rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors"
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Breadcrumbs (only if search is empty) */}
+                          {!inventorySearch && (selectedCategoryId || selectedProductId) && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold mb-4 bg-gray-50 border px-3 py-2 rounded-xl">
+                              <button onClick={() => { setSelectedCategoryId(null); setSelectedProductId(null); }} className="hover:text-primary transition-colors">
+                                Categories
+                              </button>
+                              {selectedCategoryId && (
+                                <>
+                                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                                  <button onClick={() => setSelectedProductId(null)} className={`hover:text-primary transition-colors ${!selectedProductId ? 'text-foreground font-bold' : ''}`}>
+                                    {activeCategory?.name || 'Category'}
+                                  </button>
+                                </>
                               )}
-                            </tbody>
-                          </table>
+                              {selectedProductId && (
+                                <>
+                                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                                  <span className="text-foreground font-bold">{activeProduct?.productName || 'Product'}</span>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Inventory Content */}
+                          {inventorySearch ? (
+                            /* Search Results / Flat Table */
+                            <div className="overflow-x-auto rounded-xl border">
+                              <table className="w-full text-sm">
+                                <thead className="bg-gray-50 border-b">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase">Product / SKU</th>
+                                    <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Size / Colour</th>
+                                    <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">WH Stock</th>
+                                    <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Reserved</th>
+                                    <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Global Stock</th>
+                                    <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                  {inventory.map((inv: any) => (
+                                    <tr key={inv.id} className="hover:bg-gray-50/50">
+                                      <td className="px-4 py-3">
+                                        <p className="font-medium leading-snug">{inv.productName}</p>
+                                        <p className="text-[10px] font-mono text-muted-foreground">{inv.sku}</p>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                        <span className="font-mono text-xs">{inv.size} {inv.color ? `/ ${inv.color}` : ''}</span>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <button
+                                            onClick={() => handleStockAdjust(inv.variantId, inv.quantity, -1)}
+                                            className="w-7 h-7 border rounded-lg hover:bg-gray-50 flex items-center justify-center text-sm font-bold shadow-sm"
+                                          >
+                                            -
+                                          </button>
+                                          <input
+                                            type="number"
+                                            value={getStockVal(inv.variantId, inv.quantity)}
+                                            onChange={e => handleStockChange(inv.variantId, e.target.value)}
+                                            className="w-12 h-7 border rounded-lg text-center text-sm outline-none focus:ring-1 focus:ring-primary shadow-sm"
+                                          />
+                                          <button
+                                            onClick={() => handleStockAdjust(inv.variantId, inv.quantity, 1)}
+                                            className="w-7 h-7 border rounded-lg hover:bg-gray-50 flex items-center justify-center text-sm font-bold shadow-sm"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 text-center text-muted-foreground">{inv.reserved}</td>
+                                      <td className="px-4 py-3 text-center text-muted-foreground">{inv.globalStock}</td>
+                                      <td className="px-4 py-3 text-center">
+                                        <button
+                                          onClick={() => handleUpdateStock(inv.variantId, getStockVal(inv.variantId, inv.quantity))}
+                                          disabled={savingStock[inv.variantId] || getStockVal(inv.variantId, inv.quantity) === inv.quantity}
+                                          className="px-3 py-1 bg-primary text-white disabled:bg-gray-100 disabled:text-muted-foreground text-xs font-bold rounded-lg hover:bg-primary/95 transition-all shadow-sm flex items-center gap-1 mx-auto"
+                                        >
+                                          {savingStock[inv.variantId] && <Loader2 className="w-3 h-3 animate-spin" />}
+                                          Save
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                  {inventory.length === 0 && (
+                                    <tr><td colSpan={6} className="py-10 text-center text-muted-foreground text-sm">No inventory found</td></tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : selectedProductId ? (
+                            /* Level 3: Product Variants Stock View */
+                            <div>
+                              <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 border rounded-2xl p-4 mb-4 flex items-center gap-4">
+                                {activeProduct?.productImages?.[0] && (
+                                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border bg-white shrink-0">
+                                    <Image src={activeProduct.productImages[0]} alt="" fill className="object-cover" />
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="font-black text-sm text-foreground">{activeProduct?.productName}</h3>
+                                  <p className="text-xs text-muted-foreground mt-0.5">Adjust variant stock for this product in the warehouse.</p>
+                                </div>
+                              </div>
+                              <div className="overflow-x-auto rounded-xl border bg-white">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase">Size / Colour</th>
+                                      <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase">SKU</th>
+                                      <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">WH Stock</th>
+                                      <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Reserved</th>
+                                      <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Global Stock</th>
+                                      <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Action</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y">
+                                    {getProductVariants().map((inv: any) => (
+                                      <tr key={inv.id} className="hover:bg-gray-50/50">
+                                        <td className="px-4 py-3 font-semibold">
+                                          <span className="font-mono text-xs">{inv.size} {inv.color ? `/ ${inv.color}` : ''}</span>
+                                        </td>
+                                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                                          {inv.sku}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                          <div className="flex items-center justify-center gap-1.5">
+                                            <button
+                                              onClick={() => handleStockAdjust(inv.variantId, inv.quantity, -1)}
+                                              className="w-7 h-7 border rounded-lg hover:bg-gray-50 flex items-center justify-center text-sm font-bold shadow-sm"
+                                            >
+                                              -
+                                            </button>
+                                            <input
+                                              type="number"
+                                              value={getStockVal(inv.variantId, inv.quantity)}
+                                              onChange={e => handleStockChange(inv.variantId, e.target.value)}
+                                              className="w-12 h-7 border rounded-lg text-center text-sm outline-none focus:ring-1 focus:ring-primary shadow-sm"
+                                            />
+                                            <button
+                                              onClick={() => handleStockAdjust(inv.variantId, inv.quantity, 1)}
+                                              className="w-7 h-7 border rounded-lg hover:bg-gray-50 flex items-center justify-center text-sm font-bold shadow-sm"
+                                            >
+                                              +
+                                            </button>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-muted-foreground">{inv.reserved}</td>
+                                        <td className="px-4 py-3 text-center text-muted-foreground">{inv.globalStock}</td>
+                                        <td className="px-4 py-3 text-center">
+                                          <button
+                                            onClick={() => handleUpdateStock(inv.variantId, getStockVal(inv.variantId, inv.quantity))}
+                                            disabled={savingStock[inv.variantId] || getStockVal(inv.variantId, inv.quantity) === inv.quantity}
+                                            className="px-3 py-1 bg-primary text-white disabled:bg-gray-100 disabled:text-muted-foreground text-xs font-bold rounded-lg hover:bg-primary/95 transition-all shadow-sm flex items-center gap-1 mx-auto"
+                                          >
+                                            {savingStock[inv.variantId] && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                            Save
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : selectedCategoryId ? (
+                            /* Level 2: Category Products List */
+                            <div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {getCategoryProducts().map((prod: any) => (
+                                  <button
+                                    key={prod.id}
+                                    onClick={() => handleSelectProduct(prod.id)}
+                                    className="flex items-center gap-3 p-4 border rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left bg-white shadow-sm"
+                                  >
+                                    {prod.images?.[0] ? (
+                                      <div className="relative w-12 h-12 rounded-lg overflow-hidden border bg-muted/10 shrink-0">
+                                        <Image src={prod.images[0]} alt="" fill className="object-cover" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-12 h-12 rounded-lg border bg-gray-50 flex items-center justify-center shrink-0">
+                                        <Package className="w-5 h-5 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-bold text-sm text-foreground truncate">{prod.name}</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {prod.variantsCount} sizes/colours · {prod.totalStock} units
+                                      </p>
+                                    </div>
+                                  </button>
+                                ))}
+                                {getCategoryProducts().length === 0 && (
+                                  <div className="col-span-full py-10 text-center text-muted-foreground text-sm">
+                                    No products found in this category
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Level 1: Categories List */
+                            <div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {categories.map((cat: any) => (
+                                  <button
+                                    key={cat.id}
+                                    onClick={() => handleSelectCategory(cat.id)}
+                                    className="p-5 border rounded-2xl bg-white shadow-sm hover:border-primary hover:bg-primary/5 hover:shadow-md transition-all text-left flex flex-col justify-between min-h-[120px]"
+                                  >
+                                    <div className="flex items-start justify-between w-full">
+                                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                                        <Box className="w-5 h-5" />
+                                      </div>
+                                      <span className="text-[10px] bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full font-bold">
+                                        {getCategoryProductCount(cat.id)} products
+                                      </span>
+                                    </div>
+                                    <div className="mt-4">
+                                      <p className="font-black text-sm text-foreground leading-tight">{cat.name}</p>
+                                      {cat.description && <p className="text-xs text-muted-foreground mt-1 truncate">{cat.description}</p>}
+                                    </div>
+                                  </button>
+                                ))}
+                                {categories.length === 0 && (
+                                  <div className="col-span-full py-10 text-center text-muted-foreground text-sm">
+                                    No categories available
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </>

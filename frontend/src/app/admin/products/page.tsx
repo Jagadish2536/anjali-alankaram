@@ -197,6 +197,7 @@ export default function AdminProductsPage() {
   const downloadExcel = () => {
     if (!reportData) return;
     const rows = reportData.rows.map((r: any) => ({
+      'Checked [  ]': '',
       'Product Name': r.productName,
       'Category': r.category,
       'SKU': r.sku,
@@ -229,6 +230,7 @@ export default function AdminProductsPage() {
     const tableRows = rows
       .map((r: any) => `
         <tr class="${r.isMatch ? '' : 'mismatch'}">
+          <td style="text-align: center; width: 40px;"><span style="display: inline-block; width: 12px; height: 12px; border: 1px solid #666; border-radius: 2px; margin-top: 2px;"></span></td>
           <td>${r.productName}</td>
           <td>${r.category}</td>
           <td>${r.sku}</td>
@@ -272,7 +274,7 @@ export default function AdminProductsPage() {
         <div class="card"><h3>${reportData?.summary?.totalWarehouseStock || 0}</h3><p>Total Warehouse Stock</p></div>
       </div>
       <table><thead><tr>
-        <th>Product</th><th>Category</th><th>SKU</th><th>Size / Colour</th>
+        <th style="width: 40px; text-align: center;">Verified</th><th>Product</th><th>Category</th><th>SKU</th><th>Size / Colour</th>
         <th>Online Stock</th><th>Reserved</th><th>Available</th>
         <th>Warehouse Stock</th><th>Variance</th><th>Status</th>
       </tr></thead><tbody>${tableRows}</tbody></table>

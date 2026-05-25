@@ -65,8 +65,6 @@ export class InventoryService {
   }
 
   /**
-   * Confirm reservation — deducts actual stock and marks reservation confirmed.
-   * Called after payment is verified.
    */
   async confirm(orderId: string) {
     const reservations = await this.prisma.$queryRawUnsafe<any[]>(
@@ -75,6 +73,13 @@ export class InventoryService {
     );
 
     if (!reservations.length) return;
+
+    // Get assigned warehouse or default warehouse
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { warehouseId: true },
+    });
+    const finalWhId = order?.warehouseId || (await this.prisma.warehouse.findFirst({ where: { isDefault: true } }))?.id;
 
     await this.prisma.$transaction(async (tx) => {
       for (const res of reservations) {
@@ -93,6 +98,28 @@ export class InventoryService {
           data: { stock: newStock, reservedStock: newReserved },
         });
 
+        // Sync with warehouse inventory
+        if (finalWhId) {
+          const whInv = await tx.warehouseInventory.findUnique({
+            where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: res.variantId } },
+          });
+          if (whInv) {
+            await tx.warehouseInventory.update({
+              where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: res.variantId } },
+              data: { quantity: Math.max(0, whInv.quantity - res.quantity) },
+            });
+          } else {
+            await tx.warehouseInventory.create({
+              data: {
+                warehouseId: finalWhId,
+                variantId: res.variantId,
+                quantity: 0,
+                reserved: 0,
+              },
+            });
+          }
+        }
+
         // Also update product.totalSold
         const orderItem = await tx.orderItem.findFirst({
           where: { orderId, variantId: res.variantId },
@@ -107,7 +134,7 @@ export class InventoryService {
         // Log deduction
         await tx.$executeRawUnsafe(
           `INSERT INTO "inventory_logs" ("id","variantId","type","quantity","stockBefore","stockAfter","orderId","notes","createdAt")
-           VALUES (gen_random_uuid(),$1,'DEDUCTED'::\"InventoryMovementType",$2,$3,$4,$5,'Stock deducted after payment confirmed'::text,NOW())`,
+           VALUES (gen_random_uuid(),$1,'DEDUCTED'::\"InventoryMovementType\",$2,$3,$4,$5,'Stock deducted after payment confirmed'::text,NOW())`,
           res.variantId, res.quantity,
           variant.stock, newStock, orderId,
         );
@@ -147,6 +174,13 @@ export class InventoryService {
       orderId,
     );
 
+    // Get order to find the assigned warehouse ID
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { warehouseId: true },
+    });
+    const finalWhId = order?.warehouseId || (await this.prisma.warehouse.findFirst({ where: { isDefault: true } }))?.id;
+
     if (!unconfirmed.length && !confirmed.length) {
       // No reservations at all — fallback: restore stock from order items directly
       const orderItems = await this.prisma.orderItem.findMany({
@@ -165,6 +199,29 @@ export class InventoryService {
               where: { id: item.variantId },
               data: { stock: newStock },
             });
+
+            // Sync with warehouse inventory
+            if (finalWhId) {
+              const whInv = await tx.warehouseInventory.findUnique({
+                where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: item.variantId } },
+              });
+              if (whInv) {
+                await tx.warehouseInventory.update({
+                  where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: item.variantId } },
+                  data: { quantity: whInv.quantity + item.quantity },
+                });
+              } else {
+                await tx.warehouseInventory.create({
+                  data: {
+                    warehouseId: finalWhId,
+                    variantId: item.variantId,
+                    quantity: item.quantity,
+                    reserved: 0,
+                  },
+                });
+              }
+            }
+
             await tx.$executeRawUnsafe(
               `INSERT INTO "inventory_logs" ("id","variantId","type","quantity","stockBefore","stockAfter","orderId","actorId","notes","createdAt")
                VALUES (gen_random_uuid(),$1,'RESTOCKED'::"InventoryMovementType",$2,$3,$4,$5,$6,'Stock restored on cancellation (no reservation found)',NOW())`,
@@ -219,6 +276,28 @@ export class InventoryService {
           data: { stock: newStock },
         });
 
+        // Sync with warehouse inventory
+        if (finalWhId) {
+          const whInv = await tx.warehouseInventory.findUnique({
+            where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: res.variantId } },
+          });
+          if (whInv) {
+            await tx.warehouseInventory.update({
+              where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: res.variantId } },
+              data: { quantity: whInv.quantity + res.quantity },
+            });
+          } else {
+            await tx.warehouseInventory.create({
+              data: {
+                warehouseId: finalWhId,
+                variantId: res.variantId,
+                quantity: res.quantity,
+                reserved: 0,
+              },
+            });
+          }
+        }
+
         // Also reverse totalSold on the product
         const orderItem = await tx.orderItem.findFirst({
           where: { orderId, variantId: res.variantId },
@@ -257,6 +336,13 @@ export class InventoryService {
       select: { variantId: true, quantity: true, productId: true },
     });
 
+    // Get order to find the assigned warehouse ID
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { warehouseId: true },
+    });
+    const finalWhId = order?.warehouseId || (await this.prisma.warehouse.findFirst({ where: { isDefault: true } }))?.id;
+
     await this.prisma.$transaction(async (tx) => {
       for (const item of orderItems) {
         const variant = await tx.productVariant.findUnique({
@@ -272,6 +358,28 @@ export class InventoryService {
           where: { id: item.variantId },
           data: { stock: newStock },
         });
+
+        // Sync with warehouse inventory
+        if (finalWhId) {
+          const whInv = await tx.warehouseInventory.findUnique({
+            where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: item.variantId } },
+          });
+          if (whInv) {
+            await tx.warehouseInventory.update({
+              where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: item.variantId } },
+              data: { quantity: whInv.quantity + item.quantity },
+            });
+          } else {
+            await tx.warehouseInventory.create({
+              data: {
+                warehouseId: finalWhId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+                reserved: 0,
+              },
+            });
+          }
+        }
 
         // Reverse totalSold
         await tx.product.update({
