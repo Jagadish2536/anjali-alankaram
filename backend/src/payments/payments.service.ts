@@ -90,6 +90,7 @@ export class PaymentsService {
           update: {
             razorpayPaymentId: paymentEntity.id,
             status: 'PAID',
+            amount: paymentEntity.amount / 100,
           },
         });
 
@@ -179,7 +180,7 @@ export class PaymentsService {
           razorpayOrderId: data.razorpayOrderId,
           razorpayPaymentId: data.razorpayPaymentId,
           razorpaySignature: data.razorpaySignature,
-          amount: 0,
+          amount: Number(order.totalAmount),
           status: 'PAID',
           method: 'RAZORPAY',
         },
@@ -187,6 +188,7 @@ export class PaymentsService {
           razorpayPaymentId: data.razorpayPaymentId,
           razorpaySignature: data.razorpaySignature,
           status: 'PAID',
+          amount: Number(order.totalAmount),
         },
       });
     }
@@ -208,9 +210,20 @@ export class PaymentsService {
       throw new BadRequestException('No payment found for this order');
     }
 
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    // Fallback to order total if payment amount is registered as 0 or undefined
+    const finalAmount = amount || (payment.amount && Number(payment.amount) > 0 ? Number(payment.amount) : (order ? Number(order.totalAmount) : 0));
+
+    if (finalAmount <= 0) {
+      throw new BadRequestException('Cannot refund an order with amount 0');
+    }
+
     try {
       const refundOptions: any = {};
-      if (amount) refundOptions.amount = Math.round(amount * 100);
+      if (amount || finalAmount) refundOptions.amount = Math.round(finalAmount * 100);
 
       const refund = await this.razorpay.payments.refund(
         payment.razorpayPaymentId,
@@ -223,7 +236,7 @@ export class PaymentsService {
         where: { orderId },
         data: {
           refundId: refund.id,
-          refundAmount: amount ?? Number(payment.amount),
+          refundAmount: finalAmount,
           refundedAt: new Date(),
           status: targetStatus,
         },
@@ -239,13 +252,14 @@ export class PaymentsService {
       await this.prisma.$executeRawUnsafe(
         `INSERT INTO "payment_transactions" ("id","orderId","type","amount","status","gateway","gatewayRef","createdAt")
          VALUES (gen_random_uuid(),$1,'REFUND',$2,'SUCCESS','RAZORPAY',$3,NOW())`,
-        orderId, amount ?? Number(payment.amount), refund.id,
+        orderId, finalAmount, refund.id,
       );
 
       return refund;
     } catch (e) {
-      this.logger.error(`Refund failed for order ${orderId}: ${e.message}`);
-      throw new BadRequestException('Refund processing failed');
+      const errMsg = e.response?.data?.error?.description || e.message || 'Unknown error';
+      this.logger.error(`Refund failed for order ${orderId}: ${errMsg}`);
+      throw new BadRequestException(`Refund failed: ${errMsg}`);
     }
   }
 
