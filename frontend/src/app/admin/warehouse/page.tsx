@@ -137,7 +137,7 @@ export default function AdminWarehousePage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated || !['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF'].includes(user?.role)) {
+    if (!isAuthenticated || !['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'STOCK_MANAGER'].includes(user?.role || '')) {
       router.push('/admin');
     }
   }, [isAuthenticated, user, router]);

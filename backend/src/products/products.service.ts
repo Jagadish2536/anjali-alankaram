@@ -218,7 +218,7 @@ export class ProductsService {
     const existingSlug = await this.prisma.product.findUnique({ where: { slug } });
     const finalSlug = existingSlug ? `${slug}-${Date.now()}` : slug;
 
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: {
         ...dto,
         status: dto.status || 'ACTIVE',
@@ -234,6 +234,12 @@ export class ProductsService {
       },
       include: { variants: true, category: true },
     });
+
+    if (product.variants && product.variants.length > 0) {
+      await this.ensureDefaultWarehouseAndSync(product.variants);
+    }
+
+    return product;
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -255,10 +261,43 @@ export class ProductsService {
 
     // Upsert variants if provided
     if (variants && Array.isArray(variants)) {
+      const payloadIds = variants.map((v) => v.id).filter(Boolean);
+
+      // Find variants of this product that are not in the payload (being deactivated)
+      const toDeactivate = await this.prisma.productVariant.findMany({
+        where: {
+          productId: id,
+          id: { notIn: payloadIds },
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      const deactivateIds = toDeactivate.map((v) => v.id);
+
+      await this.prisma.productVariant.updateMany({
+        where: {
+          productId: id,
+          id: { notIn: payloadIds },
+        },
+        data: {
+          isActive: false,
+        },
+      });
+
+      if (deactivateIds.length > 0) {
+        // Delete warehouse inventory for these deactivated variants
+        await this.prisma.warehouseInventory.deleteMany({
+          where: {
+            variantId: { in: deactivateIds },
+          },
+        });
+      }
+
       for (const v of variants) {
+        let variantObj: any;
         if (v.id) {
           // Update existing variant
-          await this.prisma.productVariant.update({
+          variantObj = await this.prisma.productVariant.update({
             where: { id: v.id },
             data: {
               size: v.size,
@@ -271,7 +310,7 @@ export class ProductsService {
           });
         } else {
           // Create new variant
-          await this.prisma.productVariant.create({
+          variantObj = await this.prisma.productVariant.create({
             data: {
               productId: id,
               size: v.size,
@@ -283,6 +322,8 @@ export class ProductsService {
             },
           });
         }
+        // Sync each active variant to warehouse
+        await this.ensureDefaultWarehouseAndSync([variantObj]);
       }
     }
 
@@ -297,11 +338,81 @@ export class ProductsService {
     if (!product) throw new NotFoundException('Product not found');
 
     await this.redis.del(`product:${product.slug}`);
+
+    // Get all variant ids of this product
+    const productVariants = await this.prisma.productVariant.findMany({
+      where: { productId: id },
+      select: { id: true },
+    });
+    const variantIds = productVariants.map((v) => v.id);
+
+    // Archive product
     await this.prisma.product.update({
       where: { id },
       data: { status: 'ARCHIVED' },
     });
 
+    // Deactivate variants
+    await this.prisma.productVariant.updateMany({
+      where: { productId: id },
+      data: { isActive: false },
+    });
+
+    if (variantIds.length > 0) {
+      // Delete warehouse inventory records for this product's variants
+      await this.prisma.warehouseInventory.deleteMany({
+        where: {
+          variantId: { in: variantIds },
+        },
+      });
+    }
+
     return { message: 'Product archived successfully' };
+  }
+
+  private async ensureDefaultWarehouseAndSync(variants: any[]) {
+    // 1. Find default or first warehouse
+    let warehouse = await this.prisma.warehouse.findFirst({
+      where: { isDefault: true },
+    });
+    if (!warehouse) {
+      warehouse = await this.prisma.warehouse.findFirst();
+    }
+    // 2. If no warehouse exists, create a default one
+    if (!warehouse) {
+      warehouse = await this.prisma.warehouse.create({
+        data: {
+          name: 'Main Warehouse',
+          code: 'WH-MAIN-01',
+          address: 'Main Street, Bangalore',
+          city: 'Bangalore',
+          state: 'Karnataka',
+          pincode: '560001',
+          isDefault: true,
+          status: 'ACTIVE',
+        },
+      });
+    }
+
+    // 3. Sync variants to the warehouse inventory
+    for (const v of variants) {
+      await this.prisma.warehouseInventory.upsert({
+        where: {
+          warehouseId_variantId: {
+            warehouseId: warehouse.id,
+            variantId: v.id,
+          },
+        },
+        update: {
+          quantity: v.stock,
+        },
+        create: {
+          warehouseId: warehouse.id,
+          variantId: v.id,
+          quantity: v.stock,
+          reserved: 0,
+        },
+      });
+    }
   }
 }

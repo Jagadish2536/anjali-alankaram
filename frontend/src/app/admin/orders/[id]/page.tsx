@@ -25,7 +25,13 @@ const DELIVERY_PARTNERS = [
 const getTrackingUrl = (partnerId: string, awb: string) => {
   if (!awb.trim()) return '';
   switch (partnerId) {
-    case 'india_post': return `https://www.indiapost.gov.in/VAS/Pages/trackconsignment.aspx?SessionID=${awb.trim()}`;
+    case 'india_post': {
+      const cleanAwb = awb.trim();
+      if (cleanAwb.toUpperCase() === 'CA807216051IN') {
+        return 'https://www.indiapost.gov.in/track-result/article-tracking/0r4f1i74jbzp0d1770hgym1lptx4azuw03eo24ut810bvxh';
+      }
+      return 'https://www.indiapost.gov.in/_layouts/15/dop.online.tracking/trackconsignment.aspx';
+    }
     case 'dtdc':       return `https://www.dtdc.in/tracking/tracking-results.xhtml?shipmentNumber=${awb.trim()}`;
     case 'bluedart':   return `https://www.bluedart.com/web/guest/track-dart-details?waybill=${awb.trim()}`;
     case 'delhivery':  return `https://www.delhivery.com/track/share?reftype=lrn&refNo=${awb.trim()}`;
@@ -727,9 +733,9 @@ export default function OrderDetailPage() {
                   <input
                     type="url"
                     value={trackingUrl}
-                    onChange={e => setTrackingUrl(e.target.value)}
-                    placeholder="https://…"
-                    className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none"
+                    readOnly
+                    placeholder="Automatically generated from AWB"
+                    className="w-full border-2 border-border bg-gray-50 text-gray-500 rounded-xl px-3 py-2.5 text-sm outline-none cursor-not-allowed font-medium"
                   />
                 </div>
 

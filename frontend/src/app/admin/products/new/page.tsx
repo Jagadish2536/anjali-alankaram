@@ -27,7 +27,14 @@ export default function NewProductPage() {
     salePrice: '',
     images: [''],
     tags: ['New Arrival'],
-    variants: [{ size: 'S', color: '', colorHex: '#000000', stock: 10, sku: '', images: [] as string[] }],
+    variants: [
+      {
+        color: '',
+        colorHex: '#000000',
+        images: [] as string[],
+        sizes: [{ size: 'S', stock: 10, sku: '' }]
+      }
+    ],
     instagramReelUrl: '',
     sizeGuide: [] as SizeRow[],
   });
@@ -47,8 +54,38 @@ export default function NewProductPage() {
 
   const handleAddImage = () => setFormData({ ...formData, images: [...formData.images, ''] });
   const handleRemoveImage = (i: number) => setFormData({ ...formData, images: formData.images.filter((_, idx) => idx !== i) });
-  const handleAddVariant = () => setFormData({ ...formData, variants: [...formData.variants, { size: '', color: '', colorHex: '#000000', stock: 0, sku: '', images: [] }] });
+  const handleAddVariant = () => setFormData({
+    ...formData,
+    variants: [
+      ...formData.variants,
+      { color: '', colorHex: '#000000', images: [] as string[], sizes: [{ size: '', stock: 0, sku: '' }] }
+    ]
+  });
   const handleRemoveVariant = (i: number) => setFormData({ ...formData, variants: formData.variants.filter((_, idx) => idx !== i) });
+
+  const handleAddSize = (variantIndex: number) => {
+    const vs = [...formData.variants] as any[];
+    vs[variantIndex].sizes = [...vs[variantIndex].sizes, { size: '', stock: 0, sku: '' }];
+    setFormData({ ...formData, variants: vs });
+  };
+
+  const handleRemoveSize = (variantIndex: number, sizeIndex: number) => {
+    const vs = [...formData.variants] as any[];
+    vs[variantIndex].sizes = vs[variantIndex].sizes.filter((_: any, idx: number) => idx !== sizeIndex);
+    setFormData({ ...formData, variants: vs });
+  };
+
+  const handleUpdateSize = (variantIndex: number, sizeIndex: number, field: string, value: any) => {
+    const vs = [...formData.variants] as any[];
+    vs[variantIndex].sizes[sizeIndex] = { ...vs[variantIndex].sizes[sizeIndex], [field]: value };
+    setFormData({ ...formData, variants: vs });
+  };
+
+  const handleUpdateVariantGroup = (variantIndex: number, field: string, value: any) => {
+    const vs = [...formData.variants] as any[];
+    vs[variantIndex] = { ...vs[variantIndex], [field]: value };
+    setFormData({ ...formData, variants: vs });
+  };
 
   const handleFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,16 +111,24 @@ export default function NewProductPage() {
     setError('');
     try {
       if (!formData.name || !formData.basePrice) throw new Error('Name and Base Price are required');
-      const cleanVariants = formData.variants
-        .filter(v => v.size.trim() !== '')
-        .map(v => ({
-          size: v.size,
-          stock: Number(v.stock),
-          sku: v.sku || `${formData.name.substring(0, 3)}-${v.size}-${Date.now()}`.toUpperCase(),
-          ...(v.color && { color: v.color }),
-          ...(v.colorHex && { colorHex: v.colorHex }),
-          images: v.images || [],
-        }));
+      const cleanVariants: any[] = [];
+      formData.variants.forEach((v: any, groupIdx: number) => {
+        v.sizes.forEach((sz: any, szIdx: number) => {
+          if (sz.size.trim() !== '') {
+            const defaultSku = `${formData.name.substring(0, 3)}-${sz.size}-${Date.now()}-${groupIdx}-${szIdx}`
+              .toUpperCase()
+              .replace(/\s+/g, '');
+            cleanVariants.push({
+              size: sz.size,
+              stock: Number(sz.stock),
+              sku: sz.sku || defaultSku,
+              ...(v.color && { color: v.color }),
+              ...(v.colorHex && { colorHex: v.colorHex }),
+              images: v.images || [],
+            });
+          }
+        });
+      });
       if (cleanVariants.length === 0) throw new Error('Please add at least one size/variant');
       const payload: any = {
         name: formData.name,
@@ -378,56 +423,29 @@ export default function NewProductPage() {
           <div className="flex justify-between items-center border-b pb-4">
             <h2 className="text-xl font-bold font-outfit">Inventory, Sizes &amp; Colours</h2>
             <button type="button" onClick={handleAddVariant} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-              <PlusCircle className="w-4 h-4" /> Add Variant
+              <PlusCircle className="w-4 h-4" /> Add Variant Color
             </button>
           </div>
-          <p className="text-xs text-muted-foreground -mt-3">Add a colour + images per variant. When a customer selects a colour, only those images will show.</p>
+          <p className="text-xs text-muted-foreground -mt-3">Add a colour + images per variant. Inside each variant, you can specify different sizes and stock.</p>
           <div className="space-y-6">
             {(formData.variants as any[]).map((v, i) => (
-              <div key={i} className="border rounded-2xl p-4 space-y-3 bg-muted/5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Variant {i + 1}</span>
+              <div key={i} className="border rounded-2xl p-4 space-y-4 bg-muted/5">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Variant {i + 1}</span>
                   {formData.variants.length > 1 && (
                     <button type="button" onClick={() => handleRemoveVariant(i)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-xs font-medium mb-1">Size *</label>
-                    <input
-                      required type="text" placeholder="e.g. S, M, L, XL"
-                      className="w-full px-3 py-2.5 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
-                      value={v.size}
-                      onChange={e => {
-                        const vs = [...formData.variants] as any[]; vs[i].size = e.target.value;
-                        setFormData({ ...formData, variants: vs } as any);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Stock</label>
-                    <input
-                      required type="number" placeholder="0" min={0}
-                      className="w-full px-3 py-2.5 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
-                      value={v.stock}
-                      onChange={e => {
-                        const vs = [...formData.variants] as any[]; vs[i].stock = Number(e.target.value);
-                        setFormData({ ...formData, variants: vs } as any);
-                      }}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
                   <div>
                     <label className="block text-xs font-medium mb-1">Colour Name</label>
                     <input
                       type="text" placeholder="e.g. Crimson Red"
-                      className="w-full px-3 py-2.5 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
+                      className="w-full px-3 py-2 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
                       value={v.color || ''}
-                      onChange={e => {
-                        const vs = [...formData.variants] as any[]; vs[i].color = e.target.value;
-                        setFormData({ ...formData, variants: vs } as any);
-                      }}
+                      onChange={e => handleUpdateVariantGroup(i, 'color', e.target.value)}
                     />
                   </div>
                   <div>
@@ -437,17 +455,15 @@ export default function NewProductPage() {
                         type="color"
                         className="w-10 h-10 rounded-lg border cursor-pointer"
                         value={v.colorHex || '#000000'}
-                        onChange={e => {
-                          const vs = [...formData.variants] as any[]; vs[i].colorHex = e.target.value;
-                          setFormData({ ...formData, variants: vs } as any);
-                        }}
+                        onChange={e => handleUpdateVariantGroup(i, 'colorHex', e.target.value)}
                       />
                       <span className="text-xs text-muted-foreground">{v.colorHex || '#000000'}</span>
                     </div>
                   </div>
                 </div>
+
                 {/* Per-colour image upload */}
-                <div>
+                <div className="border-b pb-4">
                   <label className="block text-xs font-medium mb-2">Colour Images <span className="text-muted-foreground font-normal">(shown when this colour is selected)</span></label>
                   <div className="flex flex-wrap gap-2">
                     {(v.images || []).map((imgUrl: string, imgIdx: number) => (
@@ -480,6 +496,66 @@ export default function NewProductPage() {
                     </label>
                   </div>
                 </div>
+
+                {/* Sub-table for Sizes & Stock */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sizes &amp; Stock</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSize(i)}
+                      className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Size &amp; Stock
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {v.sizes.map((sz: any, szIdx: number) => (
+                      <div key={szIdx} className="grid grid-cols-12 gap-3 items-end bg-white p-3 rounded-xl border shadow-sm">
+                        <div className="col-span-4">
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Size *</label>
+                          <input
+                            required type="text" placeholder="e.g. S, M, L"
+                            className="w-full px-3 py-2 bg-muted/5 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-xs"
+                            value={sz.size}
+                            onChange={e => handleUpdateSize(i, szIdx, 'size', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Stock</label>
+                          <input
+                            required type="number" placeholder="0" min={0}
+                            className="w-full px-3 py-2 bg-muted/5 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-xs"
+                            value={sz.stock}
+                            onChange={e => handleUpdateSize(i, szIdx, 'stock', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="col-span-4">
+                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">SKU (optional)</label>
+                          <input
+                            type="text" placeholder="Auto-generated"
+                            className="w-full px-3 py-2 bg-muted/5 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-xs font-mono"
+                            value={sz.sku}
+                            onChange={e => handleUpdateSize(i, szIdx, 'sku', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-1 flex justify-center pb-1">
+                          {v.sizes.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSize(i, szIdx)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             ))}
           </div>

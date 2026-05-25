@@ -10,7 +10,7 @@ import {
   Package, Truck, CheckCircle2, ChevronLeft, AlertCircle,
   XCircle, Clock, RotateCcw, RefreshCw, MapPin, CreditCard,
   Loader2, Check, ExternalLink, ShieldCheck,
-  PackageCheck, Zap, Bell
+  PackageCheck, Zap, Bell, Warehouse
 } from 'lucide-react';
 
 // ─── Status definitions ────────────────────────────────────────────

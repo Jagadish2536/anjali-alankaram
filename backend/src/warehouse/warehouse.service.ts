@@ -30,16 +30,46 @@ export class WarehouseService {
     phone?: string; email?: string; isDefault?: boolean;
   }) {
     if (data.isDefault) {
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE "warehouses" SET "isDefault" = false WHERE "isDefault" = true`
-      );
+      await this.prisma.warehouse.updateMany({
+        where: { isDefault: true },
+        data: { isDefault: false },
+      });
     }
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO "warehouses" ("id","name","code","address","city","state","pincode","phone","email","isDefault","status","createdAt","updatedAt")
-       VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,'ACTIVE',NOW(),NOW())`,
-      data.name, data.code, data.address, data.city, data.state, data.pincode,
-      data.phone ?? null, data.email ?? null, data.isDefault ?? false,
-    );
+
+    const warehouse = await this.prisma.warehouse.create({
+      data: {
+        name: data.name,
+        code: data.code,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        phone: data.phone || null,
+        email: data.email || null,
+        isDefault: data.isDefault || false,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Automatically sync all active variants to this new warehouse!
+    const activeVariants = await this.prisma.productVariant.findMany({
+      where: { 
+        isActive: true,
+        product: { status: { not: 'ARCHIVED' } }
+      },
+    });
+
+    for (const v of activeVariants) {
+      await this.prisma.warehouseInventory.create({
+        data: {
+          warehouseId: warehouse.id,
+          variantId: v.id,
+          quantity: v.stock,
+          reserved: 0,
+        },
+      });
+    }
+
     return { success: true };
   }
 

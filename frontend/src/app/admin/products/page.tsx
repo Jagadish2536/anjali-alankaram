@@ -40,6 +40,73 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 
 
 interface SizeRow { size: string; bust: string; waist: string; hips: string; length: string; }
+
+type ColorGroup = {
+  color: string;
+  colorHex: string;
+  images: string[];
+  sizes: {
+    id?: string;
+    size: string;
+    stock: number;
+    sku: string;
+  }[];
+};
+
+function groupVariants(variants: any[]): ColorGroup[] {
+  if (!variants || variants.length === 0) {
+    return [{ color: '', colorHex: '#000000', images: [], sizes: [{ size: '', stock: 0, sku: '' }] }];
+  }
+
+  const groups: ColorGroup[] = [];
+
+  variants.forEach(v => {
+    const vColor = v.color || '';
+    const vColorHex = v.colorHex || '#000000';
+    
+    let group = groups.find(g => g.color === vColor && g.colorHex === vColorHex);
+    if (!group) {
+      group = {
+        color: vColor,
+        colorHex: vColorHex,
+        images: v.images || [],
+        sizes: []
+      };
+      groups.push(group);
+    }
+    group.sizes.push({
+      id: v.id,
+      size: v.size,
+      stock: v.stock || 0,
+      sku: v.sku || ''
+    });
+  });
+
+  return groups;
+}
+
+function flattenColorGroups(colorGroups: ColorGroup[], productName: string): any[] {
+  const flat: any[] = [];
+  colorGroups.forEach((g, groupIdx) => {
+    g.sizes.forEach((s, szIdx) => {
+      if (s.size.trim() !== '') {
+        const defaultSku = `${productName.substring(0, 3).toUpperCase()}-${s.size.toUpperCase()}-${Date.now()}-${groupIdx}-${szIdx}`
+          .replace(/\s+/g, '');
+        flat.push({
+          ...(s.id ? { id: s.id } : {}),
+          size: s.size,
+          color: g.color || '',
+          colorHex: g.colorHex || '#000000',
+          stock: Number(s.stock),
+          sku: s.sku || defaultSku,
+          images: g.images || [],
+        });
+      }
+    });
+  });
+  return flat;
+}
+
 interface EditFormData {
   name: string;
   description: string;
@@ -67,7 +134,7 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
-  const [editVariants, setEditVariants] = useState<{ id?: string; size: string; color: string; colorHex?: string; stock: number; sku: string; images?: string[] }[]>([]);
+  const [editVariants, setEditVariants] = useState<ColorGroup[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
@@ -247,22 +314,46 @@ export default function AdminProductsPage() {
       returnDays: String(product.returnDays ?? 0),
       sizeGuide: product.sizeGuide || [],
     });
-    setEditVariants(product.variants?.length > 0
-      ? product.variants.map((v: any) => ({
-          id: v.id,
-          size: v.size,
-          color: v.color || '',
-          colorHex: v.colorHex || '#000000',
-          stock: v.stock,
-          sku: v.sku || '',
-          images: v.images || [],
-        }))
-      : [{ size: '', color: '', colorHex: '#000000', stock: 0, sku: '', images: [] }]
-    );
+    setEditVariants(groupVariants(product.variants));
   };
 
   const closeEdit = () => {
     setEditingProduct(null);
+  };
+
+  const handleAddEditVariantGroup = () => {
+    setEditVariants([
+      ...editVariants,
+      { color: '', colorHex: '#000000', images: [], sizes: [{ size: '', stock: 0, sku: '' }] }
+    ]);
+  };
+
+  const handleRemoveEditVariantGroup = (groupIndex: number) => {
+    setEditVariants(editVariants.filter((_, idx) => idx !== groupIndex));
+  };
+
+  const handleAddEditSize = (groupIndex: number) => {
+    const updated = [...editVariants];
+    updated[groupIndex].sizes = [...updated[groupIndex].sizes, { size: '', stock: 0, sku: '' }];
+    setEditVariants(updated);
+  };
+
+  const handleRemoveEditSize = (groupIndex: number, sizeIndex: number) => {
+    const updated = [...editVariants];
+    updated[groupIndex].sizes = updated[groupIndex].sizes.filter((_, idx) => idx !== sizeIndex);
+    setEditVariants(updated);
+  };
+
+  const handleUpdateEditSize = (groupIndex: number, sizeIndex: number, field: string, value: any) => {
+    const updated = [...editVariants];
+    updated[groupIndex].sizes[sizeIndex] = { ...updated[groupIndex].sizes[sizeIndex], [field]: value };
+    setEditVariants(updated);
+  };
+
+  const handleUpdateEditVariantGroup = (groupIndex: number, field: string, value: any) => {
+    const updated = [...editVariants];
+    updated[groupIndex] = { ...updated[groupIndex], [field]: value };
+    setEditVariants(updated);
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -285,15 +376,7 @@ export default function AdminProductsPage() {
         replaceEnabled: editForm.replaceEnabled,
         returnDays: Number(editForm.returnDays) || 0,
         sizeGuide: editForm.sizeGuide.length > 0 ? editForm.sizeGuide : null,
-        variants: editVariants.filter(v => v.size.trim() !== '').map(v => ({
-          ...(v.id ? { id: v.id } : {}),
-          size: v.size,
-          color: v.color || null,
-          colorHex: v.colorHex || '#000000',
-          stock: Number(v.stock),
-          sku: v.sku || `${editForm.name.substring(0, 3).toUpperCase()}-${v.size}-${Date.now()}`,
-          images: v.images || [],
-        })),
+        variants: flattenColorGroups(editVariants, editForm.name),
       };
       if (editForm.salePrice) payload.salePrice = Number(editForm.salePrice);
 
@@ -589,97 +672,59 @@ export default function AdminProductsPage() {
               {/* Variants / Sizes & Stock */}
               <div className="border rounded-xl overflow-hidden">
                 <div className="px-4 py-3 bg-green-50 border-b flex items-center justify-between">
-                  <span className="text-sm font-bold text-green-800">📦 Sizes &amp; Stock</span>
+                  <span className="text-sm font-bold text-green-800">📦 Sizes &amp; Stock by Color</span>
                   <button
                     type="button"
-                    onClick={() => setEditVariants([...editVariants, { size: '', color: '', colorHex: '#000000', stock: 0, sku: '', images: [] }])}
+                    onClick={handleAddEditVariantGroup}
                     className="text-xs font-bold text-green-700 flex items-center gap-1 hover:underline"
                   >
-                    <PlusCircle className="w-3 h-3" /> Add Size
+                    <PlusCircle className="w-3 h-3" /> Add Variant Color
                   </button>
                 </div>
                 <div className="p-4 space-y-4">
                   {editVariants.map((v, i) => (
-                    <div key={i} className="border rounded-xl p-3 bg-muted/5 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Variant {i + 1}</span>
+                    <div key={i} className="border rounded-xl p-3 bg-muted/5 space-y-3 text-xs">
+                      <div className="flex items-center justify-between border-b pb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Color Variant {i + 1}</span>
                         {editVariants.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => setEditVariants(editVariants.filter((_, idx) => idx !== i))}
+                            onClick={() => handleRemoveEditVariantGroup(i)}
                             className="p-1 text-red-500 hover:bg-red-50 rounded"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Size *</label>
-                          <input
-                            required
-                            type="text"
-                            placeholder="e.g. S, M, L"
-                            className="w-full px-2 py-1.5 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
-                            value={v.size}
-                            onChange={e => {
-                              const updated = [...editVariants];
-                              updated[i] = { ...updated[i], size: e.target.value };
-                              setEditVariants(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Colour Name</label>
+                          <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-0.5">Colour Name</label>
                           <input
                             type="text"
                             placeholder="e.g. Red"
-                            className="w-full px-2 py-1.5 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
                             value={v.color || ''}
-                            onChange={e => {
-                              const updated = [...editVariants];
-                              updated[i] = { ...updated[i], color: e.target.value };
-                              setEditVariants(updated);
-                            }}
+                            onChange={e => handleUpdateEditVariantGroup(i, 'color', e.target.value)}
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Colour Swatch</label>
+                          <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-0.5">Colour Swatch</label>
                           <div className="flex items-center gap-2">
                             <input
                               type="color"
                               className="w-8 h-8 rounded border cursor-pointer shrink-0"
                               value={v.colorHex || '#000000'}
-                              onChange={e => {
-                                const updated = [...editVariants];
-                                updated[i] = { ...updated[i], colorHex: e.target.value };
-                                setEditVariants(updated);
-                              }}
+                              onChange={e => handleUpdateEditVariantGroup(i, 'colorHex', e.target.value)}
                             />
                             <span className="text-[10px] text-muted-foreground">{v.colorHex || '#000000'}</span>
                           </div>
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Stock</label>
-                          <input
-                            type="number"
-                            min={0}
-                            placeholder="0"
-                            className="w-full px-2 py-1.5 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
-                            value={v.stock}
-                            onChange={e => {
-                              const updated = [...editVariants];
-                              updated[i] = { ...updated[i], stock: Number(e.target.value) };
-                              setEditVariants(updated);
-                            }}
-                          />
-                        </div>
                       </div>
 
                       {/* Variant images uploader */}
-                      <div>
-                        <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Variant Images</label>
+                      <div className="border-b pb-2">
+                        <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-1">Variant Images</label>
                         <div className="flex flex-wrap gap-2">
                           {(v.images || []).map((imgUrl: string, imgIdx: number) => (
                             <div key={imgIdx} className="relative w-12 h-12 rounded overflow-hidden border bg-muted/10">
@@ -709,6 +754,70 @@ export default function AdminProductsPage() {
                               finally { setIsUploading(null); }
                             }} />
                           </label>
+                        </div>
+                      </div>
+
+                      {/* Sub-table for Sizes & Stock */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Sizes &amp; Stock</span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddEditSize(i)}
+                            className="text-primary text-[10px] font-bold flex items-center gap-0.5 hover:underline"
+                          >
+                            <Plus className="w-3 h-3" /> Add Size &amp; Stock
+                          </button>
+                        </div>
+                        <div className="space-y-1.5">
+                          {v.sizes.map((sz, szIdx) => (
+                            <div key={szIdx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-lg border">
+                              <div className="col-span-4">
+                                <label className="block text-[8px] font-semibold text-muted-foreground uppercase mb-0.5">Size *</label>
+                                <input
+                                  required
+                                  type="text"
+                                  placeholder="e.g. S, M, L"
+                                  className="w-full px-2 py-1 bg-muted/10 border rounded text-[10px] outline-none focus:ring-1 focus:ring-primary"
+                                  value={sz.size}
+                                  onChange={e => handleUpdateEditSize(i, szIdx, 'size', e.target.value)}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <label className="block text-[8px] font-semibold text-muted-foreground uppercase mb-0.5">Stock</label>
+                                <input
+                                  required
+                                  type="number"
+                                  min={0}
+                                  placeholder="0"
+                                  className="w-full px-2 py-1 bg-muted/10 border rounded text-[10px] outline-none focus:ring-1 focus:ring-primary"
+                                  value={sz.stock}
+                                  onChange={e => handleUpdateEditSize(i, szIdx, 'stock', Number(e.target.value))}
+                                />
+                              </div>
+                              <div className="col-span-4">
+                                <label className="block text-[8px] font-semibold text-muted-foreground uppercase mb-0.5">SKU (opt)</label>
+                                <input
+                                  type="text"
+                                  placeholder="Auto"
+                                  className="w-full px-2 py-1 bg-muted/10 border rounded text-[10px] outline-none focus:ring-1 focus:ring-primary font-mono"
+                                  value={sz.sku}
+                                  onChange={e => handleUpdateEditSize(i, szIdx, 'sku', e.target.value)}
+                                />
+                              </div>
+                              <div className="col-span-1 text-center">
+                                {v.sizes.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveEditSize(i, szIdx)}
+                                    className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>

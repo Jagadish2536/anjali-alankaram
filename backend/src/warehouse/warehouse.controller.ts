@@ -10,7 +10,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @ApiTags('Warehouse')
 @Controller('warehouse')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF')
+@Roles('ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'STOCK_MANAGER')
 @ApiBearerAuth()
 export class WarehouseController {
   constructor(private readonly warehouseService: WarehouseService) {}

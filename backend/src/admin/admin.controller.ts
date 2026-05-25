@@ -288,9 +288,46 @@ export class AdminController implements OnModuleInit {
   @Get('inventory-report')
   @ApiOperation({ summary: 'Get inventory report comparing online stock vs warehouse stock' })
   async getInventoryReport() {
-    // Fetch all active variants with product + warehouse inventory
+    // 1. Fetch all active warehouses
+    const activeWarehouses = await this.prisma.warehouse.findMany({
+      where: { status: 'ACTIVE' },
+    });
+
+    // 2. Fetch all active variants from active products
+    const activeVariants = await this.prisma.productVariant.findMany({
+      where: {
+        isActive: true,
+        product: { status: { not: 'ARCHIVED' } },
+      },
+    });
+
+    // 3. Self-healing: Ensure warehouse inventory records exist for all active warehouses & active variants
+    for (const wh of activeWarehouses) {
+      for (const v of activeVariants) {
+        await this.prisma.warehouseInventory.upsert({
+          where: {
+            warehouseId_variantId: {
+              warehouseId: wh.id,
+              variantId: v.id,
+            },
+          },
+          update: {}, // don't overwrite if it exists
+          create: {
+            warehouseId: wh.id,
+            variantId: v.id,
+            quantity: v.stock,
+            reserved: 0,
+          },
+        });
+      }
+    }
+
+    // 4. Fetch all active variants with product + warehouse inventory, filtering out variants of archived products
     const variants = await this.prisma.productVariant.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        product: { status: { not: 'ARCHIVED' } }
+      },
       include: {
         product: {
           select: {
