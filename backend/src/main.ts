@@ -110,4 +110,6 @@ async function bootstrap() {
   }
 }
 
+// Trigger redeploy with new secrets
 bootstrap();
+
