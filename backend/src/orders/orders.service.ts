@@ -660,16 +660,13 @@ export class OrdersService {
       );
     }
 
-    // At this point: either COD (PENDING paymentStatus) or RAZORPAY that hasn't been captured yet.
-    // Razorpay orders with paymentStatus=PAID are blocked above.
-    const isPaid = false; // No auto-refund needed: payment was never captured
-
     await this.prisma.order.update({
       where: { id },
-      data: { 
-        status: 'CANCELLED', 
+      data: {
+        status: 'CANCELLED',
         cancelReason: reason,
-        ...(isPaid && { paymentStatus: 'REFUND_INITIATED' }),
+        // paymentStatus stays PENDING — Razorpay paid orders are blocked above;
+        // only unpaid/COD orders reach this point.
       },
     });
 
@@ -678,14 +675,9 @@ export class OrdersService {
       this.logger.error(`Inventory rollback on cancel failed for ${id}: ${e.message}`)
     );
 
-    // Process refund automatically if paid
-    if (isPaid) {
-      try {
-        await this.paymentsService.processRefund(id);
-      } catch (err) {
-        this.logger.error(`Auto refund failed on cancellation for order ${id}: ${err.message}`);
-      }
-    }
+    // Note: auto-refund is not needed here because Razorpay orders with
+    // paymentStatus=PAID are blocked from cancellation above. Only unpaid
+    // or COD orders reach this point, so no refund processing is required.
 
     // Log
     await this.statusHistory.append({
