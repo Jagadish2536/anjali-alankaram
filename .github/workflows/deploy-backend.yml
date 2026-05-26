@@ -41,6 +41,7 @@ jobs:
     # Kept for 24 hours then auto-deleted. Blocks deploy if snapshot fails.
     - name: Snapshot RDS before deployment
       id: snapshot
+      continue-on-error: true  # Don't block deploy if RDS is stopped/unavailable
       run: |
         TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
         SNAPSHOT_ID="pre-deploy-backend-${TIMESTAMP}"
@@ -79,12 +80,30 @@ jobs:
         echo "DEBUG: Full Tag is $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
         cd backend
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        # Also tag as :latest so ECS can always pull fresh
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: Download current Amazon ECS task definition
       run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --query taskDefinition > task-definition.json
+        # Strip read-only AWS fields that cause register-task-definition to fail:
+        # taskDefinitionArn, revision, status, requiresAttributes, compatibilities,
+        # registeredAt, registeredBy, deregisteredAt
+        aws ecs describe-task-definition \
+          --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+          --query 'taskDefinition' \
+          --output json | \
+          python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy','deregisteredAt']:
+  d.pop(k,None)
+print(json.dumps(d))
+" > task-definition.json
+        echo "Task definition downloaded and cleaned:"
+        cat task-definition.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('Family:', d.get('family'), '| CPU:', d.get('cpu'), '| Secrets count:', len(d.get('containerDefinitions',[{}])[0].get('secrets',[])))"  
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
