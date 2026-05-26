@@ -498,9 +498,18 @@ export default function OrderDetailPage() {
       const remaining = Math.max(0, (createdAt + TIMEOUT_MS) - Date.now());
       setRetryCountdown(remaining);
       if (remaining === 0) {
-        // Auto-cancel
+        // Auto-cancel only if order is still PENDING_PAYMENT — re-fetch first
+        // to avoid cancelling an order that was just paid (which would rollback stock)
         clearInterval(countdownRef.current);
-        api.post(`/orders/${order.id}/cancel`, { reason: 'Payment timeout - automatically cancelled after 10 minutes' })
+        api.get(`/orders/${order.id}`)
+          .then(({ data: freshOrder }) => {
+            if (freshOrder.status === 'PENDING_PAYMENT' && freshOrder.paymentStatus !== 'PAID') {
+              return api.post(`/orders/${order.id}/cancel`, {
+                reason: 'Payment timeout - automatically cancelled after 10 minutes',
+              });
+            }
+            // Payment already captured — don't cancel, just refresh the UI
+          })
           .then(() => fetchOrder())
           .catch(() => fetchOrder());
       }

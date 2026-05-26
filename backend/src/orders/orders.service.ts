@@ -650,7 +650,19 @@ export class OrdersService {
       throw new BadRequestException('Order cannot be cancelled at this stage');
     }
 
-    const isPaid = order.paymentMethod === 'RAZORPAY' && order.paymentStatus === 'PAID';
+    // CRITICAL: Do NOT allow cancellation if Razorpay payment was already captured.
+    // This prevents the auto-cancel timer from rolling back stock on paid orders.
+    // (The 10-minute timer on the frontend fires even after payment succeeds if the
+    //  webhook updates the order status AFTER the timer started.)
+    if (order.paymentMethod === 'RAZORPAY' && order.paymentStatus === 'PAID') {
+      throw new BadRequestException(
+        'Payment has already been captured. Order cannot be cancelled. Please contact support for a refund.'
+      );
+    }
+
+    // At this point: either COD (PENDING paymentStatus) or RAZORPAY that hasn't been captured yet.
+    // Razorpay orders with paymentStatus=PAID are blocked above.
+    const isPaid = false; // No auto-refund needed: payment was never captured
 
     await this.prisma.order.update({
       where: { id },
