@@ -241,6 +241,8 @@ function OrderTransactionsPanel({ orderId }: { orderId: string }) {
   const [loading, setLoading] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
   const [pdLoading, setPdLoading] = useState(false);
+  // Per-transaction live status: { [gatewayRef]: { loading, data, error } }
+  const [liveStatus, setLiveStatus] = useState<Record<string, { loading: boolean; data: any; error: string }>>({});
 
   const fetchTransactions = () => {
     setLoading(true);
@@ -256,6 +258,30 @@ function OrderTransactionsPanel({ orderId }: { orderId: string }) {
       .then(r => setPaymentDetails(r.data))
       .catch(() => setPaymentDetails(null))
       .finally(() => setPdLoading(false));
+  };
+
+  const fetchLiveStatus = async (tx: any) => {
+    const ref = tx.gatewayRef;
+    if (!ref) return;
+    // Toggle off if already loaded
+    if (liveStatus[ref]?.data) {
+      setLiveStatus(prev => { const n = { ...prev }; delete n[ref]; return n; });
+      return;
+    }
+    setLiveStatus(prev => ({ ...prev, [ref]: { loading: true, data: null, error: '' } }));
+    try {
+      const endpoint = tx.type === 'CHARGE'
+        ? `/admin/razorpay/payment/${ref}`
+        : `/admin/razorpay/refund/${ref}`;
+      const { data } = await api.get(endpoint);
+      if (data.success) {
+        setLiveStatus(prev => ({ ...prev, [ref]: { loading: false, data: data.payment || data.refund, error: '' } }));
+      } else {
+        setLiveStatus(prev => ({ ...prev, [ref]: { loading: false, data: null, error: data.error || 'Failed' } }));
+      }
+    } catch (err: any) {
+      setLiveStatus(prev => ({ ...prev, [ref]: { loading: false, data: null, error: err.response?.data?.message || 'Network error' } }));
+    }
   };
 
   useEffect(() => {
@@ -275,19 +301,17 @@ function OrderTransactionsPanel({ orderId }: { orderId: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Payment ID + Razorpay Link */}
+      {/* Payment ID + quick settlement summary */}
       {paymentDetails?.razorpayPaymentId && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5">
           <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">Razorpay Payment ID</p>
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-sm font-bold text-blue-800">{paymentDetails.razorpayPaymentId}</span>
             <a
-              href={`https://dashboard.razorpay.com/app/payments/${paymentDetails.razorpayPaymentId}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/admin/razorpay`}
               className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
             >
-              <ExternalLink className="w-3 h-3" /> Open in Razorpay
+              <ExternalLink className="w-3 h-3" /> View in Razorpay Manager
             </a>
           </div>
 
@@ -321,56 +345,156 @@ function OrderTransactionsPanel({ orderId }: { orderId: string }) {
       )}
 
       {/* Transaction Logs */}
-      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+      <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
         {txs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">No gateway logs for this order</p>
         ) : (
-          txs.map((tx, i) => (
-            <div key={i} className="border rounded-xl p-3.5 text-xs bg-muted/5 relative">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className={`px-2 py-0.5 font-bold rounded-md uppercase text-[9px] ${
-                  tx.type === 'CHARGE' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-orange-50 text-orange-700 border border-orange-200'
-                }`}>
-                  {tx.type}
-                </span>
-                <a
-                  href={tx.type === 'CHARGE'
-                    ? `https://dashboard.razorpay.com/app/payments/${tx.gatewayRef}`
-                    : `https://dashboard.razorpay.com/app/refunds/${tx.gatewayRef}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-primary text-[10px] hover:underline flex items-center gap-0.5"
-                >
-                  {tx.gatewayRef} <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              </div>
-              
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-muted-foreground">Amount:</span>
-                <span className="font-black text-sm text-foreground">{formatPrice(Number(tx.amount))}</span>
-              </div>
+          txs.map((tx, i) => {
+            const ref = tx.gatewayRef;
+            const live = liveStatus[ref];
+            const isRefund = tx.type === 'REFUND';
+            const liveData = live?.data;
+            const liveIsFailure = liveData && (liveData.status === 'failed' || liveData.failureReason);
 
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-muted-foreground">Status:</span>
-                <span className={`px-1.5 py-0.5 rounded-full font-bold uppercase text-[9px] ${
-                  tx.status === 'SUCCESS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                }`}>
-                  {tx.status}
-                </span>
-              </div>
-
-              {tx.failReason && (
-                <div className="mt-2 bg-red-50 text-red-700 border border-red-100 p-2 rounded-lg leading-relaxed text-[10px]">
-                  <strong>Error Description:</strong> {tx.failReason}
+            return (
+              <div key={i} className={`border rounded-xl p-3.5 text-xs relative transition-all ${liveIsFailure ? 'bg-red-50 border-red-200' : 'bg-muted/5'}`}>
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className={`px-2 py-0.5 font-bold rounded-md uppercase text-[9px] ${
+                    isRefund ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }`}>
+                    {tx.type}
+                  </span>
+                  <span className="font-mono text-primary text-[10px] font-bold truncate max-w-[180px]">{ref}</span>
                 </div>
-              )}
-              
-              <p className="text-[10px] text-muted-foreground text-right mt-2">
-                {new Date(tx.createdAt).toLocaleString('en-IN')}
-              </p>
-            </div>
-          ))
+
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-black text-sm text-foreground">{formatPrice(Number(tx.amount))}</span>
+                </div>
+
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-muted-foreground">DB Status:</span>
+                  <span className={`px-1.5 py-0.5 rounded-full font-bold uppercase text-[9px] ${
+                    tx.status === 'SUCCESS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    {tx.status}
+                  </span>
+                </div>
+
+                {tx.failReason && (
+                  <div className="mt-2 bg-red-50 text-red-700 border border-red-100 p-2 rounded-lg leading-relaxed text-[10px]">
+                    <strong>Error:</strong> {tx.failReason}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground text-right mt-1.5">
+                  {new Date(tx.createdAt).toLocaleString('en-IN')}
+                </p>
+
+                {/* Live Status Button */}
+                {ref && (
+                  <div className="mt-2.5 pt-2.5 border-t border-border/60">
+                    <button
+                      onClick={() => fetchLiveStatus(tx)}
+                      disabled={live?.loading}
+                      className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg w-full justify-center transition-all ${
+                        liveData
+                          ? 'bg-primary/10 text-primary border border-primary/20'
+                          : 'bg-muted/30 hover:bg-muted/60 text-muted-foreground border border-border'
+                      }`}
+                    >
+                      {live?.loading ? (
+                        <><Loader2 className="w-3 h-3 animate-spin" /> Fetching from Razorpay…</>
+                      ) : liveData ? (
+                        <><RefreshCw className="w-3 h-3" /> Hide Live Status</>
+                      ) : (
+                        <><Eye className="w-3 h-3 text-primary" /> Check Live Status from Razorpay</>
+                      )}
+                    </button>
+
+                    {live?.error && (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-[10px] text-red-700 font-semibold">
+                        ⚠ {live.error}
+                      </div>
+                    )}
+
+                    {liveData && (
+                      <div className={`mt-2.5 rounded-xl border p-3 space-y-2 ${
+                        liveIsFailure ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+                      }`}>
+                        <p className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                          liveIsFailure ? 'text-red-700' : 'text-green-700'
+                        }`}>
+                          {liveIsFailure ? '⚠' : '✓'} Live Razorpay Status
+                          <span className={`ml-auto px-2 py-0.5 rounded-full font-black text-[9px] ${
+                            liveData.status === 'processed' || liveData.status === 'captured'
+                              ? 'bg-green-100 text-green-800 border border-green-300'
+                              : liveData.status === 'failed'
+                              ? 'bg-red-100 text-red-800 border border-red-300'
+                              : liveData.status === 'pending'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : 'bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}>
+                            {liveData.status}
+                          </span>
+                        </p>
+
+                        {/* CHARGE live details */}
+                        {!isRefund && (
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                            <div><span className="text-muted-foreground">Amount:</span> <strong>{formatPrice(liveData.amount)}</strong></div>
+                            <div><span className="text-muted-foreground">Method:</span> <strong>{liveData.method?.toUpperCase()}</strong></div>
+                            {liveData.vpa && <div className="col-span-2"><span className="text-muted-foreground">UPI VPA:</span> <strong className="font-mono">{liveData.vpa}</strong></div>}
+                            {liveData.bank && <div><span className="text-muted-foreground">Bank:</span> <strong>{liveData.bank}</strong></div>}
+                            {liveData.fee > 0 && <div><span className="text-muted-foreground">Fee:</span> <strong className="text-red-700">-{formatPrice(liveData.fee)}</strong></div>}
+                            {liveData.tax > 0 && <div><span className="text-muted-foreground">GST on Fee:</span> <strong className="text-red-700">-{formatPrice(liveData.tax)}</strong></div>}
+                            {liveData.amountRefunded > 0 && <div className="col-span-2"><span className="text-muted-foreground">Amount Refunded:</span> <strong className="text-orange-700">{formatPrice(liveData.amountRefunded)}</strong></div>}
+                            {liveData.acquirerData?.rrn && <div className="col-span-2"><span className="text-muted-foreground">Bank RRN:</span> <strong className="font-mono">{liveData.acquirerData.rrn}</strong></div>}
+                            {liveData.errorDescription && (
+                              <div className="col-span-2 mt-1 bg-red-100 text-red-800 border border-red-200 p-2 rounded-lg">
+                                <strong>Failure:</strong> {liveData.errorDescription}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* REFUND live details */}
+                        {isRefund && (
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                            <div><span className="text-muted-foreground">Refund Amount:</span> <strong>{formatPrice(liveData.amount)}</strong></div>
+                            <div><span className="text-muted-foreground">Speed:</span> <strong>{liveData.speed || liveData.speedRequested || '—'}</strong></div>
+                            {liveData.paymentId && <div className="col-span-2"><span className="text-muted-foreground">Payment ID:</span> <strong className="font-mono">{liveData.paymentId}</strong></div>}
+                            {liveData.acquirerData?.rrn && <div className="col-span-2"><span className="text-muted-foreground">Bank RRN:</span> <strong className="font-mono">{liveData.acquirerData.rrn}</strong></div>}
+                            {liveData.processedAt && <div className="col-span-2"><span className="text-muted-foreground">Processed:</span> <strong>{new Date(liveData.processedAt).toLocaleString('en-IN')}</strong></div>}
+                            {liveData.failureReason && (
+                              <div className="col-span-2 mt-1 bg-red-100 text-red-800 border border-red-200 p-2 rounded-lg">
+                                <strong>⚠ Refund Failed:</strong> {liveData.failureReason}
+                                <p className="mt-1 text-[9px] text-red-600">This refund failed — likely due to low Razorpay wallet balance. Please top up your Razorpay account and retry from Razorpay Manager.</p>
+                              </div>
+                            )}
+                            {liveData.status === 'pending' && (
+                              <div className="col-span-2 mt-1 bg-amber-50 text-amber-800 border border-amber-200 p-2 rounded-lg">
+                                ⏳ <strong>Refund Pending</strong> — Initiated but not yet processed by the bank (3–5 business days).
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <a
+                          href="/admin/razorpay"
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary hover:underline mt-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Open Razorpay Manager for full details
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

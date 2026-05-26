@@ -90,11 +90,11 @@ export class AdminController implements OnModuleInit {
   async getLiveVisitors() {
     const siteKey = 'site:live-visitors';
     const now = Date.now();
-    const twoMinAgo = now - 2 * 60 * 1000;
+    const fiveMinAgo = now - 5 * 60 * 1000; // extended to 5 min
 
     try {
-      // Prune expired visitors
-      await this.redis.zremrangebyscore(siteKey, '-inf', twoMinAgo);
+      // Prune entries older than 5 minutes
+      await this.redis.zremrangebyscore(siteKey, '-inf', fiveMinAgo);
       const total = await this.redis.zcard(siteKey);
 
       // Get all member entries for page breakdown
@@ -712,5 +712,257 @@ export class AdminController implements OnModuleInit {
       refundId: refund.id,
     };
   }
-}
 
+  // ── Razorpay Live API Endpoints ─────────────────────────────────────────────
+
+  @Get('razorpay/account-balance')
+  @ApiOperation({ summary: 'Get Razorpay account/reserve balance directly from Razorpay API' })
+  async getRazorpayAccountBalance() {
+    try {
+      const client = this.paymentsService.getPublicRazorpayClient();
+      if (!client) return { success: false, error: 'Razorpay not configured' };
+
+      // Razorpay provides balance via settlements API endpoint (account balance)
+      // Use axios to call the Razorpay balance API directly
+      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const response = await axios.get('https://api.razorpay.com/v1/balance', {
+        auth: { username: keyId, password: keySecret },
+        timeout: 8000,
+      });
+
+      return {
+        success: true,
+        balance: response.data,
+      };
+    } catch (err: any) {
+      this.logger.warn(`Razorpay balance fetch failed: ${err.message}`);
+      return {
+        success: false,
+        error: err?.response?.data?.error?.description || err.message || 'Failed to fetch balance',
+      };
+    }
+  }
+
+  @Get('razorpay/live-payments')
+  @ApiOperation({ summary: 'Fetch payments directly from Razorpay API' })
+  async getRazorpayLivePayments(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('skip') skip = 0,
+    @Query('count') count = 20,
+  ) {
+    try {
+      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured', items: [] };
+
+      const params: any = { count: Math.min(Number(count), 100), skip: Number(skip) };
+      if (from) params.from = Math.floor(new Date(from).getTime() / 1000);
+      if (to) params.to = Math.floor(new Date(to).getTime() / 1000);
+
+      const response = await axios.get('https://api.razorpay.com/v1/payments', {
+        auth: { username: keyId, password: keySecret },
+        params,
+        timeout: 10000,
+      });
+
+      const items = (response.data?.items || []).map((p: any) => ({
+        id: p.id,
+        entity: p.entity,
+        amount: p.amount / 100,
+        currency: p.currency,
+        status: p.status,
+        method: p.method,
+        orderId: p.order_id,
+        description: p.description,
+        bank: p.bank,
+        wallet: p.wallet,
+        vpa: p.vpa,
+        email: p.email,
+        contact: p.contact,
+        fee: p.fee ? p.fee / 100 : 0,
+        tax: p.tax ? p.tax / 100 : 0,
+        errorCode: p.error_code,
+        errorDescription: p.error_description,
+        acquirerData: p.acquirer_data,
+        createdAt: p.created_at ? new Date(p.created_at * 1000).toISOString() : null,
+        capturedAt: p.captured_at ? new Date(p.captured_at * 1000).toISOString() : null,
+        international: p.international,
+        refundStatus: p.refund_status,
+        amountRefunded: p.amount_refunded ? p.amount_refunded / 100 : 0,
+        captured: p.captured,
+      }));
+
+      return {
+        success: true,
+        count: response.data?.count || items.length,
+        items,
+      };
+    } catch (err: any) {
+      this.logger.warn(`Razorpay live payments fetch failed: ${err.message}`);
+      return {
+        success: false,
+        error: err?.response?.data?.error?.description || err.message || 'Failed to fetch payments',
+        items: [],
+      };
+    }
+  }
+
+  @Get('razorpay/settlements')
+  @ApiOperation({ summary: 'Fetch settlements directly from Razorpay API' })
+  async getRazorpaySettlements(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('skip') skip = 0,
+    @Query('count') count = 20,
+  ) {
+    try {
+      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured', items: [] };
+
+      const params: any = { count: Math.min(Number(count), 100), skip: Number(skip) };
+      if (from) params.from = Math.floor(new Date(from).getTime() / 1000);
+      if (to) params.to = Math.floor(new Date(to).getTime() / 1000);
+
+      const response = await axios.get('https://api.razorpay.com/v1/settlements', {
+        auth: { username: keyId, password: keySecret },
+        params,
+        timeout: 10000,
+      });
+
+      const items = (response.data?.items || []).map((s: any) => ({
+        id: s.id,
+        entity: s.entity,
+        amount: s.amount / 100,
+        fees: s.fees ? s.fees / 100 : 0,
+        tax: s.tax ? s.tax / 100 : 0,
+        utr: s.utr,
+        description: s.description,
+        createdAt: s.created_at ? new Date(s.created_at * 1000).toISOString() : null,
+        ondemand: s.ondemand,
+        status: s.status,
+      }));
+
+      return {
+        success: true,
+        count: response.data?.count || items.length,
+        items,
+      };
+    } catch (err: any) {
+      this.logger.warn(`Razorpay settlements fetch failed: ${err.message}`);
+      return {
+        success: false,
+        error: err?.response?.data?.error?.description || err.message || 'Failed to fetch settlements',
+        items: [],
+      };
+    }
+  }
+
+  @Post('razorpay/refund-payment')
+  @ApiOperation({ summary: 'Refund a specific Razorpay payment by payment ID' })
+  async refundRazorpayPayment(
+    @Body() body: { paymentId: string; amount?: number; reason?: string },
+  ) {
+    if (!body.paymentId) throw new BadRequestException('paymentId is required');
+    try {
+      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const refundBody: any = {};
+      if (body.amount) refundBody.amount = Math.round(body.amount * 100);
+      if (body.reason) refundBody.notes = { reason: body.reason };
+
+      const response = await axios.post(
+        `https://api.razorpay.com/v1/payments/${body.paymentId}/refund`,
+        refundBody,
+        { auth: { username: keyId, password: keySecret }, timeout: 10000 },
+      );
+
+      return { success: true, refund: response.data };
+    } catch (err: any) {
+      throw new BadRequestException(err?.response?.data?.error?.description || err.message || 'Refund failed');
+    }
+  }
+
+  @Get('razorpay/payment/:paymentId')
+  @ApiOperation({ summary: 'Fetch live status of a single Razorpay payment by payment ID' })
+  async getRazorpayPaymentLive(@Param('paymentId') paymentId: string) {
+    try {
+      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured' };
+
+      const response = await axios.get(`https://api.razorpay.com/v1/payments/${paymentId}`, {
+        auth: { username: keyId, password: keySecret },
+        timeout: 8000,
+      });
+      const p = response.data;
+      return {
+        success: true,
+        payment: {
+          id: p.id,
+          amount: p.amount / 100,
+          currency: p.currency,
+          status: p.status,
+          method: p.method,
+          captured: p.captured,
+          refundStatus: p.refund_status,
+          amountRefunded: p.amount_refunded ? p.amount_refunded / 100 : 0,
+          fee: p.fee ? p.fee / 100 : 0,
+          tax: p.tax ? p.tax / 100 : 0,
+          email: p.email,
+          contact: p.contact,
+          bank: p.bank,
+          wallet: p.wallet,
+          vpa: p.vpa,
+          acquirerData: p.acquirer_data,
+          errorCode: p.error_code,
+          errorDescription: p.error_description,
+          orderId: p.order_id,
+          description: p.description,
+          createdAt: p.created_at ? new Date(p.created_at * 1000).toISOString() : null,
+        },
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.response?.data?.error?.description || err.message || 'Failed to fetch payment',
+      };
+    }
+  }
+
+  @Get('razorpay/refund/:refundId')
+  @ApiOperation({ summary: 'Fetch live status of a single Razorpay refund by refund ID' })
+  async getRazorpayRefundLive(@Param('refundId') refundId: string) {
+    try {
+      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured' };
+
+      const response = await axios.get(`https://api.razorpay.com/v1/refunds/${refundId}`, {
+        auth: { username: keyId, password: keySecret },
+        timeout: 8000,
+      });
+      const r = response.data;
+      return {
+        success: true,
+        refund: {
+          id: r.id,
+          paymentId: r.payment_id,
+          amount: r.amount / 100,
+          currency: r.currency,
+          status: r.status, // 'processed' | 'pending' | 'failed'
+          speed: r.speed_processed,
+          speedRequested: r.speed_requested,
+          receipt: r.receipt,
+          notes: r.notes,
+          acquirerData: r.acquirer_data,
+          batchId: r.batch_id,
+          failureReason: r.failure_reason,
+          createdAt: r.created_at ? new Date(r.created_at * 1000).toISOString() : null,
+          processedAt: r.processed_at ? new Date(r.processed_at * 1000).toISOString() : null,
+        },
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.response?.data?.error?.description || err.message || 'Failed to fetch refund',
+      };
+    }
+  }
+}

@@ -79,6 +79,16 @@ export class PaymentsService {
     return new Razorpay({ key_id: keyId, key_secret: keySecret });
   }
 
+  /** Public accessor — lets AdminController call Razorpay API directly */
+  getPublicConfig() {
+    return this.getRazorpayConfig();
+  }
+
+  /** Public accessor — returns null if keys are missing (no throw) */
+  getPublicRazorpayClient() {
+    try { return this.getRazorpayClient(); } catch { return null; }
+  }
+
   async createRazorpayOrder(amount: number, userId: string) {
     const client = this.getRazorpayClient();
 

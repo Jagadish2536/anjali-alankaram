@@ -245,7 +245,7 @@ export class SettingsController {
 
     const siteKey = 'site:live-visitors';
     const now = Date.now();
-    const twoMinAgo = now - 2 * 60 * 1000;
+    const fiveMinAgo = now - 5 * 60 * 1000; // 5-minute window matches admin dashboard
     // member encodes both visitor and page so we can compute per-page breakdown
     const member = `${visitorId}|${page}`;
 
@@ -258,10 +258,10 @@ export class SettingsController {
       }
       // Add fresh entry with current timestamp
       await this.redis.zadd(siteKey, now, member);
-      // Prune all expired (> 2 min old) entries
-      await this.redis.zremrangebyscore(siteKey, '-inf', twoMinAgo);
-      // Keep TTL alive
-      await this.redis.expire(siteKey, 300);
+      // Prune all expired (> 5 min old) entries
+      await this.redis.zremrangebyscore(siteKey, '-inf', fiveMinAgo);
+      // Keep TTL alive (10 min)
+      await this.redis.expire(siteKey, 600);
     } catch { /* graceful — Redis may be temporarily unavailable */ }
 
     return { ok: true };

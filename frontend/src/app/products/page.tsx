@@ -87,7 +87,16 @@ function PriceSlider({ min, max, value, onChange }: {
 function ProductCard({ product, activeColor }: { product: any; activeColor?: string }) {
   const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
   const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
-  const totalStock = getTotalStock(product);
+
+  // When a color is active, compute stock only for that color's variants
+  const totalStock = (() => {
+    if (activeColor) {
+      const colorVariants = product.variants?.filter((v: any) => v.color === activeColor) || [];
+      if (colorVariants.length > 0)
+        return colorVariants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0);
+    }
+    return getTotalStock(product);
+  })();
   const isOutOfStock = totalStock === 0;
   const isLowStock = !isOutOfStock && totalStock > 0 && totalStock < 5;
 
@@ -517,7 +526,22 @@ function ProductsContent() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {displayedProducts.map(p => <ProductCard key={p.id} product={p} activeColor={selectedColors.length === 1 ? selectedColors[0] : undefined} />)}
+                {selectedColors.length > 1
+                  ? displayedProducts.flatMap(p =>
+                      selectedColors
+                        .filter(color => p.variants?.some((v: any) => v.color === color))
+                        .map(color => (
+                          <ProductCard key={`${p.id}-${color}`} product={p} activeColor={color} />
+                        ))
+                    )
+                  : displayedProducts.map(p => (
+                      <ProductCard
+                        key={p.id}
+                        product={p}
+                        activeColor={selectedColors.length === 1 ? selectedColors[0] : undefined}
+                      />
+                    ))
+                }
               </div>
             )}
           </div>
