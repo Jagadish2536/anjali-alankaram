@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/useCartStore';
@@ -354,6 +354,7 @@ function ReviewCard({ review, onDelete, currentUserId }: { review: any; onDelete
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
 
   const [product, setProduct] = useState<any>(null);
@@ -455,7 +456,16 @@ export default function ProductDetailPage() {
       try {
         const { data } = await api.get(`/products/${params.slug}`);
         setProduct(data);
-        if (data.variants?.length > 0) setSelectedVariant(data.variants[0]);
+        if (data.variants?.length > 0) {
+          // Pre-select the colour from the ?color= query param (e.g. from product listing filter)
+          const colorParam = searchParams?.get('color');
+          const matched = colorParam
+            ? data.variants.find((v: any) =>
+                v.color?.toLowerCase() === colorParam.toLowerCase()
+              )
+            : null;
+          setSelectedVariant(matched || data.variants[0]);
+        }
       } catch {
         console.error('Failed to load product');
       } finally {
@@ -463,7 +473,7 @@ export default function ProductDetailPage() {
       }
     }
     if (params.slug) fetchProduct();
-  }, [params.slug]);
+  }, [params.slug, searchParams]);
 
   // ── Fetch wishlist status ───────────────────────────────────────────────
   useEffect(() => {

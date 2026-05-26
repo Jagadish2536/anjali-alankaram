@@ -322,7 +322,7 @@ export class OrdersService {
         items: {
           include: {
             product: { select: { id: true, name: true, images: true, slug: true } },
-            variant: { select: { size: true, color: true, sku: true } },
+            variant: { select: { size: true, color: true, colorHex: true, sku: true, images: true } },
           },
         },
         address: true,

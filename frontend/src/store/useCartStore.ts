@@ -16,8 +16,10 @@ interface CartItem {
     id: string;
     size: string;
     color: string;
+    colorHex?: string;
     extraPrice: number;
     stock: number;
+    images: string[];
   };
 }
 

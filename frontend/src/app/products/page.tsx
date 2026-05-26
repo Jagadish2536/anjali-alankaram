@@ -100,8 +100,12 @@ function ProductCard({ product, activeColor }: { product: any; activeColor?: str
     return product.images?.[0] || null;
   })();
 
+  const href = activeColor
+    ? `/products/${product.slug}?color=${encodeURIComponent(activeColor)}`
+    : `/products/${product.slug}`;
+
   return (
-    <Link href={`/products/${product.slug}`} className="group flex flex-col">
+    <Link href={href} className="group flex flex-col">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
         {displayImage ? (
           <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />

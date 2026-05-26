@@ -328,13 +328,12 @@ export default function CheckoutPage() {
 
                     return (
                       <div key={item.id} className="flex gap-4 p-5">
-                        {/* Image — use variant colour image if available */}
+                        {/* Image — use selected variant's colour image, fall back to main product image */}
                         <div className="relative w-24 h-32 rounded-lg overflow-hidden bg-gray-100 shrink-0 border">
                           {(() => {
-                            const variantImg = (item.product as any)?.variants?.find(
-                              (v: any) => v.color && v.color === item.variant?.color && v.images?.length > 0
-                            )?.images?.[0];
-                            const src = variantImg || item.product.images?.[0];
+                            const src =
+                              item.variant?.images?.[0] ||
+                              item.product.images?.[0];
                             return src
                               ? <Image src={src} alt={item.product.name} fill className="object-cover" />
                               : <div className="absolute inset-0 flex items-center justify-center text-gray-300"><Package className="w-8 h-8" /></div>;
@@ -351,13 +350,25 @@ export default function CheckoutPage() {
                             </button>
                           </div>
 
-                          {/* Size & Qty dropdowns */}
-                          <div className="flex items-center gap-2 mt-3">
-                            {/* Size — read-only display since sizes are fixed to variant */}
+                          {/* Size, Colour & Qty */}
+                          <div className="flex items-center gap-2 mt-3 flex-wrap">
+                            {/* Size — read-only */}
                             <div className="flex items-center gap-1 border rounded px-2.5 py-1.5 text-xs font-medium bg-gray-50">
                               <span className="text-muted-foreground">Size:</span>
                               <span className="font-bold">{item.variant?.size || 'Free'}</span>
                             </div>
+
+                            {/* Colour chip — only if colour is set */}
+                            {item.variant?.color && (
+                              <div className="flex items-center gap-1.5 border rounded px-2.5 py-1.5 text-xs font-medium bg-gray-50">
+                                <span
+                                  className="w-3.5 h-3.5 rounded-full border border-gray-200 shrink-0 shadow-sm"
+                                  style={{ backgroundColor: item.variant?.colorHex || item.variant?.color || '#ccc' }}
+                                />
+                                <span className="text-muted-foreground">Colour:</span>
+                                <span className="font-bold capitalize">{item.variant.color}</span>
+                              </div>
+                            )}
 
                             {/* Qty — functional dropdown */}
                             <div className="relative">
