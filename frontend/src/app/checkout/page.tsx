@@ -11,7 +11,7 @@ import { formatPrice } from '@/lib/utils';
 import Script from 'next/script';
 import {
   Tag, Gift, MapPin, ChevronRight, Check,
-  Loader2, ShieldCheck, X, RotateCcw, Package, ChevronDown
+  Loader2, ShieldCheck, X, Package, ChevronDown
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,6 +145,7 @@ export default function CheckoutPage() {
 
   // ── Pricing from admin settings ────────────────────────────────────────────
   const freeShippingThreshold: number = settings.freeShippingThreshold;
+  const shippingEnabled: boolean = settings.shippingEnabled ?? true;
   const shippingCharge: number = settings.shippingCharge;
   const platformFeeEnabled: boolean = settings.platformFeeEnabled;
   const platformFeeAmount: number = settings.platformFeeAmount;
@@ -155,8 +156,8 @@ export default function CheckoutPage() {
   const couponsEnabled: boolean = settings.couponsEnabled;
   const giftEnabled: boolean = settings.giftEnabled;
   const giftPrice: number = settings.giftAmount;
-  // Shipping: free if subtotal >= threshold, else charge shippingCharge
-  const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCharge;
+  // Shipping: free if shippingEnabled is off, or if subtotal >= threshold, else charge shippingCharge
+  const shipping = !shippingEnabled ? 0 : (subtotal >= freeShippingThreshold ? 0 : shippingCharge);
   const platformFee = platformFeeEnabled ? platformFeeAmount : 0;
   const codFee = paymentMethod === 'COD' ? codCharges : 0;
   const gstAmount = gstEnabled ? Math.round(subtotal * gstRate / 100) : 0;
@@ -383,10 +384,7 @@ export default function CheckoutPage() {
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
-                            <RotateCcw className="w-3 h-3" />
-                            14 days return available
-                          </div>
+
                         </div>
                       </div>
                     );
@@ -663,7 +661,7 @@ export default function CheckoutPage() {
 
           {/* Trust badges */}
           <div className="flex items-center justify-center gap-6 py-2">
-            {[{ icon: '🔒', text: '100% Secure' }, { icon: '↩', text: '14-Day Returns' }, { icon: '⚡', text: 'Fast Delivery' }].map(b => (
+            {[{ icon: '🔒', text: '100% Secure' }, { icon: '⚡', text: 'Fast Delivery' }].map(b => (
               <div key={b.text} className="flex flex-col items-center gap-1">
                 <span className="text-xl">{b.icon}</span>
                 <span className="text-[10px] font-medium text-muted-foreground">{b.text}</span>

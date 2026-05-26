@@ -404,4 +404,49 @@ export class PaymentsService {
       orderId,
     );
   }
+
+  /**
+   * Get full payment details for an order including Razorpay fee/tax/settlement data.
+   */
+  async getPaymentDetails(orderId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderId },
+    });
+
+    if (!payment) {
+      return null;
+    }
+
+    let razorpayDetails: any = null;
+
+    if (payment.razorpayPaymentId) {
+      try {
+        const client = this.getRazorpayClient();
+        const rzpPayment = await client.payments.fetch(payment.razorpayPaymentId);
+        // fee and tax are in paise
+        const fee = Number(rzpPayment.fee || 0) / 100;
+        const tax = Number(rzpPayment.tax || 0) / 100;
+        const amount = Number(rzpPayment.amount || 0) / 100;
+        const settled = Math.max(0, amount - fee - tax);
+        razorpayDetails = {
+          fee,
+          tax,
+          amount,
+          settled,
+          method: rzpPayment.method,
+          bank: rzpPayment.bank || rzpPayment.wallet || rzpPayment.vpa || null,
+          capturedAt: rzpPayment.created_at ? new Date(rzpPayment.created_at * 1000).toISOString() : null,
+          status: rzpPayment.status,
+          razorpayOrderId: rzpPayment.order_id,
+        };
+      } catch (e) {
+        this.logger.warn(`Could not fetch Razorpay payment details for ${payment.razorpayPaymentId}: ${e.message}`);
+      }
+    }
+
+    return {
+      ...payment,
+      razorpayDetails,
+    };
+  }
 }

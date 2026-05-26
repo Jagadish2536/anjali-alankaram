@@ -74,27 +74,42 @@ function CollectionCard({ cat }: { cat: any }) {
 function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id: string) => void }) {
   const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
   const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
-  const isSoldOut = product.stock === 0;
+
+  // Use variant-level stock totals (same as shop page)
+  const totalStock = product.variants && product.variants.length > 0
+    ? product.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
+    : (product.stock ?? 0);
+  const isOutOfStock = totalStock === 0;
+  const isLowStock = !isOutOfStock && totalStock > 0 && totalStock < 5;
 
   return (
     <div className="group flex flex-col relative">
       <Link href={`/products/${product.slug}`} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2">
         {product.images?.[0] ? (
-          <Image src={product.images[0]} alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+          <Image src={product.images[0]} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">No Image</div>
         )}
-        {hasDiscount && (
+
+        {/* Top-left badge: OUT OF STOCK takes priority over discount */}
+        {isOutOfStock ? (
+          <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+            OUT OF STOCK
+          </span>
+        ) : hasDiscount ? (
           <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
             {discountPct}% OFF
           </span>
+        ) : null}
+
+        {/* Low stock badge — bottom-left */}
+        {isLowStock && (
+          <span className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow animate-pulse">
+            Only {totalStock} left! Hurry
+          </span>
         )}
-        {isSoldOut && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-white text-foreground text-xs font-bold px-3 py-1 rounded-full shadow">SOLD OUT</span>
-          </div>
-        )}
-        {onAddToCart && !isSoldOut && (
+
+        {onAddToCart && !isOutOfStock && (
           <button
             onClick={(e) => { e.preventDefault(); onAddToCart(product.id); }}
             className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-foreground hover:bg-primary hover:text-primary-foreground transition-all opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 duration-200"
@@ -107,9 +122,15 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
       <Link href={`/products/${product.slug}`}>
         <h3 className="text-sm font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="font-semibold text-sm">{formatPrice(product.salePrice || product.basePrice)}</span>
-          {hasDiscount && (
-            <span className="text-muted-foreground line-through text-xs">{formatPrice(product.basePrice)}</span>
+          {isOutOfStock ? (
+            <span className="text-xs font-semibold text-muted-foreground">Out of Stock</span>
+          ) : (
+            <>
+              <span className="font-semibold text-sm">{formatPrice(product.salePrice || product.basePrice)}</span>
+              {hasDiscount && (
+                <span className="text-muted-foreground line-through text-xs">{formatPrice(product.basePrice)}</span>
+              )}
+            </>
           )}
         </div>
       </Link>

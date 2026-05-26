@@ -1,10 +1,10 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp, Users, ShoppingBag, Clock, ArrowUpRight,
   Package, CheckCircle2, RefreshCw, Download, Eye,
-  ShoppingCart, AlertCircle, Star, RotateCcw,
+  ShoppingCart, AlertCircle, Star, RotateCcw, Radio,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -73,6 +73,34 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [adminName, setAdminName] = useState('Admin');
+
+  // Live visitor state
+  const [liveCount, setLiveCount] = useState<number | null>(null);
+  const [livePages, setLivePages] = useState<{ page: string; count: number }[]>([]);
+  const [liveHistory, setLiveHistory] = useState<number[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const liveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchLiveVisitors = useCallback(async () => {
+    try {
+      const { data } = await api.get('/admin/live-visitors');
+      setLiveCount(data.total);
+      setLivePages(data.topPages || []);
+      setLastUpdated(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setLiveHistory(prev => {
+        const next = [...prev, data.total].slice(-20); // keep last 20 readings
+        return next;
+      });
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveVisitors();
+    liveIntervalRef.current = setInterval(fetchLiveVisitors, 10_000);
+    return () => {
+      if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
+    };
+  }, [fetchLiveVisitors]);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -182,6 +210,87 @@ export default function AdminDashboard() {
             className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors flex items-center gap-2">
             <Eye className="w-4 h-4" /> View Store
           </a>
+        </div>
+      </div>
+
+      {/* ── Live Visitor Counter ─────────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-[hsl(345,80%,25%)] to-[hsl(345,70%,35%)] rounded-2xl shadow-lg p-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+
+          {/* Main count */}
+          <div className="flex items-center gap-5">
+            <div className="relative flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+                <Radio className="w-8 h-8 text-white" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-[hsl(345,80%,25%)] animate-pulse" />
+            </div>
+            <div>
+              <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-1">Live Visitors Right Now</p>
+              <div className="flex items-end gap-3">
+                <span className="text-5xl font-black font-outfit leading-none">
+                  {liveCount === null ? (
+                    <span className="inline-block w-16 h-12 bg-white/20 animate-pulse rounded-lg" />
+                  ) : liveCount}
+                </span>
+                {liveCount !== null && (
+                  <span className="text-white/60 text-sm mb-1">
+                    {liveCount === 1 ? 'person' : 'people'} browsing
+                  </span>
+                )}
+              </div>
+              {lastUpdated && (
+                <p className="text-white/50 text-[10px] mt-1">Updated {lastUpdated} • refreshes every 10s</p>
+              )}
+            </div>
+          </div>
+
+          {/* Sparkline */}
+          {liveHistory.length > 1 && (
+            <div className="flex-1 hidden md:block">
+              <p className="text-white/50 text-[10px] uppercase tracking-wider mb-2">Last {liveHistory.length} readings</p>
+              <div className="flex items-end gap-1 h-10">
+                {liveHistory.map((v, i) => {
+                  const max = Math.max(...liveHistory, 1);
+                  const pct = Math.max((v / max) * 100, 4);
+                  const isLast = i === liveHistory.length - 1;
+                  return (
+                    <div
+                      key={i}
+                      title={`${v} visitors`}
+                      style={{ height: `${pct}%` }}
+                      className={`flex-1 rounded-sm transition-all duration-500 ${
+                        isLast ? 'bg-green-400' : 'bg-white/30'
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Top pages */}
+          {livePages.length > 0 && (
+            <div className="flex-shrink-0 min-w-[200px]">
+              <p className="text-white/50 text-[10px] uppercase tracking-wider mb-2">Active Pages</p>
+              <div className="space-y-1.5">
+                {livePages.slice(0, 5).map(({ page, count }) => (
+                  <div key={page} className="flex items-center justify-between gap-3">
+                    <span className="text-white/80 text-xs truncate max-w-[140px] font-mono">
+                      {page === '/' ? 'Homepage' : page}
+                    </span>
+                    <span className="text-white text-xs font-bold bg-white/15 px-2 py-0.5 rounded-full">
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {livePages.length === 0 && liveCount === 0 && (
+            <p className="text-white/50 text-sm">No visitors currently on the site.</p>
+          )}
         </div>
       </div>
 

@@ -688,6 +688,7 @@ model StoreSettings {
   gstEnabled              Boolean  @default(true)
   gstRate                 Float    @default(18)
   freeShippingThreshold   Float    @default(499)
+  shippingEnabled         Boolean  @default(true)
   shippingCharge          Float    @default(49)
   codEnabled              Boolean  @default(true)
   codCharges              Float    @default(0)
@@ -707,6 +708,8 @@ model StoreSettings {
   reservationTimeoutMins  Int      @default(15)
   // Footer / Store Info
   storeDescription        String?
+  storeAddress            String?
+  businessHours           String?  @default("Monday - Saturday: 10:00 AM - 7:00 PM\nSunday: Closed")
   contactEmail            String?
   contactPhone            String?
   returnPolicyDays        Int      @default(7)

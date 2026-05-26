@@ -206,22 +206,52 @@ function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; in
 
 // ── Size Guide Modal ────────────────────────────────────────────────────────
 function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () => void }) {
+  const [unit, setUnit] = useState<'in' | 'cm'>('in');
+
+  const convert = (val: string | undefined) => {
+    if (!val || val === '—') return '—';
+    const num = parseFloat(val);
+    if (isNaN(num)) return val; // non-numeric (e.g. "Free Size") — show as-is
+    return unit === 'cm' ? (num * 2.54).toFixed(1) : val;
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
-          <div className="flex items-center gap-2">
+        <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+          <div className="flex items-center gap-3">
             <Ruler className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-bold font-outfit">Size Guide</h2>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-3">
+            {/* Inch / CM toggle */}
+            <div className="flex items-center bg-muted/30 rounded-xl p-1 gap-1">
+              <button
+                onClick={() => setUnit('in')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  unit === 'in' ? 'bg-primary text-white shadow' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Inches
+              </button>
+              <button
+                onClick={() => setUnit('cm')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  unit === 'cm' ? 'bg-primary text-white shadow' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                CM
+              </button>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          </div>
         </div>
         <div className="p-6">
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: 'linear-gradient(135deg, hsl(340,60%,52%), hsl(340,60%,40%))' }}>
-                  {['Size', 'Bust (in)', 'Waist (in)', 'Hips (in)', 'Length (in)'].map(h => (
+                  {['Size', `Bust (${unit})`, `Waist (${unit})`, `Hips (${unit})`, `Length (${unit})`].map(h => (
                     <th key={h} className="px-5 py-3.5 text-white font-semibold text-left">{h}</th>
                   ))}
                 </tr>
@@ -230,10 +260,10 @@ function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () 
                 {sizeGuide.map((row: any, i: number) => (
                   <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-muted/10'}>
                     <td className="px-5 py-3 font-bold text-primary">{row.size}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{row.bust || '—'}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{row.waist || '—'}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{row.hips || '—'}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{row.length || '—'}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{convert(row.bust) || '—'}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{convert(row.waist) || '—'}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{convert(row.hips) || '—'}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{convert(row.length) || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -247,6 +277,9 @@ function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () 
               <li><strong>Hips:</strong> Measure around the fullest part of your hips</li>
               <li><strong>Length:</strong> From shoulder to hemline</li>
             </ul>
+            {unit === 'cm' && (
+              <p className="text-xs text-blue-500 mt-2 italic">Values are converted from inches (1 in = 2.54 cm)</p>
+            )}
           </div>
         </div>
       </div>

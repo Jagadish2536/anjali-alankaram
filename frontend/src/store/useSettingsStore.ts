@@ -24,6 +24,7 @@ interface StoreSettings {
   gstEnabled: boolean;
   gstRate: number;
   freeShippingThreshold: number;
+  shippingEnabled: boolean;
   shippingCharge: number;
   codEnabled: boolean;
   codCharges: number;
@@ -37,6 +38,9 @@ interface StoreSettings {
   lowStockThreshold: number;
   reservationTimeoutMins: number;
   returnPolicyDays: number;
+  storeDescription: string;
+  storeAddress: string;
+  businessHours: string;
   footerCategories: any;
   marqueeText: string;
   heroImageUrl: string;
@@ -79,6 +83,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   gstEnabled: false,
   gstRate: 18,
   freeShippingThreshold: 499,
+  shippingEnabled: true,
   shippingCharge: 49,
   codEnabled: true,
   codCharges: 0,
@@ -92,6 +97,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   lowStockThreshold: 5,
   reservationTimeoutMins: 15,
   returnPolicyDays: 7,
+  storeDescription: '',
+  storeAddress: '',
+  businessHours: 'Monday - Saturday: 10:00 AM - 7:00 PM\nSunday: Closed',
   footerCategories: [],
   marqueeText: 'Free Delivery on All Orders',
   heroImageUrl: '',

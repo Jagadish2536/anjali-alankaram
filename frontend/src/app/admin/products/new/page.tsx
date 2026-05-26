@@ -7,6 +7,23 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
+const COLOR_NAME_TO_HEX: Record<string, string> = {
+  red: '#ff0000', crimson: '#dc143c', maroon: '#800000', rose: '#ff007f',
+  pink: '#ff69b4', 'hot pink': '#ff69b4', salmon: '#fa8072', coral: '#ff6b6b',
+  orange: '#ff8c00', amber: '#ffbf00', yellow: '#ffff00', gold: '#ffd700',
+  lime: '#32cd32', green: '#008000', olive: '#808000', teal: '#008080',
+  cyan: '#00bcd4', 'sky blue': '#87ceeb', blue: '#0000ff', navy: '#000080',
+  indigo: '#4b0082', violet: '#8b00ff', purple: '#800080', lavender: '#e6e6fa',
+  magenta: '#ff00ff', fuchsia: '#ff00ff', white: '#ffffff', cream: '#fffdd0',
+  beige: '#f5f5dc', ivory: '#fffff0', silver: '#c0c0c0', grey: '#808080',
+  gray: '#808080', charcoal: '#36454f', black: '#000000', brown: '#8b4513',
+  chocolate: '#d2691e', tan: '#d2b48c', khaki: '#c3b091', rust: '#b7410e',
+  mustard: '#ffdb58', mint: '#98ff98',
+};
+const HEX_TO_COLOR_NAME: Record<string, string> = Object.fromEntries(
+  Object.entries(COLOR_NAME_TO_HEX).map(([name, hex]) => [hex.toLowerCase(), name])
+);
+
 type SizeRow = { size: string; bust: string; waist: string; hips: string; length: string };
 
 export default function NewProductPage() {
@@ -246,6 +263,7 @@ export default function NewProductPage() {
                   required type="number" placeholder="0.00"
                   className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                   value={formData.basePrice} onChange={e => setFormData({ ...formData, basePrice: e.target.value })}
+                  onWheel={e => e.currentTarget.blur()}
                 />
               </div>
               <div>
@@ -254,6 +272,7 @@ export default function NewProductPage() {
                   type="number" placeholder="0.00"
                   className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold text-primary"
                   value={formData.salePrice} onChange={e => setFormData({ ...formData, salePrice: e.target.value })}
+                  onWheel={e => e.currentTarget.blur()}
                 />
               </div>
             </div>
@@ -445,7 +464,13 @@ export default function NewProductPage() {
                       type="text" placeholder="e.g. Crimson Red"
                       className="w-full px-3 py-2 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
                       value={v.color || ''}
-                      onChange={e => handleUpdateVariantGroup(i, 'color', e.target.value)}
+                      onChange={e => {
+                        const name = e.target.value;
+                        const knownHex = COLOR_NAME_TO_HEX[name.toLowerCase().trim()];
+                        const vs = [...formData.variants] as any[];
+                        vs[i] = { ...vs[i], color: name, ...(knownHex ? { colorHex: knownHex } : {}) };
+                        setFormData({ ...formData, variants: vs } as any);
+                      }}
                     />
                   </div>
                   <div>
@@ -455,7 +480,13 @@ export default function NewProductPage() {
                         type="color"
                         className="w-10 h-10 rounded-lg border cursor-pointer"
                         value={v.colorHex || '#000000'}
-                        onChange={e => handleUpdateVariantGroup(i, 'colorHex', e.target.value)}
+                        onChange={e => {
+                          const hex = e.target.value;
+                          const knownName = HEX_TO_COLOR_NAME[hex.toLowerCase()];
+                          const vs = [...formData.variants] as any[];
+                          vs[i] = { ...vs[i], colorHex: hex, ...(knownName ? { color: knownName } : {}) };
+                          setFormData({ ...formData, variants: vs } as any);
+                        }}
                       />
                       <span className="text-xs text-muted-foreground">{v.colorHex || '#000000'}</span>
                     </div>
@@ -525,10 +556,14 @@ export default function NewProductPage() {
                         <div className="col-span-3">
                           <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Stock</label>
                           <input
-                            required type="number" placeholder="0" min={0}
+                            required type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0"
                             className="w-full px-3 py-2 bg-muted/5 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-xs"
-                            value={sz.stock}
-                            onChange={e => handleUpdateSize(i, szIdx, 'stock', Number(e.target.value))}
+                            value={sz._stockStr !== undefined ? sz._stockStr : String(sz.stock)}
+                            onChange={e => {
+                              const raw = e.target.value.replace(/[^0-9]/g, '');
+                              handleUpdateSize(i, szIdx, 'stock', raw === '' ? 0 : parseInt(raw, 10));
+                              handleUpdateSize(i, szIdx, '_stockStr', raw);
+                            }}
                           />
                         </div>
                         <div className="col-span-4">

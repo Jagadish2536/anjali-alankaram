@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   CreditCard, Search, ArrowRightLeft, ShieldCheck, AlertCircle,
-  TrendingUp, RefreshCw, Undo2, SearchCode, Eye, CheckCircle, XCircle
+  TrendingUp, RefreshCw, Undo2, SearchCode, Eye, CheckCircle, XCircle,
+  Building2, BadgeCheck, ExternalLink, Clock, Info
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -56,6 +57,22 @@ export default function RazorpayManagerPage() {
   const [processingRefund, setProcessingRefund] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
 
+  // Bank / settlement details state
+  const [bankDetails, setBankDetails] = useState<any>(null);
+  const [bankLoading, setBankLoading] = useState(true);
+
+  const fetchBankDetails = async () => {
+    setBankLoading(true);
+    try {
+      const { data } = await api.get('/admin/razorpay/bank-details');
+      setBankDetails(data);
+    } catch {
+      setBankDetails(null);
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
   const fetchStats = async () => {
     try {
       const { data } = await api.get('/admin/razorpay/stats');
@@ -88,6 +105,7 @@ export default function RazorpayManagerPage() {
 
   useEffect(() => {
     fetchStats();
+    fetchBankDetails();
   }, []);
 
   useEffect(() => {
@@ -151,7 +169,7 @@ export default function RazorpayManagerPage() {
           </p>
         </div>
         <button
-          onClick={() => { fetchStats(); fetchTransactions(); }}
+          onClick={() => { fetchStats(); fetchTransactions(); fetchBankDetails(); }}
           className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold border bg-white rounded-xl hover:bg-gray-50 shadow-sm transition-all"
         >
           <RefreshCw className="w-4 h-4 text-muted-foreground" />
@@ -159,54 +177,228 @@ export default function RazorpayManagerPage() {
         </button>
       </div>
 
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 shrink-0">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Sales Captured</p>
-              <h3 className="text-xl font-black mt-1 text-green-700">{formatPrice(stats.totalCapturedAmount)}</h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{stats.totalCapturedCount} successful charges</p>
-            </div>
+      {/* ── Settlement Account Card ───────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border shadow-sm p-6 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" />
+            <h2 className="font-bold text-base">Settlement Account</h2>
+            <span className="text-xs text-muted-foreground font-medium bg-muted/30 px-2 py-0.5 rounded-full">Synced from Admin Settings</span>
           </div>
-
-          <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
-              <Undo2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Amount Refunded</p>
-              <h3 className="text-xl font-black mt-1 text-orange-700">{formatPrice(stats.totalRefundedAmount)}</h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{stats.totalRefundedCount} refunds issued</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-600 shrink-0">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Failed Charges</p>
-              <h3 className="text-xl font-black mt-1 text-red-700">{stats.failedChargesCount}</h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Attempted checkouts that failed</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Failed Refunds</p>
-              <h3 className="text-xl font-black mt-1 text-purple-700">{stats.failedRefundsCount}</h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Reserve balance alerts</p>
-            </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/settings#bank"
+              className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            >
+              Edit Bank Details →
+            </Link>
+            <a
+              href="https://dashboard.razorpay.com/app/settlement-preferences"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
+            >
+              Razorpay Dashboard <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         </div>
-      )}
+
+        {bankLoading ? (
+          <div className="flex items-center gap-3 py-4">
+            <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading bank details…</span>
+          </div>
+        ) : !bankDetails || (!bankDetails.accountNumber && !bankDetails.bankName) ? (
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-amber-800">No bank details configured</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Go to <Link href="/admin/settings" className="underline font-bold">Admin → Settings → Bank Details</Link> to set up your account.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            {/* Account row — matches Razorpay's layout */}
+            <div className="flex items-center gap-4 p-4 border rounded-xl bg-gray-50/70 flex-1">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-primary" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-8 gap-y-1 flex-1">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Beneficiary Name</p>
+                  <p className="text-sm font-bold text-foreground">{bankDetails.accountHolderName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Account Number</p>
+                  <p className="text-sm font-semibold font-mono">
+                    {bankDetails.accountNumber
+                      ? bankDetails.accountNumber.slice(0, -4).replace(/./g, '•') + bankDetails.accountNumber.slice(-4)
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">IFSC Code</p>
+                  <p className="text-sm font-semibold font-mono">{bankDetails.ifscCode || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Bank</p>
+                  <p className="text-sm font-semibold">{bankDetails.bankName || '—'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status + updated */}
+            <div className="flex flex-col gap-3 min-w-[180px]">
+              {/* Settlement status */}
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Settlements</p>
+                {bankDetails.settlementActive ? (
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full w-fit">
+                    <BadgeCheck className="w-3.5 h-3.5" /> ACTIVE
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full w-fit">
+                    <Clock className="w-3.5 h-3.5" /> INACTIVE
+                  </span>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  {bankDetails.settlementActive ? 'Payments captured in last 30 days' : 'No captures in last 30 days'}
+                </p>
+              </div>
+
+              {/* Last updated */}
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Details Updated</p>
+                <p className="text-xs font-semibold text-foreground mt-0.5">
+                  {bankDetails.lastUpdated
+                    ? new Date(bankDetails.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : '—'}
+                </p>
+              </div>
+
+              {/* Last settlement */}
+              {bankDetails.lastSettlementDate && (
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Last Capture</p>
+                  <p className="text-xs font-semibold text-foreground mt-0.5">
+                    {new Date(bankDetails.lastSettlementDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Info note */}
+        <div className="flex items-start gap-2 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-800 leading-relaxed">
+            <strong>To change your settlement bank account:</strong> Update bank details in{' '}
+            <Link href="/admin/settings" className="underline font-bold">Admin Settings → Bank Details</Link>, then also update them manually in your{' '}
+            <a href="https://dashboard.razorpay.com/app/settlement-preferences" target="_blank" rel="noopener noreferrer" className="underline font-bold">
+              Razorpay Dashboard → Settlements → Bank Account Details
+            </a>.
+          </p>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {stats && (() => {
+        const activeCard =
+          typeFilter === 'CHARGE' && statusFilter === 'SUCCESS' ? 'captured' :
+          typeFilter === 'REFUND' && statusFilter === 'SUCCESS' ? 'refunded' :
+          typeFilter === 'CHARGE' && statusFilter === 'FAILED' ? 'failedCharge' :
+          typeFilter === 'REFUND' && statusFilter === 'FAILED' ? 'failedRefund' : null;
+
+        const applyFilter = (type: string, status: string) => {
+          setTypeFilter(type);
+          setStatusFilter(status);
+          setPage(1);
+        };
+
+        const clearFilter = () => {
+          setTypeFilter('ALL');
+          setStatusFilter('ALL');
+          setPage(1);
+        };
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <button
+              onClick={() => applyFilter('CHARGE', 'SUCCESS')}
+              className={`bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4 text-left transition-all hover:shadow-md hover:border-green-300 ${activeCard === 'captured' ? 'ring-2 ring-green-500 border-green-300 bg-green-50/30' : ''}`}
+            >
+              <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Sales Captured</p>
+                <h3 className="text-xl font-black mt-1 text-green-700">{formatPrice(stats.totalCapturedAmount)}</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{stats.totalCapturedCount} successful charges</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => applyFilter('REFUND', 'SUCCESS')}
+              className={`bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4 text-left transition-all hover:shadow-md hover:border-orange-300 ${activeCard === 'refunded' ? 'ring-2 ring-orange-500 border-orange-300 bg-orange-50/30' : ''}`}
+            >
+              <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+                <Undo2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Amount Refunded</p>
+                <h3 className="text-xl font-black mt-1 text-orange-700">{formatPrice(stats.totalRefundedAmount)}</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{stats.totalRefundedCount} refunds issued</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => applyFilter('CHARGE', 'FAILED')}
+              className={`bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4 text-left transition-all hover:shadow-md hover:border-red-300 ${activeCard === 'failedCharge' ? 'ring-2 ring-red-500 border-red-300 bg-red-50/30' : ''}`}
+            >
+              <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-600 shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Failed Charges</p>
+                <h3 className="text-xl font-black mt-1 text-red-700">{stats.failedChargesCount}</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Attempted checkouts that failed</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => applyFilter('REFUND', 'FAILED')}
+              className={`bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-4 text-left transition-all hover:shadow-md hover:border-purple-300 ${activeCard === 'failedRefund' ? 'ring-2 ring-purple-500 border-purple-300 bg-purple-50/30' : ''}`}
+            >
+              <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Failed Refunds</p>
+                <h3 className="text-xl font-black mt-1 text-purple-700">{stats.failedRefundsCount}</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Reserve balance alerts</p>
+              </div>
+            </button>
+
+            {activeCard && (
+              <div className="lg:col-span-4 flex items-center gap-2">
+                <span className="text-xs font-bold text-muted-foreground">Filter active:</span>
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                  {typeFilter} — {statusFilter}
+                </span>
+                <button
+                  onClick={clearFilter}
+                  className="text-xs font-bold text-muted-foreground hover:text-red-600 underline ml-1 transition-colors"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Filters and Search */}
       <div className="bg-white rounded-2xl border shadow-sm p-4 mb-6">

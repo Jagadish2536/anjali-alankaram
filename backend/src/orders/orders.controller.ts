@@ -85,6 +85,15 @@ export class OrdersController {
     );
   }
 
+  @Post(':id/initiate-payment')
+  @ApiOperation({ summary: 'Initiate (or retry) payment for a PENDING_PAYMENT order' })
+  async initiatePayment(
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    return this.ordersService.initiatePayment(id, req.user.id);
+  }
+
   // ─── Admin Routes ────────────────────────
 
   @Get('admin/all')

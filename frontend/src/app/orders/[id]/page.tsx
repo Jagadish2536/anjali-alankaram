@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import Script from 'next/script';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -10,7 +11,7 @@ import {
   Package, Truck, CheckCircle2, ChevronLeft, AlertCircle,
   XCircle, Clock, RotateCcw, RefreshCw, MapPin, CreditCard,
   Loader2, Check, ExternalLink, ShieldCheck,
-  PackageCheck, Zap, Bell, Warehouse
+  PackageCheck, Zap, Bell, Warehouse, AlertTriangle, X
 } from 'lucide-react';
 
 // ─── Status definitions ────────────────────────────────────────────
@@ -158,6 +159,86 @@ const STATUS_BADGE: Record<string, string> = {
   REFUND_INITIATED:   'bg-orange-50 text-orange-700 border-orange-200',
   RETURN_REJECTED:    'bg-rose-50 text-rose-700 border-rose-200',
 };
+
+// ─── Refund Timeline Component ─────────────────────────────────────────────
+
+function RefundTimeline({ order }: { order: any }) {
+  const paymentStatus = order?.paymentStatus;
+  const refundedAt = order?.payment?.refundedAt;
+  const refundAmount = order?.payment?.refundAmount || order?.totalAmount;
+  const refundInitiatedEntry = order?.statusHistory?.find(
+    (h: any) => h.toStatus === 'REFUND_INITIATED' || (h.toStatus === 'CANCELLED' && order.paymentStatus !== 'PAID')
+  );
+  // Determine if refund is initiated (either REFUND_INITIATED paymentStatus, or cancelled Razorpay order)
+  const isInitiated = ['REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(paymentStatus);
+  const isProcessing = isInitiated; // Razorpay always processes within 3-5 working days
+  const isCredited = paymentStatus === 'REFUNDED' || paymentStatus === 'PARTIALLY_REFUNDED';
+
+  if (!isInitiated && paymentStatus !== 'REFUND_INITIATED') return null;
+
+  const steps = [
+    {
+      label: 'Refund Initiated',
+      desc: refundInitiatedEntry
+        ? `Issued on ${new Date(refundInitiatedEntry.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+        : 'Refund has been triggered on our end',
+      done: isInitiated,
+      icon: '✓',
+      color: 'green',
+    },
+    {
+      label: 'Refund Processing',
+      desc: 'Takes 3–5 working days',
+      done: isInitiated,
+      icon: '↻',
+      color: 'green',
+    },
+    {
+      label: 'Refund Processed',
+      desc: isCredited
+        ? `₹${Number(refundAmount).toLocaleString('en-IN')} credited${refundedAt ? ' on ' + new Date(refundedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}`
+        : '[Amount will be credited to customer\'s bank account within 5–7 working days after the refund has processed]',
+      done: isCredited,
+      icon: isCredited ? '✓' : '○',
+      color: isCredited ? 'green' : 'gray',
+    },
+  ];
+
+  return (
+    <div className="mt-3">
+      <details open className="group">
+        <summary className="text-xs font-bold text-primary cursor-pointer hover:underline flex items-center gap-1 list-none">
+          <span>View timeline</span>
+          <span className="transition-transform group-open:rotate-180 text-primary">▲</span>
+        </summary>
+        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-0">
+          {steps.map((step, i) => (
+            <div key={step.label} className="flex gap-3 relative">
+              <div className="flex flex-col items-center shrink-0">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
+                  step.done ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-400'
+                }`}>
+                  {step.done ? '✓' : '○'}
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={`w-0.5 flex-1 my-1 ${step.done ? 'bg-green-500' : 'bg-gray-200'}`} style={{ minHeight: '20px' }} />
+                )}
+              </div>
+              <div className="pb-3 flex-1 min-w-0">
+                <p className={`text-sm font-bold ${
+                  step.done ? 'text-green-800' : 'text-gray-500'
+                }`}>{step.label}</p>
+                <p className={`text-xs mt-0.5 leading-relaxed ${
+                  step.done ? 'text-green-700' : 'text-gray-400'
+                }`}>{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+}
 
 // ─── Action Modal (Cancel / Return) ────────────────────────────────────
 
@@ -373,6 +454,11 @@ export default function OrderDetailPage() {
   const pollRef = useRef<any>(null);
   const [transitEvents, setTransitEvents] = useState<any[]>([]);
 
+  // ── Retry payment state ────────────────────────────────────────────
+  const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+  const [retryLoading, setRetryLoading] = useState(false);
+  const countdownRef = useRef<any>(null);
+
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
   const fetchOrder = useCallback(async () => {
@@ -398,6 +484,71 @@ export default function OrderDetailPage() {
     if (!isAuthenticated) { router.push('/login'); return; }
     if (params.id) fetchOrder();
   }, [params.id, isAuthenticated, router, fetchOrder]);
+
+  // ── Retry payment countdown (10 min window) ────────────────────────
+  useEffect(() => {
+    if (!order || order.status !== 'PENDING_PAYMENT') {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      setRetryCountdown(null);
+      return;
+    }
+    const createdAt = new Date(order.createdAt).getTime();
+    const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const tick = () => {
+      const remaining = Math.max(0, (createdAt + TIMEOUT_MS) - Date.now());
+      setRetryCountdown(remaining);
+      if (remaining === 0) {
+        // Auto-cancel
+        clearInterval(countdownRef.current);
+        api.post(`/orders/${order.id}/cancel`, { reason: 'Payment timeout - automatically cancelled after 10 minutes' })
+          .then(() => fetchOrder())
+          .catch(() => fetchOrder());
+      }
+    };
+    tick();
+    countdownRef.current = setInterval(tick, 1000);
+    return () => clearInterval(countdownRef.current);
+  }, [order?.id, order?.status, order?.createdAt, fetchOrder]);
+
+  const handleRetryPayment = async () => {
+    if (!order) return;
+    setRetryLoading(true);
+    try {
+      const { data } = await api.post(`/orders/${order.id}/initiate-payment`);
+      const options = {
+        key: data.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: Math.round(Number(order.totalAmount) * 100),
+        currency: 'INR',
+        name: 'Anjali Alankaram',
+        description: 'Order Payment',
+        order_id: data.razorpayOrderId,
+        handler: async (response: any) => {
+          try {
+            await api.post('/payments/verify', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: order.id,
+            });
+          } catch { /* ignore verify error — payment was captured */ }
+          await fetchOrder();
+          showToast('Payment successful! Your order is confirmed.');
+        },
+        prefill: { name: '', email: '', contact: '' },
+        theme: { color: '#B76E79' },
+        modal: { ondismiss: () => setRetryLoading(false) },
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', () => {
+        setRetryLoading(false);
+        showToast('Payment failed. Please try again.');
+      });
+      rzp.open();
+    } catch (e: any) {
+      showToast(e.response?.data?.message || 'Failed to initiate payment');
+      setRetryLoading(false);
+    }
+  };
 
   // Polling for live updates until delivered/cancelled
   useEffect(() => {
@@ -478,6 +629,9 @@ export default function OrderDetailPage() {
 
   return (
     <div className="container py-8 max-w-4xl">
+      {/* Razorpay SDK for retry payment */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+
       <Link href="/profile" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary mb-6 transition-colors">
         <ChevronLeft className="w-4 h-4 mr-1" /> Back to My Orders
       </Link>
@@ -514,12 +668,49 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
+      {/* ─── Pending Payment Banner ────────────────────────────────── */}
+      {order.status === 'PENDING_PAYMENT' && retryCountdown !== null && (
+        <div className="mb-6 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-lg">
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-white shrink-0" />
+            <p className="text-white font-bold text-sm">Payment Pending</p>
+            {retryCountdown > 0 && (
+              <span className="ml-auto text-white/90 text-xs font-mono bg-black/20 px-2 py-1 rounded-lg">
+                Auto-cancel in {Math.floor(retryCountdown / 60000)}:{String(Math.floor((retryCountdown % 60000) / 1000)).padStart(2, '0')}
+              </span>
+            )}
+          </div>
+          <div className="bg-amber-50 px-5 py-4">
+            <p className="text-amber-900 text-sm mb-4">
+              Your order is awaiting payment. Complete it now to confirm your order. If not paid within 10 minutes, the order will be automatically cancelled.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleRetryPayment}
+                disabled={retryLoading || retryCountdown === 0}
+                className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 transition-all shadow-md"
+              >
+                {retryLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                {retryLoading ? 'Opening Payment...' : 'Pay Now'}
+              </button>
+              <button
+                onClick={() => setModal('cancel')}
+                disabled={actionLoading}
+                className="flex items-center gap-2 bg-white border border-red-200 text-red-600 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-red-50 disabled:opacity-50 transition-all"
+              >
+                <X className="w-4 h-4" /> Cancel Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main tracking card */}
       <div className="bg-white border rounded-2xl shadow-sm mb-6 overflow-hidden">
         {/* Status Banner */}
         {isCancelled && (
-          <div className="flex items-center gap-3 text-red-700 bg-red-50 p-5 border-b border-red-100">
-            <XCircle className="w-6 h-6 shrink-0" />
+          <div className="flex items-start gap-3 text-red-700 bg-red-50 p-5 border-b border-red-100">
+            <XCircle className="w-6 h-6 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-bold">Order Cancelled</p>
               {order.cancelReason && <p className="text-sm opacity-80 mt-0.5">Reason: {order.cancelReason}</p>}
@@ -533,6 +724,9 @@ export default function OrderDetailPage() {
                   )}
                   {order.paymentStatus === 'PAID' && (
                     <p className="text-amber-800">Refund is pending. It will be initiated shortly.</p>
+                  )}
+                  {(order.paymentStatus === 'REFUNDED' || order.paymentStatus === 'REFUND_INITIATED') && (
+                    <RefundTimeline order={order} />
                   )}
                 </div>
               )}
@@ -552,6 +746,12 @@ export default function OrderDetailPage() {
               {order.status === 'REFUND_INITIATED' && <p className="text-sm mt-0.5 opacity-80">Refund initiated. You'll receive it within 5-7 business days.</p>}
               {order.status === 'REFUNDED' && <p className="text-sm mt-0.5 opacity-80">Refund successfully processed to your original payment method.</p>}
               {order.returnReason && <p className="text-xs mt-1 opacity-70">Reason: {order.returnReason}</p>}
+              {/* Refund Timeline for return flow */}
+              {(order.status === 'REFUND_INITIATED' || order.status === 'REFUNDED') && order.paymentMethod === 'RAZORPAY' && (
+                <div className="mt-2">
+                  <RefundTimeline order={order} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -711,40 +911,41 @@ export default function OrderDetailPage() {
       {/* Items + Sidebar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Items */}
-        <div className="md:col-span-2 bg-white border rounded-2xl p-5 shadow-sm">
-          <h2 className="font-bold text-base mb-4">Items ({order.items?.length})</h2>
-          <div className="space-y-4">
-            {order.items?.map((item: any) => (
-              <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0 last:pb-0">
-                <div className="relative w-[70px] h-[85px] rounded-xl overflow-hidden bg-muted/20 shrink-0">
-                  {(item.imageUrl || item.product?.images?.[0]) && (
-                    <Image src={item.imageUrl || item.product.images[0]} alt={item.productName} fill className="object-cover" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm leading-snug">{item.productName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {item.sku && <span className="font-mono">SKU: {item.sku} · </span>}
-                    {item.variantInfo?.size && `Size: ${item.variantInfo.size}`}
-                    {item.variantInfo?.color && ` · ${item.variantInfo.color}`}
-                    {` · Qty: ${item.quantity}`}
-                  </p>
-                  <p className="font-bold mt-1.5 text-primary text-sm">{formatPrice(item.totalPrice || item.unitPrice * item.quantity)}</p>
-                  {/* Fulfillment badges */}
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    {item.isPicked && <span className="text-[10px] text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full font-medium">✓ Picked</span>}
-                    {item.isPacked && <span className="text-[10px] text-teal-600 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full font-medium">✓ Packed</span>}
-                    {item.returnEnabled !== false ? (
-                      <span className="text-[10px] text-purple-600 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full font-medium">{item.returnDays || 14}d Return</span>
-                    ) : (
-                      <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">No Return</span>
-                    )}
+          <div className="md:col-span-2 bg-white border rounded-2xl p-5 shadow-sm">
+            <h2 className="font-bold text-base mb-4">Items ({order.items?.length})</h2>
+            <div className="space-y-4">
+              {order.items?.map((item: any) => {
+                // Use variant-specific image matched by color
+                const variantImg = item.product?.variants?.find(
+                  (v: any) => v.color && v.color === item.variantInfo?.color
+                )?.images?.[0];
+                const displayImg = variantImg || item.imageUrl || item.product?.images?.[0];
+                return (
+                  <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0 last:pb-0">
+                    <div className="relative w-[70px] h-[85px] rounded-xl overflow-hidden bg-muted/20 shrink-0">
+                      {displayImg && (
+                        <Image src={displayImg} alt={item.productName} fill className="object-cover" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm leading-snug">{item.productName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {item.sku && <span className="font-mono">SKU: {item.sku} · </span>}
+                        {item.variantInfo?.size && `Size: ${item.variantInfo.size}`}
+                        {item.variantInfo?.color && ` · ${item.variantInfo.color}`}
+                        {` · Qty: ${item.quantity}`}
+                      </p>
+                      <p className="font-bold mt-1.5 text-primary text-sm">{formatPrice(item.totalPrice || item.unitPrice * item.quantity)}</p>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {item.isPicked && <span className="text-[10px] text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full font-medium">✓ Picked</span>}
+                        {item.isPacked && <span className="text-[10px] text-teal-600 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full font-medium">✓ Packed</span>}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
-        </div>
 
         {/* Sidebar */}
         <div className="space-y-4">

@@ -63,6 +63,7 @@ export class OrdersService {
     const codChargeAmt = dto.paymentMethod === 'COD' ? Number((settings as any)?.codCharges ?? 0) : 0;
     const gstEnabled = (settings as any)?.gstEnabled ?? false;
     const gstRate = Number((settings as any)?.gstRate ?? 0);
+    const shippingEnabled = (settings as any)?.shippingEnabled ?? true;
 
     // 5. Calculate totals
     let subtotal = 0;
@@ -97,7 +98,7 @@ export class OrdersService {
     }
 
     // 7. All charges
-    const isFreeShipping = coupon?.type === 'FREE_SHIPPING' || (subtotal - discountAmount) >= freeShipThreshold;
+    const isFreeShipping = coupon?.type === 'FREE_SHIPPING' || !shippingEnabled || (subtotal - discountAmount) >= freeShipThreshold;
     const shippingCharge = isFreeShipping ? 0 : shippingFee;
     const giftCharge = dto.isGift && settings?.giftEnabled ? Number((settings as any)?.giftAmount ?? 35) : 0;
     const gstAmount = gstEnabled ? Math.round(subtotal * gstRate / 100) : 0;
@@ -238,6 +239,44 @@ export class OrdersService {
   }
 
   // ─────────────────────────────────────────────
+  // RETRY PAYMENT: Create fresh Razorpay order for PENDING_PAYMENT
+  // ─────────────────────────────────────────────
+  async initiatePayment(orderId: string, userId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== 'PENDING_PAYMENT') {
+      throw new BadRequestException('Payment can only be initiated for orders in PENDING_PAYMENT status');
+    }
+    if (order.paymentMethod !== 'RAZORPAY') {
+      throw new BadRequestException('Payment retry is only available for Razorpay orders');
+    }
+
+    const rzpOrder = await this.paymentsService.createRazorpayOrder(
+      Number(order.totalAmount),
+      userId,
+    );
+
+    // Store new razorpayOrderId on the order
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { razorpayOrderId: rzpOrder.id },
+    });
+
+    const rzpConfig = (this.paymentsService as any).getRazorpayConfig
+      ? (this.paymentsService as any).getRazorpayConfig()
+      : null;
+    const razorpayKeyId = rzpConfig?.keyId;
+
+    return {
+      razorpayOrderId: rzpOrder.id,
+      razorpayKeyId,
+      order,
+    };
+  }
+
+  // ─────────────────────────────────────────────
   // COD: Advance order pipeline after creation
   // ─────────────────────────────────────────────
   private async advanceCodOrder(orderId: string, userId: string, orderNumber: string) {
@@ -301,7 +340,12 @@ export class OrdersService {
         user: { select: { id: true, name: true, phone: true, email: true, avatar: true } },
         items: {
           include: {
-            product: { select: { id: true, name: true, images: true, slug: true } },
+            product: {
+              select: {
+                id: true, name: true, images: true, slug: true,
+                variants: { select: { color: true, colorHex: true, images: true } },
+              },
+            },
             variant: { select: { size: true, color: true, sku: true } },
           },
         },

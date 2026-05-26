@@ -1,4 +1,16 @@
+'use client';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useEffect } from 'react';
+
 export default function TermsOfServicePage() {
+  const { settings, fetchSettings } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const contactEmail = settings.contactEmail || settings.supportEmail || 'support@anjalialankaram.com';
+
   return (
     <div className="container py-12 max-w-4xl">
       <h1 className="text-4xl font-outfit font-bold mb-6">Terms of Service</h1>
@@ -26,7 +38,12 @@ export default function TermsOfServicePage() {
         <p>We have made every effort to display as accurately as possible the colors and images of our products that appear at the store. We cannot guarantee that your computer monitor's display of any color will be accurate.</p>
 
         <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">6. Contact Information</h2>
-        <p>Questions about the Terms of Service should be sent to us at legal@anjalialankaram.com.</p>
+        <p>
+          Questions about the Terms of Service should be sent to us at{' '}
+          <a href={`mailto:${contactEmail}`} className="text-primary underline font-medium">
+            {contactEmail}
+          </a>.
+        </p>
       </div>
     </div>
   );

@@ -38,6 +38,25 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 }
 
 
+// ── Color name ↔ hex lookup (bidirectional sync) ───────────────────────────
+const COLOR_NAME_TO_HEX: Record<string, string> = {
+  red: '#ff0000', crimson: '#dc143c', maroon: '#800000', rose: '#ff007f',
+  pink: '#ff69b4', 'hot pink': '#ff69b4', salmon: '#fa8072', coral: '#ff6b6b',
+  orange: '#ff8c00', amber: '#ffbf00', yellow: '#ffff00', gold: '#ffd700',
+  lime: '#32cd32', green: '#008000', olive: '#808000', teal: '#008080',
+  cyan: '#00bcd4', 'sky blue': '#87ceeb', blue: '#0000ff', navy: '#000080',
+  indigo: '#4b0082', violet: '#8b00ff', purple: '#800080', lavender: '#e6e6fa',
+  magenta: '#ff00ff', fuchsia: '#ff00ff', white: '#ffffff', 'off white': '#faf9f6',
+  cream: '#fffdd0', beige: '#f5f5dc', ivory: '#fffff0', silver: '#c0c0c0',
+  grey: '#808080', gray: '#808080', charcoal: '#36454f', black: '#000000',
+  brown: '#8b4513', chocolate: '#d2691e', tan: '#d2b48c', khaki: '#c3b091',
+  'light blue': '#add8e6', 'dark blue': '#00008b', 'light green': '#90ee90',
+  'dark green': '#006400', 'light pink': '#ffb6c1', 'dark red': '#8b0000',
+  'rust': '#b7410e', 'mustard': '#ffdb58', 'mint': '#98ff98',
+};
+const HEX_TO_COLOR_NAME: Record<string, string> = Object.fromEntries(
+  Object.entries(COLOR_NAME_TO_HEX).map(([name, hex]) => [hex.toLowerCase(), name])
+);
 
 interface SizeRow { size: string; bust: string; waist: string; hips: string; length: string; }
 
@@ -507,11 +526,25 @@ export default function AdminProductsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Base Price ₹</label>
-                  <input required type="number" className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary" value={editForm.basePrice} onChange={e => setEditForm({ ...editForm, basePrice: e.target.value })} />
+                  <input
+                    required
+                    type="number"
+                    className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                    value={editForm.basePrice}
+                    onChange={e => setEditForm({ ...editForm, basePrice: e.target.value })}
+                    onWheel={e => e.currentTarget.blur()}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Sale Price ₹</label>
-                  <input type="number" placeholder="Optional" className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary" value={editForm.salePrice} onChange={e => setEditForm({ ...editForm, salePrice: e.target.value })} />
+                  <input
+                    type="number"
+                    placeholder="Optional"
+                    className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                    value={editForm.salePrice}
+                    onChange={e => setEditForm({ ...editForm, salePrice: e.target.value })}
+                    onWheel={e => e.currentTarget.blur()}
+                  />
                 </div>
               </div>
 
@@ -707,7 +740,14 @@ export default function AdminProductsPage() {
                             placeholder="e.g. Red"
                             className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
                             value={v.color || ''}
-                            onChange={e => handleUpdateEditVariantGroup(i, 'color', e.target.value)}
+                            onChange={e => {
+                              const name = e.target.value;
+                              // Auto-update swatch hex when a known color name is typed
+                              const knownHex = COLOR_NAME_TO_HEX[name.toLowerCase().trim()];
+                              const updated = [...editVariants];
+                              updated[i] = { ...updated[i], color: name, ...(knownHex ? { colorHex: knownHex } : {}) };
+                              setEditVariants(updated);
+                            }}
                           />
                         </div>
                         <div>
@@ -717,7 +757,14 @@ export default function AdminProductsPage() {
                               type="color"
                               className="w-8 h-8 rounded border cursor-pointer shrink-0"
                               value={v.colorHex || '#000000'}
-                              onChange={e => handleUpdateEditVariantGroup(i, 'colorHex', e.target.value)}
+                              onChange={e => {
+                                const hex = e.target.value;
+                                // Auto-fill color name when picking from color picker
+                                const knownName = HEX_TO_COLOR_NAME[hex.toLowerCase()];
+                                const updated = [...editVariants];
+                                updated[i] = { ...updated[i], colorHex: hex, ...(knownName ? { color: knownName } : {}) };
+                                setEditVariants(updated);
+                              }}
                             />
                             <span className="text-[10px] text-muted-foreground">{v.colorHex || '#000000'}</span>
                           </div>
@@ -789,12 +836,17 @@ export default function AdminProductsPage() {
                                 <label className="block text-[8px] font-semibold text-muted-foreground uppercase mb-0.5">Stock</label>
                                 <input
                                   required
-                                  type="number"
-                                  min={0}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   placeholder="0"
                                   className="w-full px-2 py-1 bg-muted/10 border rounded text-[10px] outline-none focus:ring-1 focus:ring-primary"
-                                  value={sz.stock}
-                                  onChange={e => handleUpdateEditSize(i, szIdx, 'stock', Number(e.target.value))}
+                                  value={(sz as any)._stockStr !== undefined ? (sz as any)._stockStr : String(sz.stock)}
+                                  onChange={e => {
+                                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                                    handleUpdateEditSize(i, szIdx, 'stock', raw === '' ? 0 : parseInt(raw, 10));
+                                    handleUpdateEditSize(i, szIdx, '_stockStr' as any, raw);
+                                  }}
                                 />
                               </div>
                               <div className="col-span-4">

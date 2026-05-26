@@ -6,6 +6,7 @@ import Footer from '@/components/layout/Footer'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { OAuthProvider } from '@/components/providers/OAuthProvider'
 import { MaintenanceProvider } from '@/components/providers/MaintenanceProvider'
+import VisitorTracker from '@/components/VisitorTracker'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' })
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${outfit.variable} ${cormorant.variable} font-sans min-h-screen flex flex-col`}>
         <OAuthProvider>
           <MaintenanceProvider>
+            <VisitorTracker />
             <Navbar />
             {/* pb-16 on mobile so content isn't hidden behind bottom nav */}
             <main className="flex-1 pb-16 md:pb-0">

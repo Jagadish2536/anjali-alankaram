@@ -6,7 +6,7 @@ import {
   ArrowLeft, X, Package, MapPin, CreditCard, Check, Clock, Truck,
   CheckCircle2, XCircle, RotateCcw, Loader2, RefreshCw, History,
   PackageCheck, ArrowRight, Eye, Printer, QrCode, ScanLine,
-  ChevronDown, ChevronUp, Save
+  ChevronDown, ChevronUp, Save, ExternalLink
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -239,6 +239,8 @@ function HistoryPanel({ orderId }: { orderId: string }) {
 function OrderTransactionsPanel({ orderId }: { orderId: string }) {
   const [txs, setTxs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentDetails, setPaymentDetails] = useState<any>(null);
+  const [pdLoading, setPdLoading] = useState(false);
 
   const fetchTransactions = () => {
     setLoading(true);
@@ -248,9 +250,18 @@ function OrderTransactionsPanel({ orderId }: { orderId: string }) {
       .finally(() => setLoading(false));
   };
 
+  const fetchPaymentDetails = () => {
+    setPdLoading(true);
+    api.get(`/admin/orders/${orderId}/payment-details`)
+      .then(r => setPaymentDetails(r.data))
+      .catch(() => setPaymentDetails(null))
+      .finally(() => setPdLoading(false));
+  };
+
   useEffect(() => {
     fetchTransactions();
-    window.addEventListener('order-transactions-refresh', fetchTransactions);
+    fetchPaymentDetails();
+    window.addEventListener('order-transactions-refresh', () => { fetchTransactions(); fetchPaymentDetails(); });
     return () => window.removeEventListener('order-transactions-refresh', fetchTransactions);
   }, [orderId]);
 
@@ -263,47 +274,105 @@ function OrderTransactionsPanel({ orderId }: { orderId: string }) {
   }
 
   return (
-    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-      {txs.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">No gateway logs for this order</p>
-      ) : (
-        txs.map((tx, i) => (
-          <div key={i} className="border rounded-xl p-3.5 text-xs bg-muted/5 relative">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span className={`px-2 py-0.5 font-bold rounded-md uppercase text-[9px] ${
-                tx.type === 'CHARGE' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-orange-50 text-orange-700 border border-orange-200'
-              }`}>
-                {tx.type}
-              </span>
-              <span className="font-mono text-muted-foreground text-[10px]">{tx.gatewayRef}</span>
-            </div>
-            
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-muted-foreground">Amount:</span>
-              <span className="font-black text-sm text-foreground">{formatPrice(Number(tx.amount))}</span>
-            </div>
-
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-muted-foreground">Status:</span>
-              <span className={`px-1.5 py-0.5 rounded-full font-bold uppercase text-[9px] ${
-                tx.status === 'SUCCESS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-              }`}>
-                {tx.status}
-              </span>
-            </div>
-
-            {tx.failReason && (
-              <div className="mt-2 bg-red-50 text-red-700 border border-red-100 p-2 rounded-lg leading-relaxed text-[10px]">
-                <strong>Error Description:</strong> {tx.failReason}
-              </div>
-            )}
-            
-            <p className="text-[10px] text-muted-foreground text-right mt-2">
-              {new Date(tx.createdAt).toLocaleString('en-IN')}
-            </p>
+    <div className="space-y-4">
+      {/* Payment ID + Razorpay Link */}
+      {paymentDetails?.razorpayPaymentId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5">
+          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">Razorpay Payment ID</p>
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-sm font-bold text-blue-800">{paymentDetails.razorpayPaymentId}</span>
+            <a
+              href={`https://dashboard.razorpay.com/app/payments/${paymentDetails.razorpayPaymentId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+            >
+              <ExternalLink className="w-3 h-3" /> Open in Razorpay
+            </a>
           </div>
-        ))
+
+          {/* Settlement Summary */}
+          {pdLoading ? (
+            <div className="mt-3 flex items-center gap-2 text-[10px] text-blue-500">
+              <Loader2 className="w-3 h-3 animate-spin" /> Fetching settlement data...
+            </div>
+          ) : paymentDetails?.razorpayDetails ? (
+            <div className="mt-3 pt-3 border-t border-blue-200 grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <p className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">Charged</p>
+                <p className="text-sm font-black text-blue-800 mt-0.5">{formatPrice(paymentDetails.razorpayDetails.amount)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider">Razorpay Fee + Tax</p>
+                <p className="text-sm font-black text-orange-700 mt-0.5">
+                  − {formatPrice(paymentDetails.razorpayDetails.fee + paymentDetails.razorpayDetails.tax)}
+                </p>
+                <p className="text-[8px] text-muted-foreground">Fee: {formatPrice(paymentDetails.razorpayDetails.fee)} | GST: {formatPrice(paymentDetails.razorpayDetails.tax)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] font-bold text-green-600 uppercase tracking-wider">Settled to Bank</p>
+                <p className="text-sm font-black text-green-700 mt-0.5">{formatPrice(paymentDetails.razorpayDetails.settled)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[10px] text-blue-400 mt-2">Settlement details unavailable (Razorpay API not reachable)</p>
+          )}
+        </div>
       )}
+
+      {/* Transaction Logs */}
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+        {txs.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No gateway logs for this order</p>
+        ) : (
+          txs.map((tx, i) => (
+            <div key={i} className="border rounded-xl p-3.5 text-xs bg-muted/5 relative">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className={`px-2 py-0.5 font-bold rounded-md uppercase text-[9px] ${
+                  tx.type === 'CHARGE' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-orange-50 text-orange-700 border border-orange-200'
+                }`}>
+                  {tx.type}
+                </span>
+                <a
+                  href={tx.type === 'CHARGE'
+                    ? `https://dashboard.razorpay.com/app/payments/${tx.gatewayRef}`
+                    : `https://dashboard.razorpay.com/app/refunds/${tx.gatewayRef}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-primary text-[10px] hover:underline flex items-center gap-0.5"
+                >
+                  {tx.gatewayRef} <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
+              
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-muted-foreground">Amount:</span>
+                <span className="font-black text-sm text-foreground">{formatPrice(Number(tx.amount))}</span>
+              </div>
+
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-muted-foreground">Status:</span>
+                <span className={`px-1.5 py-0.5 rounded-full font-bold uppercase text-[9px] ${
+                  tx.status === 'SUCCESS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}>
+                  {tx.status}
+                </span>
+              </div>
+
+              {tx.failReason && (
+                <div className="mt-2 bg-red-50 text-red-700 border border-red-100 p-2 rounded-lg leading-relaxed text-[10px]">
+                  <strong>Error Description:</strong> {tx.failReason}
+                </div>
+              )}
+              
+              <p className="text-[10px] text-muted-foreground text-right mt-2">
+                {new Date(tx.createdAt).toLocaleString('en-IN')}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -332,6 +401,9 @@ export default function OrderDetailPage() {
 
   // Transit Logs State
   const [transitEvents, setTransitEvents] = useState<any[]>([]);
+
+  // Image lightbox state
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   const fetchOrder = async () => {
     setLoading(true);
@@ -466,6 +538,35 @@ export default function OrderDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
+      {/* Image Lightbox */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setLightboxImg(null)}
+        >
+          <button
+            className="absolute top-4 right-4 w-12 h-12 rounded-full bg-black/70 border border-white/20 flex items-center justify-center z-10 shadow-xl"
+            onClick={() => setLightboxImg(null)}
+            aria-label="Close"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+          <div
+            className="relative max-w-2xl w-full max-h-[85vh]"
+            style={{ aspectRatio: '3/4' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <Image
+              src={lightboxImg}
+              alt="Order item"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto p-4 sm:p-8">
         
         {/* Back and Actions Top Bar */}
@@ -551,12 +652,23 @@ export default function OrderDetailPage() {
                 <h3 className="font-bold font-outfit text-sm uppercase tracking-wider">Order Items ({order.items?.length})</h3>
               </div>
               <div className="p-6 divide-y divide-gray-100">
-                {order.items?.map((item: any) => (
+                {order.items?.map((item: any) => {
+                  // Use variant-specific image matched by color
+                  const variantImg = item.product?.variants?.find(
+                    (v: any) => v.color && v.color === item.variantInfo?.color
+                  )?.images?.[0];
+                  const displayImg = variantImg || item.imageUrl || item.product?.images?.[0];
+                  return (
                   <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex gap-4 items-center">
-                    {(item.imageUrl || item.product?.images?.[0]) && (
-                      <div className="relative w-14 h-20 rounded-xl overflow-hidden bg-accent/10 border shrink-0">
-                        <Image src={item.imageUrl || item.product.images[0]} alt="" fill className="object-cover" />
-                      </div>
+                    {displayImg && (
+                      <button
+                        type="button"
+                        className="relative w-14 h-20 rounded-xl overflow-hidden bg-accent/10 border shrink-0 cursor-zoom-in hover:ring-2 hover:ring-primary transition-all group"
+                        onClick={() => setLightboxImg(displayImg)}
+                        title="Click to enlarge"
+                      >
+                        <Image src={displayImg} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-200" />
+                      </button>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm leading-snug text-foreground line-clamp-2">{item.productName}</p>
@@ -572,7 +684,8 @@ export default function OrderDetailPage() {
                       <p className="text-[10px] text-muted-foreground mt-0.5">{formatPrice(item.unitPrice)} each</p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

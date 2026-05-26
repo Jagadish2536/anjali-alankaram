@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, UseGuards, OnModuleInit, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, OnModuleInit, Logger, BadRequestException, NotFoundException, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -13,6 +13,8 @@ import {
 import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
 import { PaymentsService } from '../payments/payments.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
+import Redis from 'ioredis';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -28,6 +30,7 @@ export class AdminController implements OnModuleInit {
     private prisma: PrismaService,
     private config: ConfigService,
     private paymentsService: PaymentsService,
+    @Inject(REDIS_CLIENT) private redis: Redis,
   ) {
     const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
     const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
@@ -69,6 +72,46 @@ export class AdminController implements OnModuleInit {
       }
     } catch (err: any) {
       this.logger.error(`Failed to fetch live exchange rate: ${err.message}. Keeping rate: ${this.usdToInrRate}`);
+    }
+  }
+
+  // ── Live Visitor Tracking ──────────────────────────────────────────────────
+  // Public ping endpoint (no auth required — called by every frontend visitor)
+  // We strip the @UseGuards at class level by overriding with a custom guard-free route
+  // Note: placed ABOVE the class-level guard, so we use a Public decorator approach:
+  // Since class guard applies, we instead expose via settings controller or use a separate public route
+  // Actually: class has @UseGuards at controller level, so this will be admin-protected.
+  // For the public ping, we'll add it to the settings controller (public) below.
+
+  @Get('live-visitors')
+  @ApiOperation({ summary: 'Get live visitor count across the site (admin only)' })
+  async getLiveVisitors() {
+    const siteKey = 'site:live-visitors';
+    const now = Date.now();
+    const twoMinAgo = now - 2 * 60 * 1000;
+
+    try {
+      // Prune expired visitors
+      await this.redis.zremrangebyscore(siteKey, '-inf', twoMinAgo);
+      const total = await this.redis.zcard(siteKey);
+
+      // Get all member entries for page breakdown
+      const members = await this.redis.zrange(siteKey, 0, -1);
+      const pageCount: Record<string, number> = {};
+      members.forEach((m) => {
+        // member format: "<visitorId>|<page>"
+        const page = m.split('|').slice(1).join('|') || '/';
+        pageCount[page] = (pageCount[page] || 0) + 1;
+      });
+
+      const topPages = Object.entries(pageCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([page, count]) => ({ page, count }));
+
+      return { total, topPages, updatedAt: new Date().toISOString() };
+    } catch {
+      return { total: 0, topPages: [], updatedAt: new Date().toISOString() };
     }
   }
 
@@ -473,6 +516,12 @@ export class AdminController implements OnModuleInit {
     return this.paymentsService.getTransactionHistory(id);
   }
 
+  @Get('orders/:id/payment-details')
+  @ApiOperation({ summary: 'Get full payment details including Razorpay fee/tax/settlement' })
+  async getOrderPaymentDetails(@Param('id') id: string) {
+    return this.paymentsService.getPaymentDetails(id);
+  }
+
   @Get('razorpay/transactions')
   @ApiOperation({ summary: 'Get all payment transactions' })
   async getRazorpayTransactions(
@@ -580,6 +629,52 @@ export class AdminController implements OnModuleInit {
       totalRefundedCount: totalRefunds._count || 0,
       failedChargesCount: failedCharges,
       failedRefundsCount: failedRefunds,
+    };
+  }
+
+  @Get('razorpay/bank-details')
+  @ApiOperation({ summary: 'Get bank/settlement details synced from admin settings' })
+  async getRazorpayBankDetails() {
+    const settings = await this.prisma.storeSettings.findFirst({
+      select: {
+        bankName: true,
+        accountNumber: true,
+        ifscCode: true,
+        accountHolderName: true,
+        updatedAt: true,
+      },
+    });
+
+    // Determine settlement "active" status — has there been a successful capture in last 30 days?
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentCapture = await this.prisma.paymentTransaction.findFirst({
+      where: {
+        type: 'CHARGE',
+        status: 'SUCCESS',
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true, amount: true },
+    });
+
+    // Also get the most recent successful charge ever (for "last settlement" date)
+    const lastCapture = await this.prisma.paymentTransaction.findFirst({
+      where: { type: 'CHARGE', status: 'SUCCESS' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true, amount: true },
+    });
+
+    return {
+      bankName: (settings as any)?.bankName || null,
+      accountNumber: (settings as any)?.accountNumber || null,
+      ifscCode: (settings as any)?.ifscCode || null,
+      accountHolderName: (settings as any)?.accountHolderName || null,
+      lastUpdated: (settings as any)?.updatedAt || null,
+      settlementActive: !!recentCapture,
+      lastSettlementDate: lastCapture?.createdAt || null,
+      lastSettlementAmount: lastCapture?.amount ? Number(lastCapture.amount) : null,
     };
   }
 

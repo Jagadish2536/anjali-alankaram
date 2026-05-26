@@ -409,6 +409,7 @@ export default function AdminSettingsPage() {
     gstEnabled: true,
     gstRate: 18,
     freeShippingThreshold: 499,
+    shippingEnabled: true,
     shippingCharge: 49,
     codEnabled: true,
     codCharges: 0,
@@ -421,6 +422,8 @@ export default function AdminSettingsPage() {
     giftAmount: 35,
     // Footer / Store Info
     storeDescription: '',
+    storeAddress: '',
+    businessHours: 'Monday - Saturday: 10:00 AM - 7:00 PM\nSunday: Closed',
     contactEmail: '',
     contactPhone: '',
     returnPolicyDays: 7,
@@ -725,8 +728,8 @@ export default function AdminSettingsPage() {
 
               {/* ── STORE INFO / FOOTER ───────────────────────────────────── */}
               <div className="mt-6 border-t pt-6">
-                <h3 className="font-bold text-base mb-1">Store Info &amp; Footer</h3>
-                <p className="text-sm text-muted-foreground mb-4">This information appears in the website footer.</p>
+                <h3 className="font-bold text-base mb-1">Store Info, Address &amp; Footer</h3>
+                <p className="text-sm text-muted-foreground mb-4">This information appears in the website footer, Contact Us page, and legal pages.</p>
                 <div className="space-y-4">
                   <Field label="Store Description (Footer tagline)">
                     <textarea rows={2} value={formData.storeDescription}
@@ -734,8 +737,23 @@ export default function AdminSettingsPage() {
                       placeholder="Premium women's fashion celebrating Indian aesthetics..."
                       className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none" />
                   </Field>
+
+                  <Field label="Store Address" hint="Shown on the Contact Us page under 'Store Address'. Use full postal address.">
+                    <textarea rows={3} value={formData.storeAddress}
+                      onChange={e => setFormData(prev => ({ ...prev, storeAddress: e.target.value }))}
+                      placeholder={"Anjali Alankaram Boutique\n123 Fashion Avenue, Banjara Hills\nHyderabad, Telangana 500034\nIndia"}
+                      className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none" />
+                  </Field>
+
+                  <Field label="Business Hours" hint="Shown on the Contact Us page. Each line is displayed separately.">
+                    <textarea rows={3} value={formData.businessHours}
+                      onChange={e => setFormData(prev => ({ ...prev, businessHours: e.target.value }))}
+                      placeholder={"Monday - Saturday: 10:00 AM - 7:00 PM\nSunday: Closed"}
+                      className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none" />
+                  </Field>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Contact Email">
+                    <Field label="Contact Email" hint="Used on Privacy Policy and Terms of Service pages">
                       <input type="email" value={formData.contactEmail}
                         onChange={e => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
                         placeholder="support@yourstore.com"
@@ -975,36 +993,54 @@ export default function AdminSettingsPage() {
               <div className="border-t pt-6">
                 <h3 className="text-base font-bold mb-4">Shipping Settings</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Free Shipping Threshold (₹)" hint="Orders above this amount get free shipping. Set to 0 to always charge.">
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{formData.currencySymbol}</span>
-                        <input
-                          type="number"
-                          min={0}
-                          className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                          value={formData.freeShippingThreshold}
-                          onChange={e => setFormData(prev => ({ ...prev, freeShippingThreshold: parseFloat(e.target.value) || 0 }))}
-                        />
+                  {/* Shipping Enable/Disable Toggle */}
+                  <Toggle
+                    checked={formData.shippingEnabled ?? true}
+                    onChange={set('shippingEnabled')}
+                    label="Enable Shipping Charges"
+                    desc="When OFF, all orders get free shipping regardless of order value."
+                    color="bg-primary"
+                  />
+
+                  {(formData.shippingEnabled ?? true) ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <Field label="Free Shipping Threshold (₹)" hint="Orders above this amount get free shipping. Set to 0 to always charge.">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{formData.currencySymbol}</span>
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                              value={formData.freeShippingThreshold}
+                              onChange={e => setFormData(prev => ({ ...prev, freeShippingThreshold: parseFloat(e.target.value) || 0 }))}
+                            />
+                          </div>
+                        </Field>
+                        <Field label="Standard Shipping Charge (₹)" hint="Charged for orders below the threshold. Set to 0 for free shipping always.">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{formData.currencySymbol}</span>
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                              value={formData.shippingCharge}
+                              onChange={e => setFormData(prev => ({ ...prev, shippingCharge: parseFloat(e.target.value) || 0 }))}
+                            />
+                          </div>
+                        </Field>
                       </div>
-                    </Field>
-                    <Field label="Standard Shipping Charge (₹)" hint="Charged for orders below the threshold. Set to 0 for free shipping always.">
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{formData.currencySymbol}</span>
-                        <input
-                          type="number"
-                          min={0}
-                          className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                          value={formData.shippingCharge}
-                          onChange={e => setFormData(prev => ({ ...prev, shippingCharge: parseFloat(e.target.value) || 0 }))}
-                        />
-                      </div>
-                    </Field>
-                  </div>
-                  {Number(formData.shippingCharge) === 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                      <Info className="w-4 h-4 text-green-600 shrink-0" />
-                      <p className="text-xs text-green-800">Shipping charge is ₹0 — all orders will have free delivery.</p>
+                      {Number(formData.shippingCharge) === 0 && (
+                        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                          <Info className="w-4 h-4 text-green-600 shrink-0" />
+                          <p className="text-xs text-green-800">Shipping charge is ₹0 — all orders will have free delivery.</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                      <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                      <p className="text-xs text-blue-800 font-medium">Shipping charges are <strong>disabled</strong>. All orders currently have free delivery. Toggle ON to configure shipping rates.</p>
                     </div>
                   )}
                 </div>
@@ -1120,9 +1156,37 @@ export default function AdminSettingsPage() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-base font-bold mb-1">Bank Account Details</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Manage the bank details used for payouts, direct transfers, or custom display on the website.
+                <p className="text-sm text-muted-foreground mb-4">
+                  Manage the bank details used for payouts. These are displayed in the Razorpay Manager page.
                 </p>
+
+                {/* Razorpay sync notice */}
+                <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl mb-6">
+                  <Landmark className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-blue-900 mb-1">Razorpay Settlement Account</p>
+                    <p className="text-xs text-blue-800 leading-relaxed mb-3">
+                      Saving here updates the bank details shown in your Razorpay Manager page. However, to actually change where Razorpay sends settlements, you must also update the bank account in the Razorpay Dashboard.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href="https://dashboard.razorpay.com/app/settlement-preferences"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Open Razorpay Settlement Preferences ↗
+                      </a>
+                      <a
+                        href="/admin/razorpay"
+                        className="flex items-center gap-1.5 text-xs font-bold border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                      >
+                        View Razorpay Manager →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <Field label="Account Holder Name" hint="The exact name as registered in the bank record">
                     <TextInput

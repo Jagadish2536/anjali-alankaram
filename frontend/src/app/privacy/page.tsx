@@ -1,4 +1,17 @@
+'use client';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useEffect } from 'react';
+
 export default function PrivacyPolicyPage() {
+  const { settings, fetchSettings } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  // Use contactEmail first, fallback to supportEmail, then a generic placeholder
+  const contactEmail = settings.contactEmail || settings.supportEmail || 'support@anjalialankaram.com';
+
   return (
     <div className="container py-12 max-w-4xl">
       <h1 className="text-4xl font-outfit font-bold mb-6">Privacy Policy</h1>
@@ -34,7 +47,13 @@ export default function PrivacyPolicyPage() {
         <p>When you place an order through the Site, we will retain your Personal Information for our records unless and until you ask us to erase this information.</p>
 
         <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">Contact</h2>
-        <p>For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at privacy@anjalialankaram.com or by mail using the details provided on our Contact Us page.</p>
+        <p>
+          For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at{' '}
+          <a href={`mailto:${contactEmail}`} className="text-primary underline font-medium">
+            {contactEmail}
+          </a>{' '}
+          or by mail using the details provided on our Contact Us page.
+        </p>
       </div>
     </div>
   );
