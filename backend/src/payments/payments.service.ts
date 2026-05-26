@@ -109,15 +109,16 @@ export class PaymentsService {
   /**
    * Verify Razorpay webhook signature and advance order status.
    * Called by Razorpay's webhook system.
+   * rawBody must be the exact bytes received — NOT re-serialized JSON.
    */
-  async verifyWebhook(body: any, signature: string) {
+  async verifyWebhook(rawBody: Buffer, body: any, signature: string) {
     const { webhookSecret: secret } = this.getRazorpayConfig();
     if (!secret) throw new BadRequestException('Webhook secret not configured');
 
-    // Verify HMAC signature
+    // Verify HMAC signature using raw bytes (re-serializing breaks key order/spacing)
     const expectedSig = crypto
       .createHmac('sha256', secret)
-      .update(JSON.stringify(body))
+      .update(rawBody)
       .digest('hex');
 
     if (expectedSig !== signature) {

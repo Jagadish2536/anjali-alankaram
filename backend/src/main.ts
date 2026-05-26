@@ -42,7 +42,16 @@ async function bootstrap() {
   app.use(compression({ threshold: 512 }));
 
   // ── Body size limits ────────────────────────────────────────────
-  app.use(express.json({ limit: '10mb' }));
+  // Preserve raw body for Razorpay webhook signature verification.
+  // Razorpay signs the exact raw bytes — re-serializing parsed JSON breaks the HMAC.
+  app.use(
+    express.json({
+      limit: '10mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // ── CORS ────────────────────────────────────────────────────────
@@ -55,7 +64,7 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-razorpay-signature'],
   });
 
   // ── Global Validation ────────────────────────────────────────────

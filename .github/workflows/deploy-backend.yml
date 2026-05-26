@@ -88,22 +88,14 @@ jobs:
 
     - name: Download current Amazon ECS task definition
       run: |
-        # Strip read-only AWS fields that cause register-task-definition to fail:
-        # taskDefinitionArn, revision, status, requiresAttributes, compatibilities,
-        # registeredAt, registeredBy, deregisteredAt
         aws ecs describe-task-definition \
           --task-definition ${{ env.ECS_TASK_DEFINITION }} \
           --query 'taskDefinition' \
-          --output json | \
-          python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy','deregisteredAt']:
-  d.pop(k,None)
-print(json.dumps(d))
-" > task-definition.json
-        echo "Task definition downloaded and cleaned:"
-        cat task-definition.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('Family:', d.get('family'), '| CPU:', d.get('cpu'), '| Secrets count:', len(d.get('containerDefinitions',[{}])[0].get('secrets',[])))"  
+          --output json \
+          | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)' \
+          > task-definition.json
+        echo "Task definition downloaded and cleaned."
+        echo "Family: $(jq -r '.family' task-definition.json) | CPU: $(jq -r '.cpu' task-definition.json)"
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
