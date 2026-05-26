@@ -13,6 +13,7 @@ import {
 import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
 import { PaymentsService } from '../payments/payments.service';
+import { InventoryService } from '../orders/inventory.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
 
@@ -30,6 +31,7 @@ export class AdminController implements OnModuleInit {
     private prisma: PrismaService,
     private config: ConfigService,
     private paymentsService: PaymentsService,
+    private inventoryService: InventoryService,
     @Inject(REDIS_CLIENT) private redis: Redis,
   ) {
     const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
@@ -113,6 +115,13 @@ export class AdminController implements OnModuleInit {
     } catch {
       return { total: 0, topPages: [], updatedAt: new Date().toISOString() };
     }
+  }
+
+  @Post('fix-reserved-stock')
+  @ApiOperation({ summary: 'Immediately heal variants with negative reservedStock (sets to 0)' })
+  async fixReservedStock() {
+    await this.inventoryService.fixNegativeReservedStock();
+    return { success: true, message: 'Negative reservedStock values have been reset to 0.' };
   }
 
   @Get('dashboard')

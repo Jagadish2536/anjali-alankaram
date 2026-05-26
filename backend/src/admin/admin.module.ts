@@ -3,9 +3,10 @@ import { AdminController } from './admin.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { PaymentsModule } from '../payments/payments.module';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, PaymentsModule],
+  imports: [PrismaModule, ConfigModule, PaymentsModule, OrdersModule],
   controllers: [AdminController],
 })
 export class AdminModule {}

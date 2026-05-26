@@ -238,21 +238,23 @@ export class InventoryService {
     await this.prisma.$transaction(async (tx) => {
       // Case 1: unconfirmed → just release the reservation (reservedStock decrement)
       for (const res of unconfirmed) {
+        // Read current reservedStock first, then clamp to prevent going below 0
+        const variantBefore = await tx.productVariant.findUnique({
+          where: { id: res.variantId },
+          select: { stock: true, reservedStock: true },
+        });
+        const newReserved = Math.max(0, (variantBefore?.reservedStock ?? 0) - res.quantity);
+
         await tx.productVariant.update({
           where: { id: res.variantId },
-          data: { reservedStock: { decrement: res.quantity } },
-        });
-
-        const variant = await tx.productVariant.findUnique({
-          where: { id: res.variantId },
-          select: { stock: true },
+          data: { reservedStock: newReserved },
         });
 
         await tx.$executeRawUnsafe(
           `INSERT INTO "inventory_logs" ("id","variantId","type","quantity","stockBefore","stockAfter","orderId","actorId","notes","createdAt")
            VALUES (gen_random_uuid(),$1,'RESERVATION_RELEASED'::"InventoryMovementType",$2,$3,$3,$4,$5,'Reservation released on cancellation',NOW())`,
           res.variantId, res.quantity,
-          variant?.stock ?? 0,
+          variantBefore?.stock ?? 0,
           orderId, actorId ?? null,
         );
 
@@ -438,9 +440,16 @@ export class InventoryService {
 
     for (const res of expired) {
       try {
+        // Read-then-clamp: never let reservedStock go below 0
+        const variant = await this.prisma.productVariant.findUnique({
+          where: { id: res.variantId },
+          select: { reservedStock: true },
+        });
+        const newReserved = Math.max(0, (variant?.reservedStock ?? 0) - res.quantity);
+
         await this.prisma.productVariant.update({
           where: { id: res.variantId },
-          data: { reservedStock: { decrement: res.quantity } },
+          data: { reservedStock: newReserved },
         });
 
         await this.prisma.$executeRawUnsafe(
@@ -452,6 +461,31 @@ export class InventoryService {
       } catch (e) {
         this.logger.error(`Failed to release reservation ${res.id}: ${e.message}`);
       }
+    }
+  }
+
+  /**
+   * Cron: Auto-heal negative reservedStock every hour.
+   * If a race condition caused reservedStock to go below 0 (e.g., -1),
+   * this cron resets it to 0 so Available = stock (no phantom availability).
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async fixNegativeReservedStock() {
+    const corrupt = await this.prisma.productVariant.findMany({
+      where: { reservedStock: { lt: 0 } },
+      select: { id: true, sku: true, reservedStock: true, stock: true },
+    });
+
+    if (!corrupt.length) return;
+
+    this.logger.warn(`Found ${corrupt.length} variants with negative reservedStock — fixing...`);
+
+    for (const v of corrupt) {
+      await this.prisma.productVariant.update({
+        where: { id: v.id },
+        data: { reservedStock: 0 },
+      });
+      this.logger.warn(`Reset reservedStock for SKU ${v.sku}: ${v.reservedStock} → 0 (stock=${v.stock})`);
     }
   }
 
