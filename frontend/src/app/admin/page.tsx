@@ -84,14 +84,18 @@ export default function AdminDashboard() {
   const fetchLiveVisitors = useCallback(async () => {
     try {
       const { data } = await api.get('/admin/live-visitors');
-      setLiveCount(data.total);
+      setLiveCount(data.total ?? 0);
       setLivePages(data.topPages || []);
       setLastUpdated(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       setLiveHistory(prev => {
-        const next = [...prev, data.total].slice(-20); // keep last 20 readings
+        const next = [...prev, data.total ?? 0].slice(-20);
         return next;
       });
-    } catch { /* ignore */ }
+    } catch (err: any) {
+      console.warn('Live visitors fetch failed:', err?.response?.status, err?.message);
+      // Show 0 so the widget isn't stuck loading
+      setLiveCount(prev => prev ?? 0);
+    }
   }, []);
 
   useEffect(() => {

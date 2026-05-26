@@ -328,12 +328,17 @@ export default function CheckoutPage() {
 
                     return (
                       <div key={item.id} className="flex gap-4 p-5">
-                        {/* Image */}
+                        {/* Image — use variant colour image if available */}
                         <div className="relative w-24 h-32 rounded-lg overflow-hidden bg-gray-100 shrink-0 border">
-                          {item.product.images?.[0]
-                            ? <Image src={item.product.images[0]} alt={item.product.name} fill className="object-cover" />
-                            : <div className="absolute inset-0 flex items-center justify-center text-gray-300"><Package className="w-8 h-8" /></div>
-                          }
+                          {(() => {
+                            const variantImg = (item.product as any)?.variants?.find(
+                              (v: any) => v.color && v.color === item.variant?.color && v.images?.length > 0
+                            )?.images?.[0];
+                            const src = variantImg || item.product.images?.[0];
+                            return src
+                              ? <Image src={src} alt={item.product.name} fill className="object-cover" />
+                              : <div className="absolute inset-0 flex items-center justify-center text-gray-300"><Package className="w-8 h-8" /></div>;
+                          })()}
                         </div>
 
                         {/* Details */}

@@ -1107,7 +1107,7 @@ export default function ProductDetailPage() {
           <div className="max-w-3xl text-sm text-muted-foreground leading-relaxed space-y-3">
             <p>📦 <strong>Delivery Time:</strong> Orders are delivered within 10–12 business days across India.</p>
             <p>🔄 <strong>Exchange Policy:</strong> Exchange is allowed only for damaged, defective, or wrong products. Contact us within 48 hours of delivery.</p>
-            <p>💳 <strong>Payment:</strong> We accept UPI, Credit/Debit Cards, and Cash on Delivery.</p>
+            <p>💳 <strong>Payment:</strong> We accept UPI and Credit/Debit Cards.</p>
           </div>
         )}
       </div>
@@ -1116,147 +1116,109 @@ export default function ProductDetailPage() {
       <div id="reviews-section" className="container pb-10 mt-4">
         <h2 className="font-outfit text-xl font-bold text-foreground mb-6">Customer Reviews</h2>
 
-        {/* Description tab */}
-        {activeTab === 'description' && (
-          <div className="max-w-3xl space-y-6">
-            <div>
-              <h3 className="text-lg font-bold mb-3">About this product</h3>
-              <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{product.description}</p>
-            </div>
-            {(product.material || product.careInstructions) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {product.material && (
-                  <div className="p-4 bg-muted/10 rounded-xl border">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Material</p>
-                    <p className="text-sm font-medium">{product.material}</p>
-                  </div>
-                )}
-                {product.careInstructions && (
-                  <div className="p-4 bg-muted/10 rounded-xl border">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Care Instructions</p>
-                    <p className="text-sm font-medium">{product.careInstructions}</p>
-                  </div>
-                )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Summary panel */}
+          <div className="space-y-6">
+            <div className="p-6 border rounded-2xl text-center bg-white shadow-sm">
+              <div className="text-6xl font-outfit font-bold text-foreground">{Number(product.avgRating).toFixed(1)}</div>
+              <div className="flex justify-center gap-1 my-2">
+                {[1,2,3,4,5].map(s => <Star key={s} className={`w-5 h-5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-yellow-400 stroke-yellow-400' : 'stroke-muted-foreground fill-none'}`} />)}
               </div>
-            )}
-            {product.tags?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Tags</p>
-                <div className="flex flex-wrap gap-2">
-                  {product.tags.map((tag: string) => (
-                    <span key={tag} className="text-xs bg-muted/30 text-muted-foreground px-3 py-1 rounded-full border">{tag}</span>
-                  ))}
+              <p className="text-sm text-muted-foreground">{product.reviewCount} reviews</p>
+            </div>
+            <div className="space-y-2">
+              {ratingBreakdown.map(({ star, count, pct }) => (
+                <div key={star} className="flex items-center gap-3 text-sm">
+                  <span className="w-4 text-right font-medium">{star}</span>
+                  <Star className="w-3.5 h-3.5 fill-yellow-400 stroke-yellow-400 shrink-0" />
+                  <div className="flex-1 bg-muted/20 rounded-full h-2 overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-5">{count}</span>
                 </div>
+              ))}
+            </div>
+
+            {/* Write review form */}
+            {isAuthenticated ? (
+              <div className="border rounded-2xl p-5 bg-white shadow-sm">
+                <h3 className="font-bold mb-4 flex items-center gap-2"><ThumbsUp className="w-4 h-4 text-primary" /> Write a Review</h3>
+                {reviewSuccess && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl text-sm text-green-700 font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Review submitted!
+                  </div>
+                )}
+                {reviewError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700 flex items-center gap-2">
+                    <X className="w-4 h-4" /> {reviewError}
+                  </div>
+                )}
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold mb-2 text-muted-foreground uppercase tracking-wide">Your Rating</label>
+                    <StarRater value={reviewForm.rating} onChange={v => setReviewForm(p => ({ ...p, rating: v }))} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5 text-muted-foreground uppercase tracking-wide">Title (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Summarise your experience"
+                      className="w-full px-3 py-2 bg-muted/20 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
+                      value={reviewForm.title}
+                      onChange={e => setReviewForm(p => ({ ...p, title: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5 text-muted-foreground uppercase tracking-wide">Review *</label>
+                    <textarea
+                      required rows={4}
+                      placeholder="Tell others what you think about this product..."
+                      className="w-full px-3 py-2 bg-muted/20 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none"
+                      value={reviewForm.comment}
+                      onChange={e => setReviewForm(p => ({ ...p, comment: e.target.value }))}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submitingReview}
+                    className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {submitingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" />Submit Review</>}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="p-5 border rounded-2xl text-center bg-muted/5">
+                <p className="text-sm text-muted-foreground mb-3">Sign in to leave a review</p>
+                <button onClick={() => router.push('/login')} className="px-5 py-2 bg-primary text-primary-foreground rounded-full text-sm font-bold hover:bg-primary/90">Sign In</button>
               </div>
             )}
           </div>
-        )}
 
-        {/* Reviews tab */}
-        {activeTab === 'reviews' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            {/* Summary panel */}
-            <div className="space-y-6">
-              <div className="p-6 border rounded-2xl text-center bg-white shadow-sm">
-                <div className="text-6xl font-outfit font-bold text-foreground">{Number(product.avgRating).toFixed(1)}</div>
-                <div className="flex justify-center gap-1 my-2">
-                  {[1,2,3,4,5].map(s => <Star key={s} className={`w-5 h-5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-yellow-400 stroke-yellow-400' : 'stroke-muted-foreground fill-none'}`} />)}
-                </div>
-                <p className="text-sm text-muted-foreground">{product.reviewCount} reviews</p>
+          {/* Review list */}
+          <div className="lg:col-span-2 space-y-4">
+            {reviewsLoading ? (
+              <div className="py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary/60 mx-auto" /></div>
+            ) : reviews.length === 0 ? (
+              <div className="py-16 text-center border rounded-2xl bg-muted/5">
+                <Star className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground font-medium">No reviews yet</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Be the first to review this product!</p>
               </div>
-              <div className="space-y-2">
-                {ratingBreakdown.map(({ star, count, pct }) => (
-                  <div key={star} className="flex items-center gap-3 text-sm">
-                    <span className="w-4 text-right font-medium">{star}</span>
-                    <Star className="w-3.5 h-3.5 fill-yellow-400 stroke-yellow-400 shrink-0" />
-                    <div className="flex-1 bg-muted/20 rounded-full h-2 overflow-hidden">
-                      <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs text-muted-foreground w-5">{count}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Write review form */}
-              {isAuthenticated ? (
-                <div className="border rounded-2xl p-5 bg-white shadow-sm">
-                  <h3 className="font-bold mb-4 flex items-center gap-2"><ThumbsUp className="w-4 h-4 text-primary" /> Write a Review</h3>
-                  {reviewSuccess && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl text-sm text-green-700 font-medium flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" /> Review submitted!
-                    </div>
-                  )}
-                  {reviewError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700 flex items-center gap-2">
-                      <X className="w-4 h-4" /> {reviewError}
-                    </div>
-                  )}
-                  <form onSubmit={handleSubmitReview} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold mb-2 text-muted-foreground uppercase tracking-wide">Your Rating</label>
-                      <StarRater value={reviewForm.rating} onChange={v => setReviewForm(p => ({ ...p, rating: v }))} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5 text-muted-foreground uppercase tracking-wide">Title (optional)</label>
-                      <input
-                        type="text"
-                        placeholder="Summarise your experience"
-                        className="w-full px-3 py-2 bg-muted/20 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
-                        value={reviewForm.title}
-                        onChange={e => setReviewForm(p => ({ ...p, title: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5 text-muted-foreground uppercase tracking-wide">Review *</label>
-                      <textarea
-                        required rows={4}
-                        placeholder="Tell others what you think about this product..."
-                        className="w-full px-3 py-2 bg-muted/20 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary resize-none"
-                        value={reviewForm.comment}
-                        onChange={e => setReviewForm(p => ({ ...p, comment: e.target.value }))}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={submitingReview}
-                      className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {submitingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" />Submit Review</>}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div className="p-5 border rounded-2xl text-center bg-muted/5">
-                  <p className="text-sm text-muted-foreground mb-3">Sign in to leave a review</p>
-                  <button onClick={() => router.push('/login')} className="px-5 py-2 bg-primary text-primary-foreground rounded-full text-sm font-bold hover:bg-primary/90">Sign In</button>
-                </div>
-              )}
-            </div>
-
-            {/* Review list */}
-            <div className="lg:col-span-2 space-y-4">
-              {reviewsLoading ? (
-                <div className="py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary/60 mx-auto" /></div>
-              ) : reviews.length === 0 ? (
-                <div className="py-16 text-center border rounded-2xl bg-muted/5">
-                  <Star className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground font-medium">No reviews yet</p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">Be the first to review this product!</p>
-                </div>
-              ) : (
-                reviews.map(review => (
-                  <ReviewCard
-                    key={review.id}
-                    review={review}
-                    currentUserId={user?.id}
-                    onDelete={() => handleDeleteReview(review.id)}
-                  />
-                ))
-              )}
-            </div>
+            ) : (
+              reviews.map(review => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  currentUserId={user?.id}
+                  onDelete={() => handleDeleteReview(review.id)}
+                />
+              ))
+            )}
           </div>
-        )}
+        </div>
       </div>
+
 
       {/* ── Instagram Reel ─────────────────────────────────────────────── */}
       {product.instagramReelUrl && (() => {

@@ -84,18 +84,27 @@ function PriceSlider({ min, max, value, onChange }: {
 }
 
 // ── Product card ──────────────────────────────────────────────────────────────
-function ProductCard({ product }: { product: any }) {
+function ProductCard({ product, activeColor }: { product: any; activeColor?: string }) {
   const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
   const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
   const totalStock = getTotalStock(product);
   const isOutOfStock = totalStock === 0;
   const isLowStock = !isOutOfStock && totalStock > 0 && totalStock < 5;
 
+  // If a colour filter is active, use the first variant image that matches the colour
+  const displayImage = (() => {
+    if (activeColor) {
+      const match = product.variants?.find((v: any) => v.color === activeColor && v.images?.length > 0);
+      if (match?.images?.[0]) return match.images[0];
+    }
+    return product.images?.[0] || null;
+  })();
+
   return (
     <Link href={`/products/${product.slug}`} className="group flex flex-col">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
-        {product.images?.[0] ? (
-          <Image src={product.images[0]} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
+        {displayImage ? (
+          <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">No Image</div>
         )}
@@ -504,7 +513,7 @@ function ProductsContent() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {displayedProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                {displayedProducts.map(p => <ProductCard key={p.id} product={p} activeColor={selectedColors.length === 1 ? selectedColors[0] : undefined} />)}
               </div>
             )}
           </div>
