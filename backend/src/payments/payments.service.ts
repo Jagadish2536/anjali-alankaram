@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 const Razorpay = require('razorpay');
 import { ShippingService } from '../shipping/shipping.service';
+import { InventoryService } from '../orders/inventory.service';
 
 @Injectable()
 export class PaymentsService {
@@ -17,6 +18,7 @@ export class PaymentsService {
     private prisma: PrismaService,
     private config: ConfigService,
     private shippingService: ShippingService,
+    private inventoryService: InventoryService,
   ) {}
 
   private getRazorpayConfig() {
@@ -150,7 +152,7 @@ export class PaymentsService {
           },
         });
 
-        // Advance order to PAYMENT_VERIFIED → CONFIRMED → INVENTORY_RESERVED
+        // Advance order to PAYMENT_VERIFIED
         await this.prisma.order.update({
           where: { id: order.id },
           data: {
@@ -158,6 +160,11 @@ export class PaymentsService {
             status: 'PAYMENT_VERIFIED',
           },
         });
+
+        // ✅ CRITICAL: Deduct stock now that payment is captured
+        await this.inventoryService.confirm(order.id).catch((e) =>
+          this.logger.error(`Inventory confirm failed after webhook payment.captured for order ${order.id}: ${e.message}`)
+        );
 
         // Log status history
         await this.prisma.$executeRawUnsafe(
@@ -312,6 +319,13 @@ export class PaymentsService {
           amount: Number(order.totalAmount),
         },
       });
+
+      // ✅ CRITICAL: Deduct stock now that payment is verified (client-side callback)
+      // The webhook may also fire confirm() but confirm() is idempotent —
+      // it marks reservations isConfirmed=true and only deducts stock once.
+      await this.inventoryService.confirm(order.id).catch((e) =>
+        this.logger.error(`Inventory confirm failed after verifyPayment for order ${order.id}: ${e.message}`)
+      );
     }
 
     return { verified: true, orderId: order?.id };
