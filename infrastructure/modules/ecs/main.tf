@@ -150,6 +150,9 @@ resource "aws_ecs_service" "backend" {
 
   deployment_controller { type = "ECS" }
   tags = var.tags
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
 
 # --- Frontend Service ---
@@ -180,6 +183,9 @@ resource "aws_ecs_service" "frontend" {
 
   deployment_controller { type = "ECS" }
   tags = var.tags
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
 
 # --- CloudWatch Alarms ---
