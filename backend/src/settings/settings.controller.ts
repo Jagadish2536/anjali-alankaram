@@ -3,7 +3,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { EmailService } from '../email/email.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { PaymentsService } from '../payments/payments.service';
 import Redis from 'ioredis';
@@ -14,7 +13,6 @@ import * as path from 'path';
 export class SettingsController {
   constructor(
     private prisma: PrismaService,
-    private emailService: EmailService,
     @Inject(REDIS_CLIENT) private redis: Redis,
     private paymentsService: PaymentsService,
   ) {}
