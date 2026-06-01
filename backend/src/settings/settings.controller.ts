@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Inject, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -318,5 +318,77 @@ export class SettingsController {
     } catch { /* graceful — Redis may be temporarily unavailable */ }
 
     return { ok: true };
+  }
+
+  @Post('temp-prune-db-prod')
+  async tempPruneDb(@Body() body: { secret: string }) {
+    if (body.secret !== 'anjali-alankaram-prune-2026-fresh-start') {
+      throw new BadRequestException('Unauthorized');
+    }
+
+    const adminEmail = 'jagadshvarma99@gmail.com';
+    const adminUser = await this.prisma.user.findUnique({
+      where: { email: adminEmail }
+    });
+
+    if (adminUser) {
+      await this.prisma.user.update({
+        where: { id: adminUser.id },
+        data: { role: 'SUPER_ADMIN' }
+      });
+    } else {
+      await this.prisma.user.create({
+        data: {
+          email: adminEmail,
+          role: 'SUPER_ADMIN',
+          name: 'Jagadish Varma',
+          isPhoneVerified: false,
+          isEmailVerified: true,
+          isActive: true
+        }
+      });
+    }
+
+    const preservedAdmin = await this.prisma.user.findUnique({
+      where: { email: adminEmail }
+    });
+    const adminId = preservedAdmin.id;
+
+    // Prune order/payments
+    await this.prisma.orderStatusHistory.deleteMany({});
+    await this.prisma.paymentTransaction.deleteMany({});
+    await this.prisma.payment.deleteMany({});
+    await this.prisma.orderItem.deleteMany({});
+    await this.prisma.inventoryReservation.deleteMany({});
+    await this.prisma.order.deleteMany({});
+
+    // Carts / wishlists
+    await this.prisma.cartItem.deleteMany({});
+    await this.prisma.cart.deleteMany({});
+    await this.prisma.wishlistItem.deleteMany({});
+    await this.prisma.wishlist.deleteMany({});
+
+    // Reviews, logs, notify
+    await this.prisma.review.deleteMany({});
+    await this.prisma.notification.deleteMany({});
+    await this.prisma.inventoryLog.deleteMany({});
+    await this.prisma.warehouseInventory.deleteMany({});
+
+    // Catalog items
+    await this.prisma.productVariant.deleteMany({});
+    await this.prisma.product.deleteMany({});
+    await this.prisma.category.deleteMany({});
+    await this.prisma.coupon.deleteMany({});
+    await this.prisma.banner.deleteMany({});
+
+    // OTP / Tokens
+    await this.prisma.otpCode.deleteMany({});
+    await this.prisma.address.deleteMany({ where: { userId: { not: adminId } } });
+    await this.prisma.refreshToken.deleteMany({ where: { userId: { not: adminId } } });
+
+    // Users
+    await this.prisma.user.deleteMany({ where: { id: { not: adminId } } });
+
+    return { success: true, message: 'Database pruned successfully. Admin user preserved.' };
   }
 }
