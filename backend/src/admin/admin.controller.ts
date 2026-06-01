@@ -719,12 +719,12 @@ export class AdminController implements OnModuleInit {
   @ApiOperation({ summary: 'Get Razorpay account/reserve balance directly from Razorpay API' })
   async getRazorpayAccountBalance() {
     try {
-      const client = this.paymentsService.getPublicRazorpayClient();
+      const client = await this.paymentsService.getPublicRazorpayClient();
       if (!client) return { success: false, error: 'Razorpay not configured' };
 
       // Razorpay provides balance via settlements API endpoint (account balance)
       // Use axios to call the Razorpay balance API directly
-      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
       const response = await axios.get('https://api.razorpay.com/v1/balance', {
         auth: { username: keyId, password: keySecret },
         timeout: 8000,
@@ -752,7 +752,7 @@ export class AdminController implements OnModuleInit {
     @Query('count') count = 20,
   ) {
     try {
-      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
       if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured', items: [] };
 
       const params: any = { count: Math.min(Number(count), 100), skip: Number(skip) };
@@ -816,7 +816,7 @@ export class AdminController implements OnModuleInit {
     @Query('count') count = 20,
   ) {
     try {
-      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
       if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured', items: [] };
 
       const params: any = { count: Math.min(Number(count), 100), skip: Number(skip) };
@@ -864,7 +864,7 @@ export class AdminController implements OnModuleInit {
   ) {
     if (!body.paymentId) throw new BadRequestException('paymentId is required');
     try {
-      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
       const refundBody: any = {};
       if (body.amount) refundBody.amount = Math.round(body.amount * 100);
       if (body.reason) refundBody.notes = { reason: body.reason };
@@ -885,7 +885,7 @@ export class AdminController implements OnModuleInit {
   @ApiOperation({ summary: 'Fetch live status of a single Razorpay payment by payment ID' })
   async getRazorpayPaymentLive(@Param('paymentId') paymentId: string) {
     try {
-      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
       if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured' };
 
       const response = await axios.get(`https://api.razorpay.com/v1/payments/${paymentId}`, {
@@ -931,7 +931,7 @@ export class AdminController implements OnModuleInit {
   @ApiOperation({ summary: 'Fetch live status of a single Razorpay refund by refund ID' })
   async getRazorpayRefundLive(@Param('refundId') refundId: string) {
     try {
-      const { keyId, keySecret } = this.paymentsService.getPublicConfig();
+      const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
       if (!keyId || !keySecret) return { success: false, error: 'Razorpay not configured' };
 
       const response = await axios.get(`https://api.razorpay.com/v1/refunds/${refundId}`, {

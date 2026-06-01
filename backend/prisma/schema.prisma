@@ -697,6 +697,10 @@ model StoreSettings {
   accountNumber           String   @default("")
   ifscCode                String   @default("")
   accountHolderName       String   @default("")
+  // Razorpay API Credentials
+  razorpayKeyId           String?  @default("")
+  razorpayKeySecret       String?  @default("")
+  razorpayWebhookSecret   String?  @default("")
   // Features
   couponsEnabled          Boolean  @default(true)
   giftEnabled             Boolean  @default(false)

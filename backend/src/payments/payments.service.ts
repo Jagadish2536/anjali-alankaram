@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
@@ -9,10 +9,11 @@ import { ShippingService } from '../shipping/shipping.service';
 import { InventoryService } from '../orders/inventory.service';
 
 @Injectable()
-export class PaymentsService {
+export class PaymentsService implements OnModuleInit {
   private readonly logger = new Logger(PaymentsService.name);
-  private lastEnvMtime = 0;
   private cachedConfig: { keyId: string; keySecret: string; webhookSecret: string } | null = null;
+  private lastCacheTime = 0;
+  private readonly CACHE_TTL = 10000; // 10 seconds cache TTL
 
   constructor(
     private prisma: PrismaService,
@@ -21,37 +22,47 @@ export class PaymentsService {
     private inventoryService: InventoryService,
   ) {}
 
-  private getRazorpayConfig() {
-    const envPath = path.resolve(process.cwd(), '.env');
-    let shouldRead = false;
-    let mtime = 0;
+  async onModuleInit() {
+    await this.getRazorpayConfig();
+  }
 
-    try {
-      if (fs.existsSync(envPath)) {
-        const stat = fs.statSync(envPath);
-        mtime = stat.mtimeMs;
-        if (mtime !== this.lastEnvMtime || !this.cachedConfig) {
-          shouldRead = true;
-        }
-      } else if (!this.cachedConfig) {
-        shouldRead = true;
-      }
-    } catch {
-      shouldRead = true;
+  async refreshConfig() {
+    this.cachedConfig = null;
+    this.lastCacheTime = 0;
+    await this.getRazorpayConfig();
+  }
+
+  private async getRazorpayConfig() {
+    const now = Date.now();
+    if (this.cachedConfig && (now - this.lastCacheTime < this.CACHE_TTL)) {
+      return this.cachedConfig;
     }
 
-    if (shouldRead) {
-      let keyId = '';
-      let keySecret = '';
-      let webhookSecret = '';
+    let keyId = '';
+    let keySecret = '';
+    let webhookSecret = '';
 
+    try {
+      const settings = await this.prisma.storeSettings.findFirst();
+      if (settings) {
+        keyId = settings.razorpayKeyId || '';
+        keySecret = settings.razorpayKeySecret || '';
+        webhookSecret = settings.razorpayWebhookSecret || '';
+      }
+    } catch (e) {
+      this.logger.error(`Failed to read Razorpay config from database: ${e.message}`);
+    }
+
+    // Fallback to env file or process.env if database fields are missing/empty
+    if (!keyId) {
+      const envPath = path.resolve(process.cwd(), '.env');
       try {
         if (fs.existsSync(envPath)) {
           const content = fs.readFileSync(envPath, 'utf-8');
           const matchId = content.match(/^RAZORPAY_KEY_ID="?([^"\n]*)"?/m);
           const matchSecret = content.match(/^RAZORPAY_KEY_SECRET="?([^"\n]*)"?/m);
           const matchWebhook = content.match(/^RAZORPAY_WEBHOOK_SECRET="?([^"\n]*)"?/m);
-          
+
           if (matchId) keyId = matchId[1];
           if (matchSecret) keySecret = matchSecret[1];
           if (matchWebhook) webhookSecret = matchWebhook[1];
@@ -63,16 +74,15 @@ export class PaymentsService {
       if (!keyId) keyId = this.config.get('RAZORPAY_KEY_ID') || '';
       if (!keySecret) keySecret = this.config.get('RAZORPAY_KEY_SECRET') || '';
       if (!webhookSecret) webhookSecret = this.config.get('RAZORPAY_WEBHOOK_SECRET') || '';
-
-      this.cachedConfig = { keyId, keySecret, webhookSecret };
-      this.lastEnvMtime = mtime;
     }
 
-    return this.cachedConfig!;
+    this.cachedConfig = { keyId, keySecret, webhookSecret };
+    this.lastCacheTime = now;
+    return this.cachedConfig;
   }
 
-  private getRazorpayClient() {
-    const { keyId, keySecret } = this.getRazorpayConfig();
+  private async getRazorpayClient() {
+    const { keyId, keySecret } = await this.getRazorpayConfig();
     if (!keyId || !keySecret) {
       throw new BadRequestException('Razorpay is not configured (keys missing)');
     }
@@ -80,17 +90,17 @@ export class PaymentsService {
   }
 
   /** Public accessor — lets AdminController call Razorpay API directly */
-  getPublicConfig() {
+  async getPublicConfig() {
     return this.getRazorpayConfig();
   }
 
   /** Public accessor — returns null if keys are missing (no throw) */
-  getPublicRazorpayClient() {
-    try { return this.getRazorpayClient(); } catch { return null; }
+  async getPublicRazorpayClient() {
+    try { return await this.getRazorpayClient(); } catch { return null; }
   }
 
   async createRazorpayOrder(amount: number, userId: string) {
-    const client = this.getRazorpayClient();
+    const client = await this.getRazorpayClient();
 
     const options = {
       amount: Math.round(amount * 100),
@@ -112,7 +122,7 @@ export class PaymentsService {
    * rawBody must be the exact bytes received — NOT re-serialized JSON.
    */
   async verifyWebhook(rawBody: Buffer, body: any, signature: string) {
-    const { webhookSecret: secret } = this.getRazorpayConfig();
+    const { webhookSecret: secret } = await this.getRazorpayConfig();
     if (!secret) throw new BadRequestException('Webhook secret not configured');
 
     // Verify HMAC signature using raw bytes (re-serializing breaks key order/spacing)
@@ -289,7 +299,7 @@ export class PaymentsService {
     razorpayPaymentId: string;
     razorpaySignature: string;
   }) {
-    const { keySecret } = this.getRazorpayConfig();
+    const { keySecret } = await this.getRazorpayConfig();
     if (!keySecret) throw new BadRequestException('Razorpay not configured');
 
     const expectedSig = crypto
@@ -346,7 +356,7 @@ export class PaymentsService {
    * Process refund via Razorpay.
    */
   async processRefund(orderId: string, amount?: number) {
-    const client = this.getRazorpayClient();
+    const client = await this.getRazorpayClient();
 
     const payment = await this.prisma.payment.findUnique({
       where: { orderId },
@@ -446,7 +456,7 @@ export class PaymentsService {
 
     if (payment.razorpayPaymentId) {
       try {
-        const client = this.getRazorpayClient();
+        const client = await this.getRazorpayClient();
         const rzpPayment = await client.payments.fetch(payment.razorpayPaymentId);
         // fee and tax are in paise
         const fee = Number(rzpPayment.fee || 0) / 100;

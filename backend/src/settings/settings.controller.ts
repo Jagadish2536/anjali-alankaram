@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { EmailService } from '../email/email.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { PaymentsService } from '../payments/payments.service';
 import Redis from 'ioredis';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,6 +16,7 @@ export class SettingsController {
     private prisma: PrismaService,
     private emailService: EmailService,
     @Inject(REDIS_CLIENT) private redis: Redis,
+    private paymentsService: PaymentsService,
   ) {}
 
   @Get()
@@ -111,26 +113,39 @@ export class SettingsController {
     }
   }
 
-  // ── Payment config (reads/writes .env file) ──────────────────────────────
+  // ── Payment config (reads/writes DB & .env file fallback) ────────────────
 
   @Get('payment')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getPaymentConfig() {
-    const envPath = path.resolve(process.cwd(), '.env');
-    let envContent = '';
-    try { envContent = fs.readFileSync(envPath, 'utf-8'); } catch {}
+    // 1. First fetch from database
+    const settings = await this.prisma.storeSettings.findFirst();
+    let dbKeyId = settings?.razorpayKeyId || '';
+    let dbKeySecret = settings?.razorpayKeySecret || '';
+    let dbWebhookSecret = settings?.razorpayWebhookSecret || '';
 
-    const get = (key: string) => {
-      const match = envContent.match(new RegExp(`^${key}="?([^"\n]*)"?`, 'm'));
-      return match ? match[1] : '';
-    };
+    // 2. If database fields are empty, fall back to .env / process.env
+    if (!dbKeyId) {
+      const envPath = path.resolve(process.cwd(), '.env');
+      let envContent = '';
+      try { envContent = fs.readFileSync(envPath, 'utf-8'); } catch {}
+
+      const get = (key: string) => {
+        const match = envContent.match(new RegExp(`^${key}="?([^"\n]*)"?`, 'm'));
+        return match ? match[1] : (process.env[key] || '');
+      };
+
+      dbKeyId = get('RAZORPAY_KEY_ID');
+      dbKeySecret = get('RAZORPAY_KEY_SECRET');
+      dbWebhookSecret = get('RAZORPAY_WEBHOOK_SECRET');
+    }
 
     return {
-      razorpayKeyId: get('RAZORPAY_KEY_ID'),
-      razorpayKeySecret: get('RAZORPAY_KEY_SECRET') ? '••••••••••••••••' : '',
-      razorpayWebhookSecret: get('RAZORPAY_WEBHOOK_SECRET') ? '••••••••••••••••' : '',
-      razorpayEnabled: !!(get('RAZORPAY_KEY_ID') && !get('RAZORPAY_KEY_ID').includes('your_')),
+      razorpayKeyId: dbKeyId,
+      razorpayKeySecret: dbKeySecret ? '••••••••••••••••' : '',
+      razorpayWebhookSecret: dbWebhookSecret ? '••••••••••••••••' : '',
+      razorpayEnabled: !!(dbKeyId && !dbKeyId.includes('your_')),
     };
   }
 
@@ -142,29 +157,69 @@ export class SettingsController {
     razorpayKeySecret?: string;
     razorpayWebhookSecret?: string;
   }) {
-    const envPath = path.resolve(process.cwd(), '.env');
-    let envContent = '';
-    try { envContent = fs.readFileSync(envPath, 'utf-8'); } catch {}
-
-    const setKey = (content: string, key: string, value: string | undefined) => {
-      if (!value || value.includes('•')) return content; // skip masked placeholders
-      const regex = new RegExp(`^(${key}=).*$`, 'm');
-      const newLine = `${key}="${value}"`;
-      return regex.test(content) ? content.replace(regex, newLine) : content + `\n${newLine}`;
-    };
-
-    let updated = envContent;
-    updated = setKey(updated, 'RAZORPAY_KEY_ID', body.razorpayKeyId);
-    updated = setKey(updated, 'RAZORPAY_KEY_SECRET', body.razorpayKeySecret);
-    updated = setKey(updated, 'RAZORPAY_WEBHOOK_SECRET', body.razorpayWebhookSecret);
-
-    try {
-      fs.writeFileSync(envPath, updated, 'utf-8');
-    } catch (e) {
-      return { success: false, message: 'Failed to write .env file' };
+    // 1. Save to Database
+    let settings = await this.prisma.storeSettings.findFirst();
+    const updateData: any = {};
+    if (body.razorpayKeyId !== undefined) {
+      updateData.razorpayKeyId = body.razorpayKeyId;
+    }
+    if (body.razorpayKeySecret !== undefined && !body.razorpayKeySecret.includes('•')) {
+      updateData.razorpayKeySecret = body.razorpayKeySecret;
+    }
+    if (body.razorpayWebhookSecret !== undefined && !body.razorpayWebhookSecret.includes('•')) {
+      updateData.razorpayWebhookSecret = body.razorpayWebhookSecret;
     }
 
-    return { success: true, message: 'Payment configuration saved. Restart the server to apply new keys.' };
+    if (settings) {
+      await this.prisma.storeSettings.update({
+        where: { id: settings.id },
+        data: updateData,
+      });
+    } else {
+      await this.prisma.storeSettings.create({
+        data: {
+          storeName: 'Anjali Alankaram',
+          ...updateData,
+        },
+      });
+    }
+
+    // 2. Update process.env variables in memory for immediate use
+    if (body.razorpayKeyId) {
+      process.env.RAZORPAY_KEY_ID = body.razorpayKeyId;
+    }
+    if (body.razorpayKeySecret && !body.razorpayKeySecret.includes('•')) {
+      process.env.RAZORPAY_KEY_SECRET = body.razorpayKeySecret;
+    }
+    if (body.razorpayWebhookSecret && !body.razorpayWebhookSecret.includes('•')) {
+      process.env.RAZORPAY_WEBHOOK_SECRET = body.razorpayWebhookSecret;
+    }
+
+    // 3. Trigger paymentsService to refresh its cache
+    await this.paymentsService.refreshConfig();
+
+    // 4. Also write to local .env if it exists for development convenience
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      try {
+        let envContent = fs.readFileSync(envPath, 'utf-8');
+        const setKey = (content: string, key: string, value: string | undefined) => {
+          if (!value || value.includes('•')) return content; // skip masked placeholders
+          const regex = new RegExp(`^(${key}=).*$`, 'm');
+          const newLine = `${key}="${value}"`;
+          return regex.test(content) ? content.replace(regex, newLine) : content + `\n${newLine}`;
+        };
+        let updated = envContent;
+        updated = setKey(updated, 'RAZORPAY_KEY_ID', body.razorpayKeyId);
+        updated = setKey(updated, 'RAZORPAY_KEY_SECRET', body.razorpayKeySecret);
+        updated = setKey(updated, 'RAZORPAY_WEBHOOK_SECRET', body.razorpayWebhookSecret);
+        fs.writeFileSync(envPath, updated, 'utf-8');
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return { success: true, message: 'Payment configuration saved successfully.' };
   }
 
   // ── Contact form ─────────────────────────────────────────────────────────
