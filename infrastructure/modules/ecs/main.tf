@@ -39,8 +39,8 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 1024  # Tier 1: 1 vCPU (was 0.5)
-  memory                   = 2048  # Tier 1: 2 GB (was 1 GB)
+  cpu                      = 256   # 0.25 vCPU (Cost Optimization)
+  memory                   = 512   # 512 MB (Cost Optimization)
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
@@ -94,8 +94,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 1024  # Tier 1: 1 vCPU (was 0.5)
-  memory                   = 2048  # Tier 1: 2 GB (was 1 GB)
+  cpu                      = 256   # 0.25 vCPU (Cost Optimization)
+  memory                   = 512   # 512 MB (Cost Optimization)
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 

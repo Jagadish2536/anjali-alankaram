@@ -16,7 +16,7 @@ resource "aws_db_instance" "postgres" {
   storage_type           = "gp3"
   engine                 = "postgres"
   engine_version         = "15"
-  instance_class         = "db.t4g.small"  # Tier 1: 2 GB RAM, ~200 max connections (was db.t4g.micro, 1 GB)
+  instance_class         = "db.t4g.micro"  # 1 GB RAM (Cost Optimization)
   db_name                = var.db_name
   username               = var.db_username
   password               = var.db_password
