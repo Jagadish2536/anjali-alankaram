@@ -123,8 +123,8 @@ export class SettingsController {
     let dbKeySecret = settings?.razorpayKeySecret || '';
     let dbWebhookSecret = settings?.razorpayWebhookSecret || '';
 
-    // 2. If database fields are empty, fall back to .env / process.env
-    if (!dbKeyId) {
+    // 2. Fall back to env file or process.env field-by-field if database fields are empty
+    if (!dbKeyId || !dbKeySecret || !dbWebhookSecret) {
       const envPath = path.resolve(process.cwd(), '.env');
       let envContent = '';
       try { envContent = fs.readFileSync(envPath, 'utf-8'); } catch {}
@@ -134,9 +134,9 @@ export class SettingsController {
         return match ? match[1] : (process.env[key] || '');
       };
 
-      dbKeyId = get('RAZORPAY_KEY_ID');
-      dbKeySecret = get('RAZORPAY_KEY_SECRET');
-      dbWebhookSecret = get('RAZORPAY_WEBHOOK_SECRET');
+      if (!dbKeyId) dbKeyId = get('RAZORPAY_KEY_ID');
+      if (!dbKeySecret) dbKeySecret = get('RAZORPAY_KEY_SECRET');
+      if (!dbWebhookSecret) dbWebhookSecret = get('RAZORPAY_WEBHOOK_SECRET');
     }
 
     return {

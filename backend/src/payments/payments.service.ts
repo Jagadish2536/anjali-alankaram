@@ -53,27 +53,29 @@ export class PaymentsService implements OnModuleInit {
       this.logger.error(`Failed to read Razorpay config from database: ${e.message}`);
     }
 
-    // Fallback to env file or process.env if database fields are missing/empty
-    if (!keyId) {
+    // Fallback to env file or process.env if database fields are missing/empty (field-by-field)
+    if (!keyId || !keySecret || !webhookSecret) {
       const envPath = path.resolve(process.cwd(), '.env');
+      let envContent = '';
       try {
         if (fs.existsSync(envPath)) {
-          const content = fs.readFileSync(envPath, 'utf-8');
-          const matchId = content.match(/^RAZORPAY_KEY_ID="?([^"\n]*)"?/m);
-          const matchSecret = content.match(/^RAZORPAY_KEY_SECRET="?([^"\n]*)"?/m);
-          const matchWebhook = content.match(/^RAZORPAY_WEBHOOK_SECRET="?([^"\n]*)"?/m);
-
-          if (matchId) keyId = matchId[1];
-          if (matchSecret) keySecret = matchSecret[1];
-          if (matchWebhook) webhookSecret = matchWebhook[1];
+          envContent = fs.readFileSync(envPath, 'utf-8');
         }
       } catch (e) {
         this.logger.error(`Failed to read .env file: ${e.message}`);
       }
 
-      if (!keyId) keyId = this.config.get('RAZORPAY_KEY_ID') || '';
-      if (!keySecret) keySecret = this.config.get('RAZORPAY_KEY_SECRET') || '';
-      if (!webhookSecret) webhookSecret = this.config.get('RAZORPAY_WEBHOOK_SECRET') || '';
+      const getFromEnv = (key: string) => {
+        if (envContent) {
+          const match = envContent.match(new RegExp(`^${key}="?([^"\n]*)"?`, 'm'));
+          if (match) return match[1];
+        }
+        return this.config.get(key) || '';
+      };
+
+      if (!keyId) keyId = getFromEnv('RAZORPAY_KEY_ID');
+      if (!keySecret) keySecret = getFromEnv('RAZORPAY_KEY_SECRET');
+      if (!webhookSecret) webhookSecret = getFromEnv('RAZORPAY_WEBHOOK_SECRET');
     }
 
     this.cachedConfig = { keyId, keySecret, webhookSecret };
