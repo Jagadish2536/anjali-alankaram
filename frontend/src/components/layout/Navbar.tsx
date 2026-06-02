@@ -31,7 +31,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [navCategories, setNavCategories] = useState(STATIC_NAV_CATEGORIES);
+  const [navCategories, setNavCategories] = useState<{name:string,slug:string}[]>([]);
   const [announcementVisible, setAnnouncementVisible] = useState(true);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -43,10 +43,12 @@ export default function Navbar() {
   useEffect(() => {
     api.get('/categories').then(({ data }) => {
       const list: any[] = Array.isArray(data) ? data : data?.data || [];
-      if (list.length > 0) {
-        setNavCategories(list.map((c: any) => ({ name: c.name, slug: c.slug })));
-      }
-    }).catch(() => {});
+      // Always sync from DB — if no categories exist, show none (no hardcoded fallback)
+      setNavCategories(list.map((c: any) => ({ name: c.name, slug: c.slug })));
+    }).catch(() => {
+      // On API error keep empty — don't show phantom hardcoded categories
+      setNavCategories([]);
+    });
   }, []);
 
   // Close drawer on outside click
