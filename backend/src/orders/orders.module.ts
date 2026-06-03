@@ -9,9 +9,10 @@ import { PaymentsModule } from '../payments/payments.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
+import { OffersModule } from '../offers/offers.module';
 
 @Module({
-  imports: [PrismaModule, CartModule, PaymentsModule, ShippingModule, NotificationsModule, EmailModule],
+  imports: [PrismaModule, CartModule, PaymentsModule, ShippingModule, NotificationsModule, EmailModule, OffersModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderStatusHistoryService, InventoryService],
   exports: [OrdersService, OrderStatusHistoryService, InventoryService],

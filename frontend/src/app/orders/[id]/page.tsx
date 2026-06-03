@@ -977,6 +977,14 @@ export default function OrderDetailPage() {
                 </div>
               )}
 
+              {/* Offer discount */}
+              {Number(order.offerDiscount) > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>Offer {order.offerTitle && <span className="text-xs bg-green-50 border border-green-200 rounded px-1.5 py-0.5 ml-1">{order.offerTitle}</span>}</span>
+                  <span>− {formatPrice(Number(order.offerDiscount))}</span>
+                </div>
+              )}
+
               {/* Shipping */}
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
@@ -1025,10 +1033,10 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Savings badge */}
-              {Number(order.discountAmount) > 0 && (
+              {(Number(order.discountAmount) > 0 || Number(order.offerDiscount) > 0) && (
                 <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-1.5 flex items-center gap-1.5 mt-1">
                   <Check className="w-3.5 h-3.5 text-green-600" />
-                  <span className="text-xs text-green-700 font-bold">You saved {formatPrice(Number(order.discountAmount))}</span>
+                  <span className="text-xs text-green-700 font-bold">You saved {formatPrice((Number(order.discountAmount) || 0) + (Number(order.offerDiscount) || 0))}</span>
                 </div>
               )}
             </div>

@@ -1,0 +1,152 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class OffersService {
+  constructor(private prisma: PrismaService) {}
+
+  async findAll() {
+    return this.prisma.offer.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async findActive() {
+    return this.prisma.offer.findMany({ where: { isActive: true }, orderBy: { createdAt: 'desc' } });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.offer.findUnique({ where: { id } });
+  }
+
+  async create(data: any) {
+    return this.prisma.offer.create({ data: this.sanitize(data) });
+  }
+
+  async update(id: string, data: any) {
+    return this.prisma.offer.update({ where: { id }, data: this.sanitize(data) });
+  }
+
+  async remove(id: string) {
+    return this.prisma.offer.delete({ where: { id } });
+  }
+
+  private sanitize(data: any) {
+    const clean: any = { ...data };
+    if (clean.minProductPrice !== undefined && clean.minProductPrice !== null && clean.minProductPrice !== '') {
+      clean.minProductPrice = parseFloat(String(clean.minProductPrice));
+    } else {
+      clean.minProductPrice = null;
+    }
+    if (clean.maxProductPrice !== undefined && clean.maxProductPrice !== null && clean.maxProductPrice !== '') {
+      clean.maxProductPrice = parseFloat(String(clean.maxProductPrice));
+    } else {
+      clean.maxProductPrice = null;
+    }
+    if (clean.buyQuantity !== undefined) {
+      clean.buyQuantity = parseInt(String(clean.buyQuantity), 10);
+    }
+    if (clean.getQuantity !== undefined) {
+      clean.getQuantity = parseInt(String(clean.getQuantity), 10);
+    }
+    if (clean.isActive !== undefined) {
+      clean.isActive = Boolean(clean.isActive);
+    }
+    if (!Array.isArray(clean.productIds)) {
+      clean.productIds = [];
+    }
+    return clean;
+  }
+
+  /**
+   * Calculates the best offer for the given cart items.
+   * Returns details of the best offer (title, discount amount, id) or null if no offer applies.
+   */
+  async calculateBestOffer(cartItems: any[]) {
+    // Check if offers are enabled globally
+    const settings = await this.prisma.storeSettings.findFirst();
+    if (!settings || !settings.offersEnabled) {
+      return null;
+    }
+
+    if (!cartItems || cartItems.length === 0) {
+      return null;
+    }
+
+    // Get all active offers
+    const activeOffers = await this.prisma.offer.findMany({
+      where: { isActive: true }
+    });
+
+    if (activeOffers.length === 0) {
+      return null;
+    }
+
+    let bestOffer = null;
+    let maxDiscount = 0;
+
+    for (const offer of activeOffers) {
+      // 1. Find qualifying units in the cart
+      const qualifyingUnits: number[] = [];
+
+      for (const item of cartItems) {
+        const product = item.product;
+        const variant = item.variant;
+        if (!product) continue;
+
+        // Calculate unit price: sale price (or base price) + variant extra price
+        const unitPrice = Number(product.salePrice || product.basePrice) + Number(variant?.extraPrice || 0);
+
+        // Check if product is in the offer's productIds (if filter is not empty)
+        if (offer.productIds && offer.productIds.length > 0) {
+          if (!offer.productIds.includes(product.id)) {
+            continue;
+          }
+        }
+
+        // Check product price range
+        if (offer.minProductPrice && unitPrice < Number(offer.minProductPrice)) {
+          continue;
+        }
+        if (offer.maxProductPrice && unitPrice > Number(offer.maxProductPrice)) {
+          continue;
+        }
+
+        // Add each quantity unit as an individual price to our pool
+        for (let i = 0; i < item.quantity; i++) {
+          qualifyingUnits.push(unitPrice);
+        }
+      }
+
+      // Check if we have enough qualifying units for the offer
+      const offerGroupSize = offer.buyQuantity + offer.getQuantity;
+      if (qualifyingUnits.length < offerGroupSize) {
+        continue;
+      }
+
+      // 2. Calculate Buy X Get Y Free discount
+      // Sort qualifying unit prices ascending (cheapest first)
+      qualifyingUnits.sort((a, b) => a - b);
+
+      // Determine how many items are free:
+      // For every group of (buyQuantity + getQuantity) items, getQuantity items are free
+      const groupCount = Math.floor(qualifyingUnits.length / offerGroupSize);
+      const freeCount = groupCount * offer.getQuantity;
+
+      // The cheapest freeCount items are free
+      let offerDiscount = 0;
+      for (let i = 0; i < freeCount; i++) {
+        offerDiscount += qualifyingUnits[i];
+      }
+
+      if (offerDiscount > maxDiscount) {
+        maxDiscount = offerDiscount;
+        bestOffer = {
+          id: offer.id,
+          title: offer.title,
+          discount: Math.round(offerDiscount),
+        };
+      }
+    }
+
+    return bestOffer;
+  }
+}

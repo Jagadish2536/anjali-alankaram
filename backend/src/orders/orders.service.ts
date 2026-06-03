@@ -4,6 +4,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
+import { OffersService } from '../offers/offers.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20,6 +21,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private cartService: CartService,
+    private offersService: OffersService,
     private paymentsService: PaymentsService,
     private shippingService: ShippingService,
     private notificationsService: NotificationsService,
@@ -97,14 +99,21 @@ export class OrdersService {
       discountAmount = coupon.discountAmount;
     }
 
+    // 6.5. Apply offers
+    let offerDiscount = 0;
+    const appliedOffer = await this.offersService.calculateBestOffer(cart.items);
+    if (appliedOffer) {
+      offerDiscount = appliedOffer.discount;
+    }
+
     // 7. All charges
-    const isFreeShipping = coupon?.type === 'FREE_SHIPPING' || !shippingEnabled || (subtotal - discountAmount) >= freeShipThreshold;
+    const isFreeShipping = coupon?.type === 'FREE_SHIPPING' || !shippingEnabled || (subtotal - discountAmount - offerDiscount) >= freeShipThreshold;
     const shippingCharge = isFreeShipping ? 0 : shippingFee;
     const giftCharge = dto.isGift && settings?.giftEnabled ? Number((settings as any)?.giftAmount ?? 35) : 0;
     const gstAmount = gstEnabled ? Math.round(subtotal * gstRate / 100) : 0;
     const platformFee = platformFeeAmt;
     const codCharges = codChargeAmt;
-    const totalAmount = subtotal - discountAmount + shippingCharge + giftCharge + gstAmount + platformFee + codCharges;
+    const totalAmount = subtotal - discountAmount - offerDiscount + shippingCharge + giftCharge + gstAmount + platformFee + codCharges;
 
     // 8. Create Razorpay order (COD skips this)
     let razorpayOrderId: string | undefined;
@@ -133,6 +142,9 @@ export class OrdersService {
           warehouseId: defaultWarehouse?.id || null,
           subtotal,
           discountAmount,
+          offerDiscount,
+          offerId: appliedOffer?.id || null,
+          offerTitle: appliedOffer?.title || null,
           shippingCharge,
           giftCharge,
           platformFee,

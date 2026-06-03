@@ -30,6 +30,7 @@ interface StoreSettings {
   codCharges: number;
   // Features
   couponsEnabled: boolean;
+  offersEnabled: boolean;
   giftEnabled: boolean;
   giftAmount: number;
   platformFeeEnabled: boolean;
@@ -38,7 +39,6 @@ interface StoreSettings {
   lowStockThreshold: number;
   reservationTimeoutMins: number;
   returnPolicyDays: number;
-  storeDescription: string;
   storeAddress: string;
   businessHours: string;
   footerCategories: any;
@@ -89,6 +89,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   codCharges: 0,
   // Features
   couponsEnabled: true,
+  offersEnabled: true,
   giftEnabled: false,
   giftAmount: 35,
   platformFeeEnabled: false,
@@ -97,7 +98,6 @@ const DEFAULT_SETTINGS: StoreSettings = {
   lowStockThreshold: 5,
   reservationTimeoutMins: 15,
   returnPolicyDays: 7,
-  storeDescription: '',
   storeAddress: '',
   businessHours: 'Monday - Saturday: 10:00 AM - 7:00 PM\nSunday: Closed',
   footerCategories: [],
@@ -135,6 +135,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             platformFeeAmount: Number(data.platformFeeAmount ?? DEFAULT_SETTINGS.platformFeeAmount),
             returnPolicyDays: Number(data.returnPolicyDays ?? DEFAULT_SETTINGS.returnPolicyDays),
             lowStockThreshold: Number(data.lowStockThreshold ?? DEFAULT_SETTINGS.lowStockThreshold),
+            offersEnabled: Boolean(data.offersEnabled ?? DEFAULT_SETTINGS.offersEnabled),
           },
           isFetched: true,
         });

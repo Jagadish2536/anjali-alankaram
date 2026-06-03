@@ -43,7 +43,7 @@ export class SettingsController {
       notifyNewOrder, notifyLowStock, notifyCustomerSignup,
       currency, currencySymbol, gstEnabled, gstRate,
       freeShippingThreshold, shippingEnabled, shippingCharge, codEnabled, codCharges,
-      couponsEnabled, giftEnabled, giftAmount,
+      couponsEnabled, offersEnabled, giftEnabled, giftAmount,
       platformFeeEnabled, platformFeeAmount,
       lowStockThreshold, reservationTimeoutMins,
       storeDescription, storeAddress, businessHours, contactEmail, contactPhone,
@@ -76,6 +76,7 @@ export class SettingsController {
     safe('codEnabled', codEnabled !== undefined ? Boolean(codEnabled) : undefined);
     safe('codCharges', codCharges != null ? Number(codCharges) : undefined);
     safe('couponsEnabled', couponsEnabled !== undefined ? Boolean(couponsEnabled) : undefined);
+    safe('offersEnabled', offersEnabled !== undefined ? Boolean(offersEnabled) : undefined);
     safe('giftEnabled', giftEnabled !== undefined ? Boolean(giftEnabled) : undefined);
     safe('giftAmount', giftAmount != null ? Number(giftAmount) : undefined);
     safe('platformFeeEnabled', platformFeeEnabled !== undefined ? Boolean(platformFeeEnabled) : undefined);

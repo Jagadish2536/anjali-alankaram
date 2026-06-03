@@ -15,6 +15,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { CouponsModule } from './coupons/coupons.module';
+import { OffersModule } from './offers/offers.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { AdminModule } from './admin/admin.module';
@@ -84,6 +85,7 @@ import { EmailModule } from './email/email.module';
     PaymentsModule,
     ShippingModule,
     CouponsModule,
+    OffersModule,
     ReviewsModule,
     UploadsModule,
     AdminModule,

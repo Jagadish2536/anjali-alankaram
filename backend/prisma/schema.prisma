@@ -402,6 +402,9 @@ model Order {
   reservations          InventoryReservation[]
   subtotal              Decimal              @db.Decimal(10, 2)
   discountAmount        Decimal              @default(0) @db.Decimal(10, 2)
+  offerDiscount         Decimal              @default(0) @db.Decimal(10, 2)
+  offerId               String?
+  offerTitle            String?
   shippingCharge        Decimal              @default(0) @db.Decimal(10, 2)
   giftCharge            Decimal              @default(0) @db.Decimal(10, 2)
   platformFee           Decimal              @default(0) @db.Decimal(10, 2)
@@ -703,6 +706,7 @@ model StoreSettings {
   razorpayWebhookSecret   String?  @default("")
   // Features
   couponsEnabled          Boolean  @default(true)
+  offersEnabled           Boolean  @default(true)
   giftEnabled             Boolean  @default(false)
   giftAmount              Float    @default(35)
   platformFeeEnabled      Boolean  @default(false)
@@ -728,3 +732,23 @@ model StoreSettings {
 
   @@map("store_settings")
 }
+
+// ─────────────────────────────────────────────
+// OFFERS
+// ─────────────────────────────────────────────
+
+model Offer {
+  id              String   @id @default(uuid())
+  title           String
+  isActive        Boolean  @default(true)
+  buyQuantity     Int      // X in Buy X Get Y
+  getQuantity     Int      // Y in Buy X Get Y
+  minProductPrice Decimal? @db.Decimal(10, 2)
+  maxProductPrice Decimal? @db.Decimal(10, 2)
+  productIds      String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("offers")
+}
+

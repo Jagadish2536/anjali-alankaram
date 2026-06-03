@@ -855,6 +855,12 @@ export default function OrderDetailPage() {
                     <span className="font-bold">-{formatPrice(order.discountAmount)}</span>
                   </div>
                 )}
+                {Number(order.offerDiscount) > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Offer Discount {order.offerTitle && `(${order.offerTitle})`}</span>
+                    <span className="font-bold">-{formatPrice(order.offerDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-muted-foreground">
                   <span>Shipping</span>
                   <span className="font-medium text-foreground">{Number(order.shippingCharge) > 0 ? formatPrice(order.shippingCharge) : 'Free'}</span>

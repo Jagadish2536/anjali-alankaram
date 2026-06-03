@@ -206,6 +206,24 @@ async function main() {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "payment_transactions_orderId_idx" ON "payment_transactions"("orderId")`);
   console.log('  ✅ payment_transactions');
 
+  // offers
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "offers" (
+      "id" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "isActive" BOOLEAN NOT NULL DEFAULT true,
+      "buyQuantity" INTEGER NOT NULL,
+      "getQuantity" INTEGER NOT NULL,
+      "minProductPrice" DECIMAL(10,2),
+      "maxProductPrice" DECIMAL(10,2),
+      "productIds" TEXT[] DEFAULT '{}',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "offers_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  console.log('  ✅ offers');
+
   // 4. Add new columns to existing tables
   console.log('\n🔧 Adding columns to existing tables...');
 
@@ -243,9 +261,13 @@ async function main() {
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "platformFeeEnabled" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "platformFeeAmount" FLOAT NOT NULL DEFAULT 0`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "couponsEnabled" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "offersEnabled" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "giftEnabled" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "giftAmount" FLOAT NOT NULL DEFAULT 35`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "heroLeftImageUrl" TEXT`,
+    `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "offerDiscount" DECIMAL(10,2) NOT NULL DEFAULT 0`,
+    `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "offerId" TEXT`,
+    `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "offerTitle" TEXT`,
   ];
 
   for (const sql of alterations) {

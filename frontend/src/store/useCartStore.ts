@@ -23,10 +23,17 @@ interface CartItem {
   };
 }
 
+interface AppliedOffer {
+  id: string;
+  title: string;
+  discount: number;
+}
+
 interface CartState {
   items: CartItem[];
   subtotal: number;
   itemCount: number;
+  appliedOffer: AppliedOffer | null;
   isLoading: boolean;
   fetchCart: () => Promise<void>;
   addItem: (variantId: string, quantity: number) => Promise<void>;
@@ -39,13 +46,14 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   subtotal: 0,
   itemCount: 0,
+  appliedOffer: null,
   isLoading: false,
 
   fetchCart: async () => {
     set({ isLoading: true });
     try {
       const { data } = await api.get('/cart');
-      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount, appliedOffer: data.appliedOffer });
     } catch (error) {
       console.error('Failed to fetch cart', error);
     } finally {
@@ -57,7 +65,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isLoading: true });
     try {
       const { data } = await api.post('/cart/items', { variantId, quantity });
-      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount, appliedOffer: data.appliedOffer });
     } catch (error) {
       console.error('Failed to add item', error);
       throw error;
@@ -70,7 +78,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isLoading: true });
     try {
       const { data } = await api.put(`/cart/items/${itemId}`, { quantity });
-      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount, appliedOffer: data.appliedOffer });
     } catch (error) {
       console.error('Failed to update item', error);
       throw error;
@@ -83,7 +91,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isLoading: true });
     try {
       const { data } = await api.delete(`/cart/items/${itemId}`);
-      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount, appliedOffer: data.appliedOffer });
     } catch (error) {
       console.error('Failed to remove item', error);
     } finally {
@@ -92,6 +100,6 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   clearCart: () => {
-    set({ items: [], subtotal: 0, itemCount: 0 });
+    set({ items: [], subtotal: 0, itemCount: 0, appliedOffer: null });
   },
 }));
