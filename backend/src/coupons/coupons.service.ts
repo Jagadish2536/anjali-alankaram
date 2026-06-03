@@ -9,6 +9,20 @@ export class CouponsService {
     return this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
+  async findActive() {
+    const now = new Date();
+    return this.prisma.coupon.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   /** Sanitize raw DTO to correct Prisma types (strings → numbers → dates) */
   private sanitize(dto: any) {
     const out: any = { ...dto };
