@@ -11,7 +11,8 @@ import {
   Star, Minus, Plus, ShoppingBag, Heart, Zap,
   Instagram, ExternalLink, Truck, ShieldCheck,
   RefreshCw, CheckCircle2, MapPin, Package, Loader2,
-  X, Ruler, Send, Trash2, ThumbsUp, ChevronRight, Eye, ChevronDown
+  X, Ruler, Send, Trash2, ThumbsUp, ChevronRight, Eye, ChevronDown,
+  Share2, MessageCircle, Link2, Copy, Check
 } from 'lucide-react';
 
 // ── Lotus marquee ──────────────────────────────────────────────────────────────
@@ -287,6 +288,140 @@ function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () 
   );
 }
 
+// ── Share Modal ─────────────────────────────────────────────────────────────
+function ShareModal({ productName, onClose }: { productName: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== 'undefined' ? window.location.href : '';
+  const text = `Check out this amazing product: ${productName}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const shareOptions = [
+    {
+      name: 'WhatsApp',
+      icon: (
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+        </svg>
+      ),
+      color: 'bg-[#25D366] hover:bg-[#20bd5a] text-white',
+      action: () => window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank'),
+    },
+    {
+      name: 'Instagram',
+      icon: <Instagram className="w-6 h-6" />,
+      color: 'bg-gradient-to-br from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 text-white',
+      action: () => window.open(`https://www.instagram.com/`, '_blank'),
+    },
+    {
+      name: 'SMS / iMessage',
+      icon: <MessageCircle className="w-6 h-6" />,
+      color: 'bg-[#34C759] hover:bg-[#2ab34d] text-white',
+      action: () => window.open(`sms:?body=${encodeURIComponent(text + ' ' + url)}`, '_blank'),
+    },
+    {
+      name: 'Copy Link',
+      icon: copied ? <Check className="w-6 h-6" /> : <Copy className="w-6 h-6" />,
+      color: copied ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-muted hover:bg-muted/80 text-foreground',
+      action: handleCopy,
+    },
+  ];
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: productName, text, url });
+      } catch {}
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full md:w-auto md:min-w-[380px] md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="relative px-6 pt-6 pb-4">
+          {/* Drag handle */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-muted-foreground/20 md:hidden" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Share2 className="w-5 h-5 text-primary" />
+              <h3 className="font-outfit text-lg font-bold">Share this product</h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Product snippet */}
+        <div className="mx-6 mb-4 p-3 bg-muted/30 rounded-xl border flex items-center gap-3">
+          <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground truncate flex-1">{url}</p>
+        </div>
+
+        {/* Share buttons grid */}
+        <div className="px-6 pb-2">
+          <div className="grid grid-cols-4 gap-3">
+            {shareOptions.map(opt => (
+              <button
+                key={opt.name}
+                onClick={opt.action}
+                className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 ${opt.color}`}
+              >
+                <span className="text-2xl flex items-center justify-center w-10 h-10">{opt.icon}</span>
+                <span className="text-[10px] font-semibold leading-tight text-center">{opt.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Native share — only shown on devices that support Web Share API */}
+        {(() => {
+          const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+          if (!canNativeShare) return null;
+          return (
+            <div className="px-6 mt-3">
+              <button
+                onClick={handleNativeShare}
+                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors active:scale-[0.98]"
+              >
+                <Share2 className="w-4 h-4" /> Share via…
+              </button>
+            </div>
+          );
+        })()}
+
+        <div className="h-6" />
+      </div>
+    </div>
+  );
+}
+
 // ── Star Rater ──────────────────────────────────────────────────────────────
 function StarRater({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -423,6 +558,9 @@ export default function ProductDetailPage() {
 
   // Size guide modal
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+
+  // Share modal
+  const [showShare, setShowShare] = useState(false);
 
   // Lightbox
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -612,6 +750,9 @@ export default function ProductDetailPage() {
       )}
       {lightboxOpen && allImages.length > 0 && (
         <ImageLightbox images={allImages} initialIndex={activeImage} onClose={() => setLightboxOpen(false)} />
+      )}
+      {showShare && (
+        <ShareModal productName={product.name} onClose={() => setShowShare(false)} />
       )}
 
       {/* ── Breadcrumb ──────────────────────────────────────────────────── */}
@@ -1001,6 +1142,16 @@ export default function ProductDetailPage() {
                 ) : (
                   'Add to cart'
                 )}
+              </button>
+              {/* Share button */}
+              <button
+                id="share-btn"
+                onClick={() => setShowShare(true)}
+                className="h-12 w-12 shrink-0 rounded-xl border-2 border-input flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all active:scale-95"
+                aria-label="Share product"
+                title="Share this product"
+              >
+                <Share2 className="w-5 h-5" />
               </button>
             </div>
             <button

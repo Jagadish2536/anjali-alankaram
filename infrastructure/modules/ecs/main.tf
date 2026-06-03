@@ -15,7 +15,7 @@ resource "aws_ecs_cluster" "main" {
 # --- CloudWatch Logs ---
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
-  retention_in_days = 30
+  retention_in_days = 7   # Cost Optimization: was 30 days — 7 days is enough for debugging
   tags              = var.tags
 }
 
@@ -127,14 +127,27 @@ resource "aws_ecs_service" "backend" {
   name                   = "${var.project_name}-backend-service"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.backend.arn
-  desired_count          = 2  # Tier 1: 2 tasks minimum (redundancy + zero-downtime deploys)
-  launch_type            = "FARGATE"
+  desired_count          = 2
   enable_execute_command = true
+
+  # Cost Optimization: Use SPOT capacity provider instead of hardcoded FARGATE
+  # This was the bug — launch_type="FARGATE" overrides the cluster SPOT strategy
+  # Now: 1 guaranteed FARGATE task + rest on FARGATE_SPOT (~70% cheaper)
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+    base              = 1   # Always keep 1 on-demand task for stability
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 3   # 75% of additional tasks go to SPOT
+    base              = 0
+  }
 
   network_configuration {
     subnets          = var.public_subnets
     security_groups  = [var.ecs_tasks_sg_id]
-    assign_public_ip = true # Required for Fargate tasks in public subnets without NAT Gateway
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -160,9 +173,21 @@ resource "aws_ecs_service" "frontend" {
   name                   = "${var.project_name}-frontend-service"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.frontend.arn
-  desired_count          = 2  # Tier 1: 2 tasks minimum
-  launch_type            = "FARGATE"
+  desired_count          = 2
   enable_execute_command = true
+
+  # Frontend (Next.js) is stateless — ideal for SPOT
+  # Cost Optimization: Maximum SPOT usage for frontend (stateless service)
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4   # ~80% on SPOT
+    base              = 0
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1   # 1 guaranteed on-demand task
+    base              = 1
+  }
 
   network_configuration {
     subnets          = var.public_subnets
@@ -230,7 +255,7 @@ resource "aws_cloudwatch_metric_alarm" "backend_memory" {
 # --- Backend Auto Scaling ---
 resource "aws_appautoscaling_target" "backend" {
   max_capacity       = 4
-  min_capacity       = 2
+  min_capacity       = 1   # Cost Optimization: allow scaling to 1 at night (was 2)
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -273,7 +298,7 @@ resource "aws_appautoscaling_policy" "backend_memory_scale_out" {
 # --- Frontend Auto Scaling ---
 resource "aws_appautoscaling_target" "frontend" {
   max_capacity       = 4
-  min_capacity       = 2
+  min_capacity       = 1   # Cost Optimization: allow scaling to 1 at night (was 2)
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
