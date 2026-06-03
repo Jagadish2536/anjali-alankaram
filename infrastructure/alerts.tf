@@ -1,6 +1,6 @@
 # ---------------------------------------------------------
 # Anjali Alankaram — Infrastructure Alerts
-# CloudWatch Alarms → SNS → Email + WhatsApp
+# CloudWatch Alarms → SNS → HTML Email (SES) + WhatsApp
 #
 # Alerts:
 #  1. Tier 2 Warning    — CPU > 60% for 10 min  → "Consider upgrading"
@@ -10,6 +10,10 @@
 #  5. API Errors        — ALB 5XX > 10 in 5 min  → "Errors on website"
 #  6. Service Down      — ECS tasks < 2          → "Site degraded"
 #  7. Memory High       — Memory > 80%           → "Memory pressure"
+#
+# Email flow: SNS → Lambda (email_alert.py) → SES → HTML email
+# NOTE: Raw SNS email subscription removed — ugly AWS format replaced
+#       by the HTML Lambda below.
 # ---------------------------------------------------------
 
 # ── SNS Topic (central alert bus) ────────────────────────────────────────
@@ -18,13 +22,9 @@ resource "aws_sns_topic" "alerts" {
   tags = local.common_tags
 }
 
-# ── Email subscription → jagadishvarma99@gmail.com ────────────────────────
-resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
-  protocol  = "email"
-  endpoint  = "jagadishvarma99@gmail.com"
-  # AWS will send a confirmation email — must click "Confirm subscription" once
-}
+# ── REMOVED: plain SNS email subscription (sends raw ugly AWS text)
+# resource "aws_sns_topic_subscription" "email" { ... }
+# Replaced by the HTML email Lambda below (email_alert.py → SES)
 
 # ── Lambda for WhatsApp via CallMeBot ─────────────────────────────────────
 data "archive_file" "whatsapp_lambda_zip" {
@@ -52,6 +52,21 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Allow Lambda to send email via SES
+resource "aws_iam_role_policy" "lambda_ses_send" {
+  name = "${var.project_name}-lambda-ses-send"
+  role = aws_iam_role.lambda_alerts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = "*"
+    }]
+  })
+}
+
 resource "aws_cloudwatch_log_group" "lambda_alerts" {
   name              = "/aws/lambda/${var.project_name}-whatsapp-alert"
   retention_in_days = 14
@@ -69,10 +84,6 @@ resource "aws_lambda_function" "whatsapp_alert" {
 
   environment {
     variables = {
-      # Set this after running: https://www.callmebot.com/blog/free-api-whatsapp-messages/
-      # 1. Save +34 644 59 88 44 in WhatsApp contacts as "CallMeBot"
-      # 2. Send: "I allow callmebot to send me messages"
-      # 3. You'll get an APIKEY — paste it in AWS Lambda console → Environment variables
       CALLMEBOT_APIKEY = "SET_AFTER_CALLMEBOT_REGISTRATION"
     }
   }
@@ -93,6 +104,49 @@ resource "aws_sns_topic_subscription" "whatsapp_lambda" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "lambda"
   endpoint  = aws_lambda_function.whatsapp_alert.arn
+}
+
+# ── Lambda for HTML Email via SES ─────────────────────────────────────────
+# Replaces the ugly raw SNS email with a clean branded HTML email.
+# Sends FROM: alerts@anjalialankaram.com (SES domain already verified via ses.tf)
+
+data "archive_file" "email_lambda_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda_src/email_alert.py"
+  output_path = "${path.module}/lambda_src/email_alert.zip"
+}
+
+resource "aws_cloudwatch_log_group" "lambda_email_alerts" {
+  name              = "/aws/lambda/${var.project_name}-email-alert"
+  retention_in_days = 7
+  tags              = local.common_tags
+}
+
+resource "aws_lambda_function" "email_alert" {
+  filename         = data.archive_file.email_lambda_zip.output_path
+  function_name    = "${var.project_name}-email-alert"
+  role             = aws_iam_role.lambda_alerts.arn
+  handler          = "email_alert.handler"
+  runtime          = "python3.12"
+  timeout          = 15
+  source_code_hash = data.archive_file.email_lambda_zip.output_base64sha256
+
+  depends_on = [aws_cloudwatch_log_group.lambda_email_alerts]
+  tags       = local.common_tags
+}
+
+resource "aws_lambda_permission" "allow_sns_email" {
+  statement_id  = "AllowSNSInvokeEmail"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.email_alert.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.alerts.arn
+}
+
+resource "aws_sns_topic_subscription" "email_lambda" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.email_alert.arn
 }
 
 # ---------------------------------------------------------
