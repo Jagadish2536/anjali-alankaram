@@ -1,10 +1,66 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:app_links/app_links.dart';
 
-// Minimal router setup for demonstration
-void main() {
-  runApp(const ProviderScope(child: AnjaliAlankaramApp()));
+import 'screens/webview_screen.dart';
+import 'services/push_notification_service.dart';
+
+// Global stream controller for incoming redirects (deep links and notifications)
+final StreamController<String> _navigationStreamController = StreamController<String>.broadcast();
+Stream<String> get navigationStream => _navigationStreamController.stream;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final pushNotificationService = PushNotificationService();
+
+  // Try initializing Firebase (may fail if configuration files aren't added yet)
+  try {
+    await Firebase.initializeApp();
+    await pushNotificationService.initialize();
+    
+    // Listen to push notification clicks and redirect accordingly
+    pushNotificationService.redirectStream.listen((path) {
+      _navigationStreamController.add(path);
+    });
+  } catch (e) {
+    if (kDebugMode) {
+      print('Firebase initialization skipped/failed: $e');
+      print('Make sure to add google-services.json (Android) and GoogleService-Info.plist (iOS) to enable push notifications.');
+    }
+  }
+
+  // Initialize Deep Links
+  _initDeepLinks();
+
+  runApp(const AnjaliAlankaramApp());
+}
+
+void _initDeepLinks() async {
+  final appLinks = AppLinks();
+  
+  // Get initial link if app was launched via link
+  try {
+    final uri = await appLinks.getInitialLink();
+    if (uri != null) {
+      _navigationStreamController.add(uri.path);
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error getting initial deep link: $e');
+    }
+  }
+
+  // Listen to incoming deep links while app is running
+  appLinks.uriLinkStream.listen((uri) {
+    _navigationStreamController.add(uri.path);
+  }, onError: (err) {
+    if (kDebugMode) {
+      print('Error listening to deep links: $err');
+    }
+  });
 }
 
 class AnjaliAlankaramApp extends StatelessWidget {
@@ -14,152 +70,21 @@ class AnjaliAlankaramApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Anjali Alankaram',
-      theme: _buildTheme(),
-      home: const HomeScreen(),
+      theme: ThemeData(
+        primaryColor: const Color(0xFF8B0030), // Burgundy brand color
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF8B0030),
+          primary: const Color(0xFF8B0030),
+          secondary: const Color(0xFFB76E79), // Rose gold
+        ),
+        useMaterial3: true,
+      ),
+      // Set the home screen to navigate to the website
+      home: WebViewScreen(
+        initialUrl: 'https://anjalialankaram.com',
+        deepLinkStream: navigationStream,
+      ),
       debugShowCheckedModeBanner: false,
-    );
-  }
-
-  ThemeData _buildTheme() {
-    final base = ThemeData.light();
-    return base.copyWith(
-      primaryColor: const Color(0xFFB76E79), // Rose Gold
-      scaffoldBackgroundColor: const Color(0xFFFFFFFF),
-      colorScheme: base.colorScheme.copyWith(
-        primary: const Color(0xFFB76E79),
-        secondary: const Color(0xFFFFB6C1), // Soft Pink
-        surface: const Color(0xFFFAF9F6), // Beige
-      ),
-      textTheme: GoogleFonts.outfitTextTheme(base.textTheme),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFB76E79),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-      ),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Anjali Alankaram',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFFB76E79),
-          ),
-        ),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.shopping_bag_outlined), onPressed: () {}),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Hero Banner
-            Container(
-              height: 300,
-              width: double.infinity,
-              color: const Color(0xFFFAF9F6),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800',
-                      fit: BoxFit.cover,
-                      color: Colors.black.withOpacity(0.3),
-                      colorBlendMode: BlendMode.darken,
-                    ),
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Elegance Redefined',
-                          style: GoogleFonts.outfit(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {},
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 24),
-                            child: Text('Shop Now'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Categories
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Shop by Category', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 4,
-                      separatorBuilder: (c, i) => const SizedBox(width: 16),
-                      itemBuilder: (c, i) {
-                        final cats = ['Sarees', 'Kurta Sets', 'Dresses', 'Bridal'];
-                        return Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 40,
-                              backgroundColor: Colors.grey.shade200,
-                              backgroundImage: const NetworkImage('https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=200'),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(cats[i], style: const TextStyle(fontWeight: FontWeight.w500)),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: const Color(0xFFB76E79),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.category_outlined), label: 'Categories'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Wishlist'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
-      ),
     );
   }
 }

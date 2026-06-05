@@ -66,6 +66,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ap-south-1
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      SES_FROM_EMAIL: ${SES_FROM_EMAIL:-noreply@anjalialankaram.com}
+      SES_FROM_NAME: ${SES_FROM_NAME:-Anjali Alankaram}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://yourdomain.com}
       RATE_LIMIT_REQUESTS: 120
     volumes:

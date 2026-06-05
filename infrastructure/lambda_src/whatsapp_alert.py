@@ -3,7 +3,7 @@ AWS Lambda — WhatsApp Alert via CallMeBot API
 Triggered by SNS → sends WhatsApp message to +91 7032492775
 
 One-time setup required by user (see README in this file):
-  1. Save +34 644 59 88 44 in your WhatsApp contacts as "CallMeBot"
+  1. Save +34 644 91 96 80 in your WhatsApp contacts as "CallMeBot"
   2. Send this message to that number: "I allow callmebot to send me messages"
   3. You'll receive your APIKEY in reply
   4. Set CALLMEBOT_APIKEY in Lambda environment variables (or Secrets Manager)
