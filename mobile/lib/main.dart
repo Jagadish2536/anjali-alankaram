@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:app_links/app_links.dart';
 
 import 'screens/webview_screen.dart';
@@ -19,6 +20,17 @@ void main() async {
   // Try initializing Firebase (may fail if configuration files aren't added yet)
   try {
     await Firebase.initializeApp();
+
+    // Pass all uncaught errors from the framework to Crashlytics.
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+    // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics.
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
     await pushNotificationService.initialize();
     
     // Listen to push notification clicks and redirect accordingly
