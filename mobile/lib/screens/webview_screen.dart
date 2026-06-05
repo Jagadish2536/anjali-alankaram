@@ -12,6 +12,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../widgets/splash_screen.dart';
@@ -37,6 +38,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _showSplash = true;
   double _loadingProgress = 0.0;
   bool _isAtTop = true; // Tracks if WebView is scrolled to the absolute top
+  bool _showShareButton = false; // Evaluates dynamically to hide on cart/checkout/login
   
   late final StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
   StreamSubscription<String>? _deepLinkSubscription;
@@ -72,6 +74,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
             setState(() {
               _showSplash = false;
             });
+            _updateShareButtonVisibility(url);
+          },
+          onUrlChange: (UrlChange change) {
+            if (change.url != null) {
+              _updateShareButtonVisibility(change.url!);
+            }
           },
           onWebResourceError: (WebResourceError error) {
             if (kDebugMode) {
@@ -181,6 +189,58 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _controller.loadRequest(Uri.parse(widget.initialUrl));
   }
 
+  void _updateShareButtonVisibility(String url) {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return;
+      
+      final path = uri.path.toLowerCase();
+      
+      // Paths where the Share FAB MUST be hidden
+      final hidePaths = [
+        '/cart',
+        '/checkout',
+        '/login',
+        '/terms',
+        '/privacy',
+        '/returns',
+        '/shipping',
+        '/profile',
+        '/orders',
+        '/track-order',
+        '/admin',
+      ];
+      
+      bool isHiddenPage = false;
+      for (final p in hidePaths) {
+        if (path.startsWith(p)) {
+          isHiddenPage = true;
+          break;
+        }
+      }
+      
+      // Share button is only shown on home page, products pages, and category filters
+      bool isTargetPage = 
+          path == '/' ||
+          path.isEmpty ||
+          path.contains('/products') ||
+          path.contains('/category') ||
+          path.contains('/categories');
+          
+      final shouldShow = !isHiddenPage && isTargetPage;
+      
+      if (_showShareButton != shouldShow) {
+        setState(() {
+          _showShareButton = shouldShow;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating share button visibility: $e');
+      }
+    }
+  }
+
   Future<void> _checkInitialConnectivity() async {
     final results = await Connectivity().checkConnectivity();
     _updateConnectivityState(results);
@@ -225,6 +285,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   Future<void> _checkAppVersion() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastCheckStr = prefs.getString('last_version_check_time');
+      final now = DateTime.now();
+
+      // Check if we already did a version check within the last 24 hours
+      if (lastCheckStr != null) {
+        final lastCheck = DateTime.parse(lastCheckStr);
+        if (now.difference(lastCheck).inHours < 24) {
+          if (kDebugMode) {
+            print('Version check skipped: last checked less than 24 hours ago.');
+          }
+          return;
+        }
+      }
+
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
@@ -241,6 +316,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
         final minVersion = config['minVersion'] as String?;
         final updateUrl = config['updateUrl'] as String? ?? 'https://play.google.com/store/apps';
 
+        // Update the timestamp on successful lookup to prevent spamming calls
+        await prefs.setString('last_version_check_time', now.toIso8601String());
+
         if (latestVersion != null) {
           final hasForceUpdate = minVersion != null && _isNewerVersion(currentVersion, minVersion);
           final hasUpdate = _isNewerVersion(currentVersion, latestVersion);
@@ -254,7 +332,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Version check skipped: $e');
+        print('Version check failed: $e');
       }
     }
   }
@@ -410,8 +488,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
             ],
           ),
         ),
-        // Floating action button for sharing the current product URL (Hidden during splash or offline)
-        floatingActionButton: (!_showSplash && !_isOffline)
+        // Floating action button for sharing the current product/category URL (Hidden on cart/checkout/login/splash/offline)
+        floatingActionButton: (_showShareButton && !_showSplash && !_isOffline)
             ? FloatingActionButton.small(
                 onPressed: _shareCurrentPage,
                 backgroundColor: const Color(0xFF8B0030),
