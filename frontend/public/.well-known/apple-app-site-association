@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "YOUR_APPLE_DEVELOPER_TEAM_ID.com.anjalialankaram.app",
+        "paths": [
+          "/products/*",
+          "/category/*",
+          "/categories/*",
+          "/"
+        ]
+      }
+    ]
+  }
+}
