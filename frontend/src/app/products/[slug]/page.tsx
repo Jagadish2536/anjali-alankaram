@@ -660,8 +660,11 @@ export default function ProductDetailPage() {
   const currentPrice = Number(product.salePrice || product.basePrice) + Number(selectedVariant?.extraPrice || 0);
   const originalPrice = Number(product.basePrice) + Number(selectedVariant?.extraPrice || 0);
   const discountPct = currentPrice < originalPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
-  // Use colour-specific images if the selected variant has its own images uploaded
-  const allImages: string[] = (selectedVariant?.images?.length > 0 ? selectedVariant.images : product.images) || [];
+  const allImages: string[] = (() => {
+    const imgs = (selectedVariant?.images?.length > 0 ? selectedVariant.images : product.images) || [];
+    const validImgs = imgs.filter((img: string) => img && img.trim() !== '');
+    return validImgs.length > 0 ? validImgs : ['/placeholder.png'];
+  })();
   const sizeGuide: any[] = Array.isArray(product.sizeGuide) ? product.sizeGuide : [];
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -1421,9 +1424,9 @@ export default function ProductDetailPage() {
             {relatedProducts.map(rp => (
               <Link key={rp.id} href={`/products/${rp.slug}`} className="group shrink-0 w-44">
                 <div className="relative w-44 aspect-[3/4] rounded-xl overflow-hidden bg-muted mb-2">
-                  {rp.images?.[0]
+                  {rp.images?.[0] && rp.images[0].trim() !== ''
                     ? <Image src={rp.images[0]} alt={rp.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                    : <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">No Image</div>
+                    : <Image src="/placeholder.png" alt={rp.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   }
                   <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                     <ShoppingBag className="w-3.5 h-3.5 text-primary" />

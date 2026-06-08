@@ -53,6 +53,9 @@ export class OffersService {
     if (!Array.isArray(clean.productIds)) {
       clean.productIds = [];
     }
+    if (!Array.isArray(clean.categoryIds)) {
+      clean.categoryIds = [];
+    }
     return clean;
   }
 
@@ -95,9 +98,15 @@ export class OffersService {
         // Calculate unit price: sale price (or base price) + variant extra price
         const unitPrice = Number(product.salePrice || product.basePrice) + Number(variant?.extraPrice || 0);
 
-        // Check if product is in the offer's productIds (if filter is not empty)
-        if (offer.productIds && offer.productIds.length > 0) {
-          if (!offer.productIds.includes(product.id)) {
+        // Check if product is in the offer's productIds or categoryIds (if filters are set)
+        const o = offer as any;
+        if (
+          (o.productIds && o.productIds.length > 0) ||
+          (o.categoryIds && o.categoryIds.length > 0)
+        ) {
+          const matchesProduct = o.productIds?.includes(product.id) ?? false;
+          const matchesCategory = o.categoryIds?.includes(product.categoryId) ?? false;
+          if (!matchesProduct && !matchesCategory) {
             continue;
           }
         }

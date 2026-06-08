@@ -104,9 +104,10 @@ function ProductCard({ product, activeColor }: { product: any; activeColor?: str
   const displayImage = (() => {
     if (activeColor) {
       const match = product.variants?.find((v: any) => v.color === activeColor && v.images?.length > 0);
-      if (match?.images?.[0]) return match.images[0];
+      if (match?.images?.[0] && match.images[0].trim() !== '') return match.images[0];
     }
-    return product.images?.[0] || null;
+    const mainImg = product.images?.[0];
+    return (mainImg && mainImg.trim() !== '') ? mainImg : '/placeholder.png';
   })();
 
   const href = activeColor
@@ -116,11 +117,7 @@ function ProductCard({ product, activeColor }: { product: any; activeColor?: str
   return (
     <Link href={href} className="group flex flex-col">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
-        {displayImage ? (
-          <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">No Image</div>
-        )}
+        <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
         {/* Top-left badge: Out of Stock OR Discount % */}
         {isOutOfStock ? (

@@ -85,11 +85,7 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
   return (
     <div className="group flex flex-col relative">
       <Link href={`/products/${product.slug}`} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2">
-        {product.images?.[0] ? (
-          <Image src={product.images[0]} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">No Image</div>
-        )}
+        <Image src={product.images?.[0] || '/placeholder.png'} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
         {/* Top-left badge: OUT OF STOCK takes priority over discount */}
         {isOutOfStock ? (
@@ -354,6 +350,160 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
   );
 }
 
+// ── App Download & Install Section ───────────────────────────────────────────
+function AppDownloadSection() {
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    }
+  };
+
+  return (
+    <section className="py-16 px-4 bg-muted/30 border-y border-primary/5" aria-labelledby="app-download-heading">
+      <div className="max-w-6xl mx-auto bg-gradient-to-br from-primary to-primary/90 rounded-3xl overflow-hidden shadow-xl text-white">
+        <div className="flex flex-col md:flex-row items-center justify-between p-8 md:p-14 gap-8">
+          
+          {/* Left Column: Description & Actions */}
+          <div className="flex-1 space-y-6 max-w-xl text-left">
+            <span className="inline-block bg-white/10 backdrop-blur-md text-white/90 text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-white/10">
+              Anjali Alankaram Mobile
+            </span>
+            <h2 id="app-download-heading" className="font-cormorant text-3xl md:text-5xl font-bold leading-tight">
+              Bring Luxury Fashion to Your Fingertips
+            </h2>
+            <p className="text-white/80 text-sm md:text-base leading-relaxed">
+              Experience the absolute best of Anjali Alankaram. Download our mobile app for exclusive collections, instant order tracking, fast checkout, and members-only BOGO offers.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              {/* Google Play Store Badge */}
+              <a
+                href="https://play.google.com/store/apps"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-black/80 hover:bg-black/90 px-5 py-2.5 rounded-xl border border-white/10 transition-all active:scale-95 group shadow-md"
+              >
+                <svg className="w-5 h-5 text-white fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3.609 1.814L13.792 12 3.61 22.186a1.996 1.996 0 0 1-.399-1.284V3.098c0-.495.18-.956.4-1.284zm11.238 9.133l2.84 2.84L5.617 21.03l9.23-10.083zM18.8 12.502l3.414-1.972a1.004 1.004 0 0 0 0-1.74l-3.414-1.972-2.316 2.317 2.316 2.367zm-3.953-1.635L5.617 2.97l12.07 7.247-2.84 2.65z"/>
+                </svg>
+                <div className="text-left">
+                  <p className="text-[10px] text-white/60 uppercase font-semibold leading-none">Get it on</p>
+                  <p className="text-sm font-bold leading-tight mt-0.5">Google Play</p>
+                </div>
+              </a>
+
+              {/* Apple App Store Badge */}
+              <a
+                href="https://apps.apple.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-black/80 hover:bg-black/90 px-5 py-2.5 rounded-xl border border-white/10 transition-all active:scale-95 group shadow-md"
+              >
+                <svg className="w-5 h-5 text-white fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.7-1.13 1.84-1.01 2.96 1.07.08 2.18-.54 2.84-1.35z"/>
+                </svg>
+                <div className="text-left">
+                  <p className="text-[10px] text-white/60 uppercase font-semibold leading-none">Download on the</p>
+                  <p className="text-sm font-bold leading-tight mt-0.5">App Store</p>
+                </div>
+              </a>
+            </div>
+
+            {/* PWA Install Trigger Button */}
+            <div className="pt-2">
+              {isInstallable ? (
+                <button
+                  onClick={handleInstallClick}
+                  className="w-full sm:w-auto bg-white text-primary font-bold px-6 py-3 rounded-xl shadow-md hover:bg-white/95 transition-all active:scale-95 text-sm"
+                >
+                  Install Web App
+                </button>
+              ) : (
+                <p className="text-xs text-white/60 italic">
+                  Using iOS? Tap <span className="font-semibold text-white/90">Share</span> then <span className="font-semibold text-white/90">Add to Home Screen</span> to install the web app.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Visual Mockup */}
+          <div className="relative shrink-0 w-64 md:w-80 h-72 md:h-96 flex items-center justify-center">
+            {/* Soft decorative background circles */}
+            <div className="absolute w-56 md:w-72 h-56 md:h-72 rounded-full bg-white/5 blur-3xl" />
+            <div className="absolute w-40 h-40 rounded-full bg-amber-400/10 blur-2xl" />
+
+            {/* Premium Mobile Phone Visual Container */}
+            <div className="relative w-44 md:w-56 aspect-[9/18.5] bg-neutral-900 rounded-[36px] p-2.5 shadow-2xl border-4 border-neutral-800 rotate-[4deg] transition-all hover:rotate-[2deg] duration-500 overflow-hidden">
+              {/* Speaker / Camera Notch */}
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-20 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-neutral-800" />
+              </div>
+              
+              {/* Screen Content Wrapper */}
+              <div className="relative w-full h-full bg-white rounded-[26px] overflow-hidden flex flex-col pt-4">
+                {/* Simulated App Header */}
+                <div className="px-3 py-1 flex items-center justify-between border-b shrink-0 bg-primary text-white">
+                  <span className="text-[10px] font-bold tracking-widest font-outfit uppercase">ANJALI</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                </div>
+                
+                {/* Simulated Shop Content */}
+                <div className="flex-1 p-2 space-y-2.5 overflow-hidden select-none bg-gray-50/50">
+                  {/* Banner */}
+                  <div className="bg-primary/5 rounded-lg p-2 text-center border border-primary/10">
+                    <p className="text-[9px] font-bold text-primary">FESTIVE EDIT</p>
+                    <p className="text-[7px] text-muted-foreground mt-0.5">Shop Silk Sarees & Gowns</p>
+                  </div>
+                  
+                  {/* Grid */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="bg-white rounded-md p-1 border shadow-xs">
+                      <div className="relative aspect-[3/4] bg-muted rounded-xs overflow-hidden">
+                        <Image src="/placeholder.png" alt="ethnic" fill className="object-cover" />
+                      </div>
+                      <div className="h-1 bg-gray-200 w-3/4 rounded mt-1.5" />
+                      <div className="h-1 bg-gray-200 w-1/4 rounded mt-1" />
+                    </div>
+                    <div className="bg-white rounded-md p-1 border shadow-xs">
+                      <div className="relative aspect-[3/4] bg-muted rounded-xs overflow-hidden">
+                        <Image src="/placeholder.png" alt="designer" fill className="object-cover" />
+                      </div>
+                      <div className="h-1 bg-gray-200 w-3/4 rounded mt-1.5" />
+                      <div className="h-1 bg-gray-200 w-1/4 rounded mt-1" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Main Homepage ─────────────────────────────────────────────────────────────
 export default function Home() {
   const { settings, fetchSettings } = useSettingsStore();
@@ -502,6 +652,9 @@ export default function Home() {
 
       {/* ── § 9 WHAT OUR CUSTOMERS SAY ────────────────────────────────── */}
       <CustomerReviewsSection reviews={recentReviews} />
+      
+      {/* ── § 10 APP DOWNLOAD SECTION ─────────────────────────────────── */}
+      <AppDownloadSection />
 
     </div>
   );

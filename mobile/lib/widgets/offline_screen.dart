@@ -7,8 +7,6 @@ class OfflineScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
       backgroundColor: const Color(0xFFFDF5EC), // Premium ivory/beige backdrop matching website
       body: SafeArea(

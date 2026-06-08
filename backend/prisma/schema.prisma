@@ -746,6 +746,7 @@ model Offer {
   minProductPrice Decimal? @db.Decimal(10, 2)
   maxProductPrice Decimal? @db.Decimal(10, 2)
   productIds      String[]
+  categoryIds     String[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

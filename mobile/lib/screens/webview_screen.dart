@@ -60,6 +60,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _initWebViewController() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36")
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -98,9 +99,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Could not launch WhatsApp')),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not launch WhatsApp')),
+                    );
+                  }
                 }
               }
               return NavigationDecision.prevent;
@@ -167,7 +170,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       androidController.setOnShowFileSelector((FileSelectorParams params) async {
         try {
           final result = await FilePicker.platform.pickFiles(
-            allowMultiple: params.acceptMultiple,
+            allowMultiple: params.mode == FileSelectorMode.openMultiple,
             type: FileType.any,
           );
 
@@ -429,7 +432,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         if (await _controller.canGoBack()) {
           await _controller.goBack();
@@ -441,6 +444,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
+          bottom: false,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)
@@ -490,13 +494,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
         // Floating action button for sharing the current product/category URL (Hidden on cart/checkout/login/splash/offline)
         floatingActionButton: (_showShareButton && !_showSplash && !_isOffline)
-            ? FloatingActionButton.small(
-                onPressed: _shareCurrentPage,
-                backgroundColor: const Color(0xFF8B0030),
-                foregroundColor: const Color(0xFFFDF5EC),
-                elevation: 4.0,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.share_rounded),
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 72.0),
+                child: FloatingActionButton.small(
+                  onPressed: _shareCurrentPage,
+                  backgroundColor: const Color(0xFF8B0030),
+                  foregroundColor: const Color(0xFFFDF5EC),
+                  elevation: 4.0,
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.share_rounded),
+                ),
               )
             : null,
       ),

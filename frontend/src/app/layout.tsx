@@ -20,6 +20,7 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: 'Anjali Alankaram | Premium Women\'s Fashion',
   description: 'Discover the latest trends in women\'s fashion with Anjali Alankaram. Shop elegant ethnic and western wear — Sarees, Lehengas, Kurtis, Gowns and more.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/favicon.png',
     shortcut: '/favicon.png',

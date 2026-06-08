@@ -103,10 +103,10 @@ export default function WishlistPage() {
               </button>
               
               <Link href={`/products/${product.slug}`} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-accent/20 mb-3 block">
-                {product.images?.[0] ? (
+                {product.images?.[0] && product.images[0].trim() !== '' ? (
                   <Image src={product.images[0]} alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">No Image</div>
+                  <Image src="/placeholder.png" alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
                 )}
               </Link>
               

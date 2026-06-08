@@ -26,6 +26,7 @@ const EMPTY_OFFER = {
   maxProductPrice: '',
   isActive: true,
   productIds: [] as string[],
+  categoryIds: [] as string[],
 };
 
 export default function AdminOffersPage() {
@@ -34,6 +35,7 @@ export default function AdminOffersPage() {
 
   const [offers, setOffers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +46,7 @@ export default function AdminOffersPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_OFFER });
   const [productSearch, setProductSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
 
   // Notifications
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -67,6 +70,10 @@ export default function AdminOffersPage() {
       // 2. Fetch Products for selection
       const { data: productsData } = await api.get('/products?limit=1000&status=ACTIVE');
       setProducts(productsData.data || []);
+
+      // 2.5. Fetch Categories for selection
+      const { data: categoriesData } = await api.get('/categories');
+      setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData?.data || []);
 
       // 3. Fetch Settings
       const { data: settingsData } = await api.get('/settings');
@@ -114,6 +121,7 @@ export default function AdminOffersPage() {
     setForm({ ...EMPTY_OFFER });
     setEditId(null);
     setProductSearch('');
+    setCategorySearch('');
     setShowForm(true);
   };
 
@@ -126,9 +134,11 @@ export default function AdminOffersPage() {
       maxProductPrice: o.maxProductPrice ? String(o.maxProductPrice) : '',
       isActive: o.isActive,
       productIds: o.productIds || [],
+      categoryIds: o.categoryIds || [],
     });
     setEditId(o.id);
     setProductSearch('');
+    setCategorySearch('');
     setShowForm(true);
   };
 
@@ -148,6 +158,7 @@ export default function AdminOffersPage() {
         maxProductPrice: form.maxProductPrice ? Number(form.maxProductPrice) : null,
         isActive: form.isActive,
         productIds: form.productIds,
+        categoryIds: form.categoryIds,
       };
 
       if (editId) {
@@ -189,8 +200,22 @@ export default function AdminOffersPage() {
     });
   };
 
+  const handleCategorySelectToggle = (categoryId: string) => {
+    setForm(prev => {
+      const exists = prev.categoryIds.includes(categoryId);
+      const updated = exists
+        ? prev.categoryIds.filter(id => id !== categoryId)
+        : [...prev.categoryIds, categoryId];
+      return { ...prev, categoryIds: updated };
+    });
+  };
+
   const filteredProductsForSelect = products.filter(p =>
     p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  const filteredCategoriesForSelect = categories.filter(c =>
+    c.name.toLowerCase().includes(categorySearch.toLowerCase())
   );
 
   return (
@@ -313,6 +338,58 @@ export default function AdminOffersPage() {
 
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-bold text-sm">Select Applicable Categories (Optional)</h4>
+                  {form.categoryIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, categoryIds: [] }))}
+                      className="text-xs font-bold text-red-500 hover:underline"
+                    >
+                      Clear Selection ({form.categoryIds.length})
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2 mb-3">
+                  Leave empty if this offer applies to all categories.
+                </p>
+
+                <div className="relative mb-3">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search categories by name..."
+                    value={categorySearch}
+                    onChange={e => setCategorySearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border rounded-xl outline-none text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="border rounded-xl max-h-48 overflow-y-auto divide-y mb-4">
+                  {filteredCategoriesForSelect.map(c => {
+                    const isSelected = form.categoryIds.includes(c.id);
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => handleCategorySelectToggle(c.id)}
+                        className={`flex items-center justify-between px-4 py-2 text-sm cursor-pointer hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}`}>
+                            {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                          </div>
+                          <span>{c.name}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredCategoriesForSelect.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">No categories match search.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center mb-3">
                   <h4 className="font-bold text-sm">Select Applicable Products (Optional)</h4>
                   {form.productIds.length > 0 && (
                     <button
@@ -417,6 +494,7 @@ export default function AdminOffersPage() {
                   <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Offer Title</th>
                   <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Formula</th>
                   <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Price Constraints</th>
+                  <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Category Filter</th>
                   <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Product Filter</th>
                   <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Actions</th>
@@ -438,6 +516,15 @@ export default function AdminOffersPage() {
                         </>
                       ) : (
                         'No price constraints'
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {o.categoryIds && o.categoryIds.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-0.5 rounded-full border border-indigo-100">
+                          <Tag className="w-3 h-3" /> {o.categoryIds.length} Selected
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">All Categories</span>
                       )}
                     </td>
                     <td className="px-6 py-4">

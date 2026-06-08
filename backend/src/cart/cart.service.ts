@@ -25,6 +25,7 @@ export class CartService {
                 basePrice: true,
                 salePrice: true,
                 status: true,
+                categoryId: true,
               },
             },
             variant: {

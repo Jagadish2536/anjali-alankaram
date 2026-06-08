@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 class PushNotificationService {
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  late final FirebaseMessaging _fcm;
   
   // Stream controller to notify listeners when a notification with a redirect path is clicked
   final StreamController<String> _redirectStreamController = StreamController<String>.broadcast();
@@ -12,6 +11,7 @@ class PushNotificationService {
 
   Future<void> initialize() async {
     try {
+      _fcm = FirebaseMessaging.instance;
       // 1. Request permissions
       NotificationSettings settings = await _fcm.requestPermission(
         alert: true,
