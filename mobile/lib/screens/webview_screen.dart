@@ -464,7 +464,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFFDF5EC),
         body: SafeArea(
-          bottom: true,
+          bottom: false,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)

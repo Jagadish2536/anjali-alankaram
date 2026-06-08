@@ -1,5 +1,4 @@
 'use client';
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Heart, ShoppingBag, User, HelpCircle } from 'lucide-react';
@@ -17,34 +16,6 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const [androidInset, setAndroidInset] = useState(0);
-
-  useEffect(() => {
-    // Detect Android WebView by custom user agent suffix
-    const isAndroidApp =
-      typeof navigator !== 'undefined' &&
-      navigator.userAgent.includes('AnjaliAlankaramAndroidApp');
-
-    if (!isAndroidApp) return;
-
-    const computeInset = () => {
-      // visualViewport.height = visible area (excludes system UI like nav bar)
-      // window.innerHeight in a full-screen WebView = full screen height
-      // So the difference is the height of the Android system navigation bar
-      const vvHeight = window.visualViewport?.height ?? window.innerHeight;
-      const inset = window.innerHeight - vvHeight;
-      // Clamp to a sensible range (Android nav bars are 24–80 px)
-      setAndroidInset(inset > 0 && inset < 200 ? inset : 0);
-    };
-
-    computeInset();
-    window.visualViewport?.addEventListener('resize', computeInset);
-    window.addEventListener('resize', computeInset);
-    return () => {
-      window.visualViewport?.removeEventListener('resize', computeInset);
-      window.removeEventListener('resize', computeInset);
-    };
-  }, []);
 
   const isHiddenPage =
     pathname.startsWith('/admin') ||
@@ -59,11 +30,7 @@ export default function MobileBottomNav() {
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FDF5EC] border-t border-primary/10 shadow-[0_-2px_12px_rgba(139,0,48,0.08)]"
-      style={{
-        paddingBottom: androidInset > 0
-          ? `${androidInset}px`
-          : 'env(safe-area-inset-bottom, 0px)',
-      }}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around h-[60px]">
