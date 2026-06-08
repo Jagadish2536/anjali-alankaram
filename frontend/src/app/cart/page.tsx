@@ -101,14 +101,18 @@ export default function CartPage() {
             return (
               <div key={item.id} className="flex gap-6 border-b pb-6">
                 <div className="relative w-24 h-32 rounded-lg overflow-hidden bg-accent/20 shrink-0">
-                  {(item.variant.images?.[0] || item.product.images?.[0]) && (
-                    <Image
-                      src={item.variant.images?.[0] || item.product.images[0]}
-                      alt={item.product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  )}
+                  {(() => {
+                    const src = item.variant.images?.[0] || item.product.images?.[0];
+                    const finalSrc = (src && src.trim() !== '') ? src : '/placeholder.png';
+                    return (
+                      <Image
+                        src={finalSrc}
+                        alt={item.product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    );
+                  })()}
                 </div>
                 <div className="flex-1 flex flex-col justify-between">
                   <div className="flex justify-between items-start">

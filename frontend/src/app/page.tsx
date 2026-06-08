@@ -354,8 +354,19 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
 function AppDownloadSection() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [shouldHide, setShouldHide] = useState(true);
 
   useEffect(() => {
+    const isAndroidApp = window.navigator.userAgent.includes('AnjaliAlankaramAndroidApp');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    
+    if (isAndroidApp || isStandalone) {
+      setShouldHide(true);
+    } else {
+      setShouldHide(false);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -379,6 +390,8 @@ function AppDownloadSection() {
     }
   };
 
+  if (shouldHide) return null;
+
   return (
     <section className="py-16 px-4 bg-muted/30 border-y border-primary/5" aria-labelledby="app-download-heading">
       <div className="max-w-6xl mx-auto bg-gradient-to-br from-primary to-primary/90 rounded-3xl overflow-hidden shadow-xl text-white">
@@ -393,10 +406,10 @@ function AppDownloadSection() {
               Bring Luxury Fashion to Your Fingertips
             </h2>
             <p className="text-white/80 text-sm md:text-base leading-relaxed">
-              Experience the absolute best of Anjali Alankaram. Download our mobile app for exclusive collections, instant order tracking, fast checkout, and members-only BOGO offers.
+              Experience the absolute best of Anjali Alankaram. Download our Android mobile app or install our Web PWA for exclusive collections, instant order tracking, fast checkout, and members-only BOGO offers.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
               {/* Google Play Store Badge */}
               <a
                 href="https://play.google.com/store/apps"
@@ -413,36 +426,21 @@ function AppDownloadSection() {
                 </div>
               </a>
 
-              {/* Apple App Store Badge */}
-              <a
-                href="https://apps.apple.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 bg-black/80 hover:bg-black/90 px-5 py-2.5 rounded-xl border border-white/10 transition-all active:scale-95 group shadow-md"
-              >
-                <svg className="w-5 h-5 text-white fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.7-1.13 1.84-1.01 2.96 1.07.08 2.18-.54 2.84-1.35z"/>
-                </svg>
-                <div className="text-left">
-                  <p className="text-[10px] text-white/60 uppercase font-semibold leading-none">Download on the</p>
-                  <p className="text-sm font-bold leading-tight mt-0.5">App Store</p>
-                </div>
-              </a>
-            </div>
-
-            {/* PWA Install Trigger Button */}
-            <div className="pt-2">
+              {/* PWA Install Trigger Button */}
               {isInstallable ? (
                 <button
                   onClick={handleInstallClick}
-                  className="w-full sm:w-auto bg-white text-primary font-bold px-6 py-3 rounded-xl shadow-md hover:bg-white/95 transition-all active:scale-95 text-sm"
+                  className="bg-white text-primary font-bold px-6 py-3.5 rounded-xl shadow-md hover:bg-white/95 transition-all active:scale-95 text-sm"
                 >
                   Install Web App
                 </button>
               ) : (
-                <p className="text-xs text-white/60 italic">
-                  Using iOS? Tap <span className="font-semibold text-white/90">Share</span> then <span className="font-semibold text-white/90">Add to Home Screen</span> to install the web app.
-                </p>
+                <div className="bg-white/10 border border-white/10 rounded-xl px-5 py-3 text-left">
+                  <p className="text-xs font-bold text-white leading-none">For iOS &amp; Web users:</p>
+                  <p className="text-[11px] text-white/80 leading-relaxed mt-1">
+                    Tap <span className="font-semibold text-white">Share</span> / menu, then <span className="font-semibold text-white">Add to Home Screen</span> to install.
+                  </p>
+                </div>
               )}
             </div>
           </div>

@@ -774,7 +774,10 @@ export default function ProductDetailPage() {
       </div>
 
       {/* ── MOBILE FIXED BOTTOM BAR ───────────────────────────────────────── */}
-      <div className="md:hidden fixed bottom-[60px] left-0 right-0 z-40 bg-[#FDF5EC] border-t border-primary/10 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <div 
+        className="md:hidden fixed left-0 right-0 z-40 bg-[#FDF5EC] border-t border-primary/10 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+        style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+      >
         {/* Variant dropdown */}
         {product.variants?.length > 0 && (
           <div className="relative flex-1">
@@ -1441,7 +1444,10 @@ export default function ProductDetailPage() {
       )}
 
       {/* ── Sticky bottom buy bar — shown on mobile only, above bottom nav ─── */}
-      <div className="md:hidden fixed bottom-[60px] left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border shadow-lg py-2.5 px-3 flex items-center gap-2">
+      <div 
+        className="md:hidden fixed left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border shadow-lg py-2.5 px-3 flex items-center gap-2"
+        style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+      >
         {allImages[0] && (
           <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
             <Image src={allImages[0]} alt={product.name} fill className="object-cover" />

@@ -60,7 +60,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _initWebViewController() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36")
+      ..setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36 AnjaliAlankaramAndroidApp")
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -442,9 +442,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFDF5EC),
         body: SafeArea(
-          bottom: false,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)
@@ -461,7 +460,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     gestureRecognizers: _isAtTop
                         ? {
                             Factory<VerticalDragGestureRecognizer>(
-                              () => VerticalDragGestureRecognizer(),
+                               () => VerticalDragGestureRecognizer(),
                             ),
                           }
                         : <Factory<VerticalDragGestureRecognizer>>{},
@@ -492,20 +491,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
             ],
           ),
         ),
-        // Floating action button for sharing the current product/category URL (Hidden on cart/checkout/login/splash/offline)
-        floatingActionButton: (_showShareButton && !_showSplash && !_isOffline)
-            ? Padding(
-                padding: const EdgeInsets.only(bottom: 72.0),
-                child: FloatingActionButton.small(
-                  onPressed: _shareCurrentPage,
-                  backgroundColor: const Color(0xFF8B0030),
-                  foregroundColor: const Color(0xFFFDF5EC),
-                  elevation: 4.0,
-                  shape: const CircleBorder(),
-                  child: const Icon(Icons.share_rounded),
-                ),
-              )
-            : null,
       ),
     );
   }

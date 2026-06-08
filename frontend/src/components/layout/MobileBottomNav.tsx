@@ -17,7 +17,13 @@ export default function MobileBottomNav() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
 
-  if (pathname.startsWith('/admin')) {
+  const isHiddenPage =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/cart') ||
+    pathname.startsWith('/orders');
+
+  if (isHiddenPage) {
     return null;
   }
 

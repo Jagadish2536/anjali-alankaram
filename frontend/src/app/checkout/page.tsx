@@ -349,9 +349,8 @@ export default function CheckoutPage() {
                             const src =
                               item.variant?.images?.[0] ||
                               item.product.images?.[0];
-                            return src
-                              ? <Image src={src} alt={item.product.name} fill className="object-cover" />
-                              : <div className="absolute inset-0 flex items-center justify-center text-gray-300"><Package className="w-8 h-8" /></div>;
+                            const finalSrc = (src && src.trim() !== '') ? src : '/placeholder.png';
+                            return <Image src={finalSrc} alt={item.product.name} fill className="object-cover" />;
                           })()}
                         </div>
 

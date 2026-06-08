@@ -929,12 +929,11 @@ export default function OrderDetailPage() {
                   (v: any) => v.color && v.color === item.variantInfo?.color
                 )?.images?.[0];
                 const displayImg = variantImg || item.imageUrl || item.product?.images?.[0];
+                const finalImg = (displayImg && displayImg.trim() !== '') ? displayImg : '/placeholder.png';
                 return (
                   <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0 last:pb-0">
                     <div className="relative w-[70px] h-[85px] rounded-xl overflow-hidden bg-muted/20 shrink-0">
-                      {displayImg && (
-                        <Image src={displayImg} alt={item.productName} fill className="object-cover" />
-                      )}
+                      <Image src={finalImg} alt={item.productName} fill className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm leading-snug">{item.productName}</p>

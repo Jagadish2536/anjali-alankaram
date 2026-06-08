@@ -73,27 +73,29 @@ export default function OrderSuccessPage() {
 
                 {/* Items */}
                 <div className="space-y-3">
-                  {(order.items || []).slice(0, 3).map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-3">
-                      {item.product?.images?.[0] && (
+                  {(order.items || []).slice(0, 3).map((item: any) => {
+                    const img = item.product?.images?.[0];
+                    const src = (img && img.trim() !== '') ? img : '/placeholder.png';
+                    return (
+                      <div key={item.id} className="flex items-center gap-3">
                         <img
-                          src={item.product.images[0]}
-                          alt={item.product.name}
+                          src={src}
+                          alt={item.product?.name || ''}
                           className="w-12 h-14 object-cover rounded-lg border"
                         />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{item.product?.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.variant?.size && `Size: ${item.variant.size} · `}
-                          Qty: {item.quantity}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{item.product?.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.variant?.size && `Size: ${item.variant.size} · `}
+                            Qty: {item.quantity}
+                          </p>
+                        </div>
+                        <span className="text-sm font-bold text-primary shrink-0">
+                          ₹{Number(item.price).toFixed(0)}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-primary shrink-0">
-                        ₹{Number(item.price).toFixed(0)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {(order.items?.length || 0) > 3 && (
                     <p className="text-xs text-muted-foreground text-center">
                       +{order.items.length - 3} more item(s)

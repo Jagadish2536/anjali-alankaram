@@ -448,13 +448,13 @@ export default function ProfilePage() {
                   <Link href={`/orders/${order.id}`} key={order.id}
                     className="flex items-center justify-between py-4 hover:bg-gray-50 -mx-4 px-4 transition-colors group">
                     <div className="flex items-center gap-4">
-                      {order.items?.[0]?.product?.images?.[0] ? (
-                        <img src={order.items[0].product.images[0]} alt="" className="w-14 h-16 object-cover rounded border" />
-                      ) : (
-                        <div className="w-14 h-16 bg-gray-100 rounded border flex items-center justify-center">
-                          <Package className="w-5 h-5 text-gray-300" />
-                        </div>
-                      )}
+                      {(() => {
+                        const img = order.items?.[0]?.product?.images?.[0];
+                        const src = (img && img.trim() !== '') ? img : '/placeholder.png';
+                        return (
+                          <img src={src} alt="" className="w-14 h-16 object-cover rounded border" />
+                        );
+                      })()}
                       <div>
                         <p className="font-bold text-sm group-hover:text-primary transition-colors">
                           Order #{order.orderNumber}
