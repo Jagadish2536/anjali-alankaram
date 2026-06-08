@@ -76,6 +76,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
               _showSplash = false;
             });
             _updateShareButtonVisibility(url);
+            _injectAndroidNavBarInset();
           },
           onUrlChange: (UrlChange change) {
             if (change.url != null) {
@@ -213,6 +214,30 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
 
     _controller.loadRequest(Uri.parse(widget.initialUrl));
+  }
+
+  /// Reads the exact Android system navigation bar height from Flutter's
+  /// platform window padding and injects it into the WebView as
+  /// `window.__androidNavBarHeight` (in CSS pixels). The web bottom nav
+  /// reads this value to add the exact paddingBottom so it sits flush
+  /// above the system nav bar with no gap and no overlap.
+  void _injectAndroidNavBarInset() {
+    if (!Platform.isAndroid) return;
+    try {
+      final view = WidgetsBinding.instance.platformDispatcher.views.first;
+      // view.padding.bottom is in physical pixels; divide by devicePixelRatio
+      // to get logical/CSS pixels.
+      final bottomInset = view.padding.bottom / view.devicePixelRatio;
+      if (bottomInset <= 0) return;
+      _controller.runJavaScript(
+        'window.__androidNavBarHeight = $bottomInset;'
+        'document.documentElement.style.setProperty("--android-nav-inset", "${bottomInset}px");',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to inject Android nav bar inset: \$e');
+      }
+    }
   }
 
   void _updateShareButtonVisibility(String url) {
@@ -464,7 +489,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFFDF5EC),
         body: SafeArea(
-          bottom: true,
+          bottom: false,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)
