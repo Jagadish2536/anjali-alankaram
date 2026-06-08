@@ -39,9 +39,17 @@ export class NotificationsService {
         title = 'Order Confirmed! 🎉';
         body = `Your order #${orderNumber} has been successfully placed.`;
         break;
+      case 'ORDER_CONFIRMED':
+        title = 'Order Confirmed! ✅';
+        body = `Your order #${orderNumber} has been confirmed and is being processed.`;
+        break;
       case 'ORDER_SHIPPED':
         title = 'Order Shipped! 📦';
         body = `Your order #${orderNumber} is on its way.`;
+        break;
+      case 'ORDER_OUT_FOR_DELIVERY':
+        title = 'Out for Delivery! 🚚';
+        body = `Your order #${orderNumber} is out for delivery today.`;
         break;
       case 'ORDER_DELIVERED':
         title = 'Order Delivered! 🛍️';
@@ -50,6 +58,22 @@ export class NotificationsService {
       case 'ORDER_CANCELLED':
         title = 'Order Cancelled ❌';
         body = `Your order #${orderNumber} has been cancelled.`;
+        break;
+      case 'RETURN_UPDATE':
+        title = 'Return Request Update 🔄';
+        body = `There is an update on your return request for order #${orderNumber}.`;
+        break;
+      case 'REFUND_UPDATE':
+        title = 'Refund Status Update 💰';
+        body = `There is an update on your refund status for order #${orderNumber}.`;
+        break;
+      case 'PAYMENT_SUCCESS':
+        title = 'Payment Successful! 💳';
+        body = `Your payment for order #${orderNumber} was successful.`;
+        break;
+      case 'PAYMENT_FAILED':
+        title = 'Payment Failed ❌';
+        body = `The payment for order #${orderNumber} has failed.`;
         break;
     }
 
@@ -82,8 +106,16 @@ export class NotificationsService {
           templateName = this.config.get('MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE') || 'anjali_order_placed';
           params = [userName, orderNumber];
           break;
+        case 'ORDER_CONFIRMED':
+          templateName = this.config.get('MSG91_WHATSAPP_ORDER_CONFIRMED_TEMPLATE') || '';
+          params = [userName, orderNumber];
+          break;
         case 'ORDER_SHIPPED':
           templateName = this.config.get('MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE') || 'anjali_order_shipped';
+          params = [userName, orderNumber];
+          break;
+        case 'ORDER_OUT_FOR_DELIVERY':
+          templateName = this.config.get('MSG91_WHATSAPP_ORDER_OUT_FOR_DELIVERY_TEMPLATE') || '';
           params = [userName, orderNumber];
           break;
         case 'ORDER_DELIVERED':
@@ -92,6 +124,14 @@ export class NotificationsService {
           break;
         case 'ORDER_CANCELLED':
           templateName = this.config.get('MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE') || 'anjali_order_cancelled';
+          params = [userName, orderNumber];
+          break;
+        case 'RETURN_UPDATE':
+          templateName = this.config.get('MSG91_WHATSAPP_RETURN_UPDATE_TEMPLATE') || '';
+          params = [userName, orderNumber];
+          break;
+        case 'REFUND_UPDATE':
+          templateName = this.config.get('MSG91_WHATSAPP_REFUND_UPDATE_TEMPLATE') || '';
           params = [userName, orderNumber];
           break;
       }

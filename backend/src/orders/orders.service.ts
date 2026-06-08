@@ -206,9 +206,11 @@ export class OrdersService {
     }
 
     // 13. Notifications
-    await this.notificationsService
-      .sendOrderNotification(userId, 'ORDER_PLACED', order.id, orderNumber)
-      .catch(() => {});
+    if (dto.paymentMethod === 'COD') {
+      await this.notificationsService
+        .sendOrderNotification(userId, 'ORDER_PLACED', order.id, orderNumber)
+        .catch(() => {});
+    }
 
     this.notificationsService
       .sendAdminAlert('ORDER_PLACED', {
@@ -218,27 +220,29 @@ export class OrdersService {
       .catch(() => {});
 
     // Email confirmation via AWS SES
-    this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
-      .then(user => {
-        if (user?.email) {
-          this.emailService.sendOrderConfirmation(user.email, {
-            customerName: user.name || 'Customer',
-            orderNumber,
-            items: order.items.map((i: any) => ({
-              name: i.productName,
-              size: i.variantInfo?.size || '',
-              qty: i.quantity,
-              price: Number(i.unitPrice),
-            })),
-            subtotal: Number(order.subtotal),
-            discount: Number(order.discountAmount),
-            shipping: Number(order.shippingCharge),
-            total: Number(order.totalAmount),
-            paymentMethod: dto.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online Payment',
-            address: `${address.name}, ${address.line1}, ${address.city} - ${address.pincode}`,
-          }).catch(() => {});
-        }
-      }).catch(() => {});
+    if (dto.paymentMethod === 'COD') {
+      this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+        .then(user => {
+          if (user?.email) {
+            this.emailService.sendOrderConfirmation(user.email, {
+              customerName: user.name || 'Customer',
+              orderNumber,
+              items: order.items.map((i: any) => ({
+                name: i.productName,
+                size: i.variantInfo?.size || '',
+                qty: i.quantity,
+                price: Number(i.unitPrice),
+              })),
+              subtotal: Number(order.subtotal),
+              discount: Number(order.discountAmount),
+              shipping: Number(order.shippingCharge),
+              total: Number(order.totalAmount),
+              paymentMethod: 'Cash on Delivery',
+              address: `${address.name}, ${address.line1}, ${address.city} - ${address.pincode}`,
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+    }
 
     if (dto.paymentMethod === 'COD') {
       this.shippingService.createShipment(order.id).catch(console.error);
@@ -422,6 +426,18 @@ export class OrdersService {
         await this.notificationsService
           .sendOrderNotification(order.userId, 'ORDER_DELIVERED', order.id, order.orderNumber)
           .catch(() => {});
+
+        // Trigger customer email
+        const user = await this.prisma.user.findUnique({
+          where: { id: order.userId },
+          select: { email: true, name: true },
+        });
+        if (user?.email) {
+          this.emailService.sendOrderDelivered(user.email, {
+            customerName: user.name || 'Customer',
+            orderNumber: order.orderNumber,
+          }).catch(() => {});
+        }
       }
     }
 
@@ -640,6 +656,13 @@ export class OrdersService {
           orderNumber: orderNum,
           reason: extra?.cancelReason,
         }).catch(() => {});
+      } else if (toStatus === 'REFUND_INITIATED' || toStatus === 'REFUNDED') {
+        this.emailService.sendOrderRefunded(email, {
+          customerName: name,
+          orderNumber: orderNum,
+          amount: Number(order.totalAmount),
+          status: toStatus as 'REFUND_INITIATED' | 'REFUNDED',
+        }).catch(() => {});
       }
     }
 
@@ -651,8 +674,17 @@ export class OrdersService {
   // ─────────────────────────────────────────────
 
   async cancel(id: string, userId: string, reason: string) {
-    const order = await this.prisma.order.findFirst({ where: { id, userId } });
+    const order = await this.prisma.order.findFirst({
+      where: { id, userId },
+      include: { user: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
+
+    if (order.awbCode || ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
+      throw new BadRequestException(
+        'Order has already been shipped. Please track the order. It cannot be cancelled. Please contact support if you have any queries.'
+      );
+    }
 
     const cancellableStatuses: OrderStatus[] = [
       'PENDING_PAYMENT', 'PAYMENT_VERIFIED', 'CONFIRMED', 'INVENTORY_RESERVED',
@@ -662,14 +694,9 @@ export class OrdersService {
       throw new BadRequestException('Order cannot be cancelled at this stage');
     }
 
-    // CRITICAL: Do NOT allow cancellation if Razorpay payment was already captured.
-    // This prevents the auto-cancel timer from rolling back stock on paid orders.
-    // (The 10-minute timer on the frontend fires even after payment succeeds if the
-    //  webhook updates the order status AFTER the timer started.)
+    // Automatically refund Razorpay paid orders
     if (order.paymentMethod === 'RAZORPAY' && order.paymentStatus === 'PAID') {
-      throw new BadRequestException(
-        'Payment has already been captured. Order cannot be cancelled. Please contact support for a refund.'
-      );
+      await this.paymentsService.processRefund(order.id);
     }
 
     await this.prisma.order.update({
@@ -677,8 +704,6 @@ export class OrdersService {
       data: {
         status: 'CANCELLED',
         cancelReason: reason,
-        // paymentStatus stays PENDING — Razorpay paid orders are blocked above;
-        // only unpaid/COD orders reach this point.
       },
     });
 
@@ -686,10 +711,6 @@ export class OrdersService {
     await this.inventory.rollback(id, userId).catch(e =>
       this.logger.error(`Inventory rollback on cancel failed for ${id}: ${e.message}`)
     );
-
-    // Note: auto-refund is not needed here because Razorpay orders with
-    // paymentStatus=PAID are blocked from cancellation above. Only unpaid
-    // or COD orders reach this point, so no refund processing is required.
 
     // Log
     await this.statusHistory.append({
@@ -704,6 +725,15 @@ export class OrdersService {
     await this.notificationsService
       .sendOrderNotification(userId, 'ORDER_CANCELLED', id, order.orderNumber)
       .catch(() => {});
+
+    // Send customer cancellation email
+    if (order.user?.email) {
+      this.emailService.sendOrderCancelled(order.user.email, {
+        customerName: order.user.name || 'Customer',
+        orderNumber: order.orderNumber,
+        reason,
+      }).catch(() => {});
+    }
 
     return { success: true, message: 'Order cancelled successfully' };
   }

@@ -99,6 +99,7 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'COD'>('RAZORPAY');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Qty edit state
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
@@ -131,8 +132,10 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    if (items.length === 0 && !useCartStore.getState().isLoading) router.push('/cart');
-  }, [items.length]);
+    if (items.length === 0 && !useCartStore.getState().isLoading && !isSuccess) {
+      router.push('/cart');
+    }
+  }, [items.length, isSuccess]);
 
   const loadAddresses = async () => {
     try {
@@ -236,6 +239,7 @@ export default function CheckoutPage() {
 
       if (paymentMethod === 'COD') {
         // Clear cart and go to success page
+        setIsSuccess(true);
         clearCart();
         router.push(`/orders/${data.order.id}/success`);
       } else if (data.razorpayOrderId) {
@@ -258,6 +262,7 @@ export default function CheckoutPage() {
             } catch {
               // Even if verify call fails, payment was captured — still go to success
             }
+            setIsSuccess(true);
             clearCart();
             router.push(`/orders/${data.order.id}/success`);
           },

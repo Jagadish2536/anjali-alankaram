@@ -10,7 +10,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
+
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -420,21 +420,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     );
   }
 
-  Future<void> _shareCurrentPage() async {
-    try {
-      final url = await _controller.currentUrl();
-      if (url != null) {
-        await Share.share(
-          'Take a look at Anjali Alankaram: $url',
-          subject: 'Anjali Alankaram Premium Silk Sarees',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error sharing current page: $e');
-      }
-    }
-  }
+
 
   Future<void> _retryConnection() async {
     final results = await Connectivity().checkConnectivity();
@@ -467,6 +453,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFFDF5EC),
         body: SafeArea(
+          bottom: false,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)

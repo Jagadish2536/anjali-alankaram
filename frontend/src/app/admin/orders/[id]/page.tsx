@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 // ── Delivery Partners ────────────────────────────────────────────
 const DELIVERY_PARTNERS = [
@@ -115,7 +116,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ── Print Label ────────────────────────────────────────────────────
-function printOrderLabel(order: any) {
+function printOrderLabel(order: any, storeAddress?: string) {
   const w = window.open('', '_blank', 'width=600,height=800');
   if (!w) return;
   const items = (order.items || []).map((it: any) =>
@@ -156,12 +157,19 @@ function printOrderLabel(order: any) {
         <p style="margin:2px 0;font-size:12px;">${order.user?.email || ''}</p>
       </div>
     </div>
-    <div class="section">
-      <div class="label">📍 Delivery Address</div>
-      <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
-      <p style="margin:2px 0;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
-      <p style="margin:2px 0;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
-      <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="label">From Address</div>
+        <p style="margin:6px 0;font-weight:700;font-size:15px;">Anjali Alankaram</p>
+        <p style="margin:2px 0;line-height:1.4;white-space:pre-line;">${storeAddress || 'Address not set'}</p>
+      </div>
+      <div class="section">
+        <div class="label">📍 Delivery Address</div>
+        <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
+        <p style="margin:2px 0;line-height:1.4;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
+        <p style="margin:2px 0;line-height:1.4;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
+        <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
+      </div>
     </div>
     <div class="section">
       <div class="label">Order Items</div>
@@ -506,6 +514,7 @@ export default function OrderDetailPage() {
   const { id } = useParams() as { id: string };
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { settings, fetchSettings } = useSettingsStore();
   const [error, setError] = useState('');
   const [showHistory, setShowHistory] = useState(true);
 
@@ -566,7 +575,8 @@ export default function OrderDetailPage() {
     if (id) {
       fetchOrder();
     }
-  }, [id]);
+    fetchSettings();
+  }, [id, fetchSettings]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -705,7 +715,7 @@ export default function OrderDetailPage() {
           
           <div className="flex items-center gap-3">
             <button
-              onClick={() => printOrderLabel(order)}
+              onClick={() => printOrderLabel(order, settings.storeAddress)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold border bg-white rounded-xl hover:bg-gray-50 shadow-sm transition-all"
             >
               <Printer className="w-4 h-4" /> Print Label

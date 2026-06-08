@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 // ── Status config ────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
@@ -45,7 +46,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ── Print Label ────────────────────────────────────────────────────
-function printOrderLabel(order: any) {
+function printOrderLabel(order: any, storeAddress?: string) {
   const w = window.open('', '_blank', 'width=600,height=800');
   if (!w) return;
   const items = (order.items || []).map((it: any) =>
@@ -86,12 +87,19 @@ function printOrderLabel(order: any) {
         <p style="margin:2px 0;font-size:12px;">${order.user?.email || ''}</p>
       </div>
     </div>
-    <div class="section">
-      <div class="label">📍 Delivery Address</div>
-      <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
-      <p style="margin:2px 0;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
-      <p style="margin:2px 0;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
-      <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="label">From Address</div>
+        <p style="margin:6px 0;font-weight:700;font-size:15px;">Anjali Alankaram</p>
+        <p style="margin:2px 0;line-height:1.4;white-space:pre-line;">${storeAddress || 'Address not set'}</p>
+      </div>
+      <div class="section">
+        <div class="label">📍 Delivery Address</div>
+        <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
+        <p style="margin:2px 0;line-height:1.4;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
+        <p style="margin:2px 0;line-height:1.4;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
+        <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
+      </div>
     </div>
     <div class="section">
       <div class="label">Order Items</div>
@@ -122,6 +130,7 @@ function AdminOrdersContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const { settings, fetchSettings } = useSettingsStore();
 
   const fetchOrders = useCallback(async (p = 1) => {
     setIsLoading(true);
@@ -146,6 +155,9 @@ function AdminOrdersContent() {
     const t = setTimeout(() => fetchOrders(1), 400);
     return () => clearTimeout(t);
   }, [search]);
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -270,7 +282,7 @@ function AdminOrdersContent() {
                               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors">
                               <Eye className="w-3 h-3" /> Manage
                             </button>
-                            <button onClick={() => printOrderLabel(order)}
+                            <button onClick={() => printOrderLabel(order, settings.storeAddress)}
                               className="p-1.5 text-muted-foreground hover:text-foreground border rounded-lg hover:bg-gray-50 transition-colors" title="Print label">
                               <Printer className="w-3 h-3" />
                             </button>

@@ -306,4 +306,50 @@ export class EmailService {
 
     await this.send(to, `Order Cancelled — #${data.orderNumber}`, this.wrap(content));
   }
+
+  // ── 6. Order Refunded ──────────────────────────────────────────────────
+  async sendOrderRefunded(to: string, data: {
+    customerName: string;
+    orderNumber: string;
+    amount: number;
+    status: 'REFUND_INITIATED' | 'REFUNDED';
+  }): Promise<void> {
+    const isInitiated = data.status === 'REFUND_INITIATED';
+    const subject = isInitiated
+      ? `Refund Initiated — #${data.orderNumber}`
+      : `Refund Processed Successfully — #${data.orderNumber}`;
+
+    const content = `
+      <h2 style="color:#8B0030;margin:0 0 8px;">
+        ${isInitiated ? '💸 Refund Initiated' : '✅ Refund Processed'}
+      </h2>
+      <p style="color:#555;margin:0 0 24px;font-size:15px;">
+        Hi <strong>${data.customerName || 'there'}</strong>,<br>
+        ${isInitiated
+          ? `We have initiated a refund of <strong>₹${data.amount.toLocaleString('en-IN')}</strong> for your order <strong>#${data.orderNumber}</strong>.`
+          : `A refund of <strong>₹${data.amount.toLocaleString('en-IN')}</strong> for your order <strong>#${data.orderNumber}</strong> has been successfully processed.`}
+      </p>
+      <div style="background:#FDF5EC;border-radius:10px;padding:20px 24px;margin:0 0 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="color:#888;font-size:13px;padding-bottom:8px;">Order Number</td>
+            <td style="color:#333;font-size:14px;font-weight:bold;text-align:right;padding-bottom:8px;">#${data.orderNumber}</td>
+          </tr>
+          <tr>
+            <td style="color:#888;font-size:13px;padding-bottom:8px;">Refund Amount</td>
+            <td style="color:#8B0030;font-size:16px;font-weight:bold;text-align:right;padding-bottom:8px;">₹${data.amount.toLocaleString('en-IN')}</td>
+          </tr>
+          <tr>
+            <td style="color:#888;font-size:13px;">Status</td>
+            <td style="color:#333;font-size:14px;font-weight:bold;text-align:right;">${isInitiated ? 'Initiated' : 'Completed'}</td>
+          </tr>
+        </table>
+      </div>
+      <p style="color:#888;font-size:13px;margin:0;">
+        It usually takes 5-7 business days for the refund to reflect in your original payment method.<br>
+        Questions? WhatsApp us at <a href="https://wa.me/917032492775" style="color:#8B0030;">+91 70324 92775</a>
+      </p>`;
+
+    await this.send(to, subject, this.wrap(content));
+  }
 }
