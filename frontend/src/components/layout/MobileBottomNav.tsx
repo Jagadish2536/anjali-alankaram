@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Heart, ShoppingBag, User, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -16,42 +17,34 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-
-  // Populated from the value Flutter injects via runJavaScript after each page load.
-  // This gives the exact Android system navigation bar height in CSS pixels.
   const [androidInset, setAndroidInset] = useState(0);
 
   useEffect(() => {
+    // Detect Android WebView by custom user agent suffix
     const isAndroidApp =
       typeof navigator !== 'undefined' &&
       navigator.userAgent.includes('AnjaliAlankaramAndroidApp');
 
     if (!isAndroidApp) return;
 
-    const readInset = () => {
-      // Flutter injects `window.__androidNavBarHeight = N` (CSS px) via
-      // runJavaScript in onPageFinished. Read it for pixel-perfect padding.
-      const injected = (window as unknown as Record<string, unknown>).__androidNavBarHeight;
-      if (typeof injected === 'number' && injected > 0 && injected < 200) {
-        setAndroidInset(injected);
-        return;
-      }
-      // Fallback: read the CSS variable Flutter also sets on <html>
-      const cssVal = getComputedStyle(document.documentElement)
-        .getPropertyValue('--android-nav-inset')
-        .trim();
-      const parsed = parseFloat(cssVal);
-      if (!isNaN(parsed) && parsed > 0 && parsed < 200) {
-        setAndroidInset(parsed);
-      }
+    const computeInset = () => {
+      // visualViewport.height = visible area (excludes system UI like nav bar)
+      // window.innerHeight in a full-screen WebView = full screen height
+      // So the difference is the height of the Android system navigation bar
+      const vvHeight = window.visualViewport?.height ?? window.innerHeight;
+      const inset = window.innerHeight - vvHeight;
+      // Clamp to a sensible range (Android nav bars are 24–80 px)
+      setAndroidInset(inset > 0 && inset < 200 ? inset : 0);
     };
 
-    // Read immediately (value may already exist on client-side nav)
-    readInset();
-    // Flutter's onPageFinished fires slightly after React hydration — retry once
-    const timer = setTimeout(readInset, 400);
-    return () => clearTimeout(timer);
-  }, [pathname]); // re-run on every route change
+    computeInset();
+    window.visualViewport?.addEventListener('resize', computeInset);
+    window.addEventListener('resize', computeInset);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', computeInset);
+      window.removeEventListener('resize', computeInset);
+    };
+  }, []);
 
   const isHiddenPage =
     pathname.startsWith('/admin') ||
@@ -67,8 +60,6 @@ export default function MobileBottomNav() {
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FDF5EC] border-t border-primary/10 shadow-[0_-2px_12px_rgba(139,0,48,0.08)]"
       style={{
-        // Android app: exact system nav bar height injected by Flutter
-        // iOS / browser: standard safe-area env() for home indicator / notch
         paddingBottom: androidInset > 0
           ? `${androidInset}px`
           : 'env(safe-area-inset-bottom, 0px)',
