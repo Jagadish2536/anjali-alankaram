@@ -50,7 +50,14 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _checkInitialConnectivity();
     _subscribeToConnectivity();
     _subscribeToDeepLinks();
-    
+
+    // Paint the Android system navigation bar with the app's cream colour so
+    // it blends with the website bottom bar — no visible gap, no overlap.
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      systemNavigationBarColor: Color(0xFFFDF5EC),
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
+
     // Check app updates after short delay
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAppVersion();
@@ -464,7 +471,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFFDF5EC),
         body: SafeArea(
-          bottom: false,
+          bottom: true,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)
