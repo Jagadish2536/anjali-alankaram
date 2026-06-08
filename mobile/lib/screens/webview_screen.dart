@@ -118,6 +118,29 @@ class _WebViewScreenState extends State<WebViewScreen> {
               return NavigationDecision.prevent;
             }
 
+            // Intercept other custom deep link schemes (like upi://, gpay://, phonepe://, bhim://, paytmmp://, etc.)
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+              final uri = Uri.tryParse(url);
+              if (uri != null) {
+                try {
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Corresponding payment app or external application not found.')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (kDebugMode) {
+                    print('Error launching custom scheme $url: $e');
+                  }
+                }
+              }
+              return NavigationDecision.prevent;
+            }
+
             return NavigationDecision.navigate;
           },
         ),
