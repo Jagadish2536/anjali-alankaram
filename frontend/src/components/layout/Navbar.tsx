@@ -36,6 +36,20 @@ export default function Navbar() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const handleInteraction = () => {
+      setAnnouncementVisible(false);
+    };
+
+    window.addEventListener('scroll', handleInteraction, { passive: true });
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, []);
+
+  useEffect(() => {
     setMounted(true);
     fetchSettings();
   }, [fetchSettings]);

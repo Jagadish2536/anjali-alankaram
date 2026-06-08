@@ -49,18 +49,14 @@ const lilyBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg
 
 // ── Category card — horizontal scroll card style ──────────────────────────────
 function CollectionCard({ cat }: { cat: any }) {
-  const img = cat.image || null;
+  const img = (cat.image && cat.image.trim() !== '') ? cat.image : '/placeholder.png';
 
   return (
     <Link
       href={`/products?category=${cat.slug}`}
       className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block"
     >
-      {img ? (
-        <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700" />
-      ) : (
-        <div className="absolute inset-0 bg-primary" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px' }} />
-      )}
+      <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700" />
       {/* Light gradient only at bottom for text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       <div className="absolute bottom-4 left-4 right-4">
