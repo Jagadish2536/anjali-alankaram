@@ -199,7 +199,6 @@ export default function Footer() {
                 <Instagram className="w-3.5 h-3.5" /> @jagadishvarma99
               </a>
             </div>
-            <span className="text-white/25">Website designed by <span className="text-white/50 font-medium">Jagadish Varma</span></span>
           </div>
         </div>
       </div>

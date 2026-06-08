@@ -39,6 +39,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   double _loadingProgress = 0.0;
   bool _isAtTop = true; // Tracks if WebView is scrolled to the absolute top
   bool _showShareButton = false; // Evaluates dynamically to hide on cart/checkout/login
+  bool _useSafeAreaBottom = false;
+  double _lastBottomPadding = -1.0;
   
   late final StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
   StreamSubscription<String>? _deepLinkSubscription;
@@ -46,16 +48,20 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
+    _useSafeAreaBottom = _shouldUseSafeAreaBottom(widget.initialUrl);
     _initWebViewController();
     _checkInitialConnectivity();
     _subscribeToConnectivity();
     _subscribeToDeepLinks();
 
-    // Paint the Android system navigation bar with the app's cream colour so
-    // it blends with the website bottom bar — no visible gap, no overlap.
+    // Set system UI to edge-to-edge mode with transparent status/nav bars
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      systemNavigationBarColor: Color(0xFFFDF5EC),
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
       systemNavigationBarIconBrightness: Brightness.dark,
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
     ));
 
     // Check app updates after short delay
@@ -76,17 +82,22 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onPageStarted: (String url) {
-            // Keep splash visible
+            _updateSafeAreaBottom(url);
+            _injectAndroidNavBarInset();
           },
           onPageFinished: (String url) {
             setState(() {
               _showSplash = false;
             });
             _updateShareButtonVisibility(url);
+            _updateSafeAreaBottom(url);
+            _injectAndroidNavBarInset();
           },
           onUrlChange: (UrlChange change) {
             if (change.url != null) {
               _updateShareButtonVisibility(change.url!);
+              _updateSafeAreaBottom(change.url!);
+              _injectAndroidNavBarInset();
             }
           },
           onWebResourceError: (WebResourceError error) {
@@ -270,6 +281,62 @@ class _WebViewScreenState extends State<WebViewScreen> {
     } catch (e) {
       if (kDebugMode) {
         print('Error updating share button visibility: $e');
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newPadding = MediaQuery.of(context).padding.bottom;
+    if (newPadding != _lastBottomPadding) {
+      _lastBottomPadding = newPadding;
+      _injectAndroidNavBarInset();
+    }
+  }
+
+  bool _shouldUseSafeAreaBottom(String url) {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return false;
+      
+      final path = uri.path.toLowerCase();
+      final host = uri.host.toLowerCase();
+      
+      // We want SafeArea(bottom: true) on checkout, cart, orders, admin, and Razorpay
+      return host.contains('razorpay') ||
+          path.startsWith('/checkout') ||
+          path.startsWith('/cart') ||
+          path.startsWith('/orders') ||
+          path.startsWith('/admin');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  void _updateSafeAreaBottom(String url) {
+    final useSafeArea = _shouldUseSafeAreaBottom(url);
+    if (_useSafeAreaBottom != useSafeArea) {
+      setState(() {
+        _useSafeAreaBottom = useSafeArea;
+      });
+    }
+  }
+
+  /// Reads the exact Android system navigation bar height from Flutter's
+  /// layout padding and injects it into the WebView as a CSS custom variable
+  /// `--android-nav-inset`. The web bottom nav reads this value.
+  void _injectAndroidNavBarInset() {
+    if (!Platform.isAndroid) return;
+    try {
+      if (_lastBottomPadding <= 0) return;
+      _controller.runJavaScript(
+        'window.__androidNavBarHeight = $_lastBottomPadding;'
+        'document.documentElement.style.setProperty("--android-nav-inset", "${_lastBottomPadding}px");',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to inject Android nav bar inset: $e');
       }
     }
   }
@@ -471,7 +538,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFFDF5EC),
         body: SafeArea(
-          bottom: true,
+          bottom: _useSafeAreaBottom,
           child: Stack(
             children: [
               // WebView component wrapped with Pull-to-Refresh (Hidden when offline)

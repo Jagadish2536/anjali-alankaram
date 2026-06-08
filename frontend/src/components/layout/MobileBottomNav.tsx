@@ -30,7 +30,7 @@ export default function MobileBottomNav() {
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FDF5EC] border-t border-primary/10 shadow-[0_-2px_12px_rgba(139,0,48,0.08)]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{ paddingBottom: 'var(--android-nav-inset, env(safe-area-inset-bottom, 0px))' }}
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around h-[60px]">
