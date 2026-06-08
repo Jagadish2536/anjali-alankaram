@@ -445,8 +445,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
         if (didPop) return;
         try {
           final url = await _controller.currentUrl();
-          if (url != null && (url.contains('/checkout') || url.contains('razorpay'))) {
-            // Do not allow back button to interrupt checkout or Razorpay payment
+          if (url != null && url.contains('/checkout')) {
+            // Do not allow back button to interrupt checkout
             return;
           }
         } catch (e) {
