@@ -443,6 +443,17 @@ class _WebViewScreenState extends State<WebViewScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        try {
+          final url = await _controller.currentUrl();
+          if (url != null && (url.contains('/checkout') || url.contains('razorpay'))) {
+            // Do not allow back button to interrupt checkout or Razorpay payment
+            return;
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error checking current URL in PopScope: $e');
+          }
+        }
         if (await _controller.canGoBack()) {
           await _controller.goBack();
         } else {
