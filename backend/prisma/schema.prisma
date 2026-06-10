@@ -713,7 +713,7 @@ model StoreSettings {
   platformFeeAmount       Float    @default(0)
   // Inventory
   lowStockThreshold       Int      @default(5)
-  reservationTimeoutMins  Int      @default(15)
+  reservationTimeoutMins  Int      @default(5)
   // Footer / Store Info
   storeDescription        String?
   storeAddress            String?

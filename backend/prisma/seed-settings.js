@@ -30,7 +30,7 @@ async function main() {
       platformFeeEnabled: false,
       platformFeeAmount: 0,
       lowStockThreshold: 5,
-      reservationTimeoutMins: 15,
+      reservationTimeoutMins: 5,
       returnPolicyDays: 7,
       storeDescription: 'Premium Indian ethnic fashion for every occasion.',
       contactEmail: 'support@anjalialankaram.com',

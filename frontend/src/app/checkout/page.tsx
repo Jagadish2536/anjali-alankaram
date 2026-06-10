@@ -269,13 +269,17 @@ export default function CheckoutPage() {
           prefill: { name: user?.name || '', email: user?.email || '', contact: user?.phone || '' },
           theme: { color: '#B76E79' },
           modal: {
-            ondismiss: () => setIsProcessing(false),
+            ondismiss: () => {
+              setIsProcessing(false);
+              router.push('/cart');
+            },
           },
         };
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', () => {
           setIsProcessing(false);
           alert('Payment failed. Please try again.');
+          router.push('/cart');
         });
         rzp.open();
         return; // Don't hit finally block while modal is open

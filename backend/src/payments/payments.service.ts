@@ -236,6 +236,16 @@ export class PaymentsService implements OnModuleInit {
           this.logger.error(`Inventory confirm failed after webhook payment.captured for order ${order.id}: ${e.message}`)
         );
 
+        // Clear cart for the user who placed this order
+        try {
+          const userCart = await this.prisma.cart.findUnique({ where: { userId: order.userId } });
+          if (userCart) {
+            await this.prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
+          }
+        } catch (e) {
+          this.logger.error(`Failed to clear cart after webhook payment.captured for order ${order.id}: ${e.message}`);
+        }
+
         // Log status history
         await this.prisma.$executeRawUnsafe(
           `INSERT INTO "order_status_history" ("id","orderId","fromStatus","toStatus","actorRole","notes","metadata","createdAt")
@@ -418,6 +428,16 @@ export class PaymentsService implements OnModuleInit {
       await this.inventoryService.confirm(order.id).catch((e) =>
         this.logger.error(`Inventory confirm failed after verifyPayment for order ${order.id}: ${e.message}`)
       );
+
+      // Clear cart for the user who placed this order
+      try {
+        const userCart = await this.prisma.cart.findUnique({ where: { userId: order.userId } });
+        if (userCart) {
+          await this.prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
+        }
+      } catch (e) {
+        this.logger.error(`Failed to clear cart after verifyPayment for order ${order.id}: ${e.message}`);
+      }
 
       // Log status history
       await this.prisma.$executeRawUnsafe(

@@ -9,3 +9,4 @@ variable "ecs_task_role_arn" { type = string }
 variable "secrets_arn" { type = string }
 variable "tags" { type = map(string) }
 variable "s3_bucket_name" { type = string }
+variable "tier" { type = number }

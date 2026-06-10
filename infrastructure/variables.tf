@@ -46,6 +46,12 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "tier" {
+  description = "Application deployment tier (0: Minimal/Tier 0, 1: Standard, 2: Production scale)"
+  type        = number
+  default     = 1
+}
+
 locals {
   common_tags = {
     Project     = var.project_name

@@ -1,12 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
-export class InventoryService {
+export class InventoryService implements OnModuleInit {
   private readonly logger = new Logger(InventoryService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      await this.prisma.storeSettings.updateMany({
+        data: { reservationTimeoutMins: 5 },
+      });
+      this.logger.log('Database store settings auto-configured: reservationTimeoutMins = 5');
+    } catch (e) {
+      this.logger.error(`Failed to auto-configure store settings: ${e.message}`);
+    }
+  }
 
   /**
    * Reserve stock during checkout.
@@ -16,7 +27,7 @@ export class InventoryService {
   async reserve(
     orderId: string,
     items: { variantId: string; quantity: number }[],
-    timeoutMins = 15,
+    timeoutMins = 5,
   ) {
     const expiresAt = new Date(Date.now() + timeoutMins * 60 * 1000);
 
@@ -160,6 +171,12 @@ export class InventoryService {
    *  2. Reservation already confirmed (isConfirmed=true, stock deducted) → add stock back
    */
   async rollback(orderId: string, actorId?: string) {
+    // Find all reservations for this order to see if reservations existed
+    const allReservations = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT * FROM "inventory_reservations" WHERE "orderId" = $1`,
+      orderId,
+    );
+
     // Case 1: unreleased, unconfirmed reservations (pre-payment)
     const unconfirmed = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM "inventory_reservations" 
@@ -182,6 +199,25 @@ export class InventoryService {
     const finalWhId = order?.warehouseId || (await this.prisma.warehouse.findFirst({ where: { isDefault: true } }))?.id;
 
     if (!unconfirmed.length && !confirmed.length) {
+      // If reservations existed but none are active/confirmed, it means they either expired or were already rolled back.
+      // In this case, we do NOT run the fallback to prevent duplicate or phantom stock restoration.
+      if (allReservations.length > 0) {
+        this.logger.log(`No active reservations for order ${orderId}, but historical reservations exist. Skipping stock rollback.`);
+        return;
+      }
+
+      // No reservations at all (e.g. legacy order or reservation failed to create)
+      // Check if the order ever reached a status that implies stock was actually deducted.
+      const history = await this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT id FROM "order_status_history" 
+         WHERE "orderId" = $1 AND "toStatus" NOT IN ('PENDING_PAYMENT', 'CANCELLED')`,
+        orderId,
+      );
+      if (history.length === 0) {
+        this.logger.log(`No reservations found and order ${orderId} never left PENDING_PAYMENT. Skipping stock rollback.`);
+        return;
+      }
+
       // No reservations at all — fallback: restore stock from order items directly
       const orderItems = await this.prisma.orderItem.findMany({
         where: { orderId },
@@ -443,7 +479,7 @@ export class InventoryService {
         // Read-then-clamp: never let reservedStock go below 0
         const variant = await this.prisma.productVariant.findUnique({
           where: { id: res.variantId },
-          select: { reservedStock: true },
+          select: { reservedStock: true, stock: true },
         });
         const newReserved = Math.max(0, (variant?.reservedStock ?? 0) - res.quantity);
 
@@ -457,7 +493,41 @@ export class InventoryService {
           res.id,
         );
 
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO "inventory_logs" ("id","variantId","type","quantity","stockBefore","stockAfter","orderId","notes","createdAt")
+           VALUES (gen_random_uuid(),$1,'RESERVATION_RELEASED'::"InventoryMovementType",$2,$3,$3,$4,'Reservation released due to payment timeout',NOW())`,
+          res.variantId, res.quantity,
+          variant?.stock ?? 0,
+          res.orderId,
+        );
+
         this.logger.log(`Released expired reservation ${res.id} for order ${res.orderId}`);
+
+        // Automatically cancel the order if it is still in PENDING_PAYMENT
+        const order = await this.prisma.order.findUnique({
+          where: { id: res.orderId },
+          select: { status: true },
+        });
+
+        if (order && order.status === 'PENDING_PAYMENT') {
+          await this.prisma.order.update({
+            where: { id: res.orderId },
+            data: {
+              status: 'CANCELLED',
+              cancelReason: 'Payment unsuccessful (timed out)',
+              paymentStatus: 'FAILED',
+            },
+          });
+
+          // Log status history
+          await this.prisma.$executeRawUnsafe(
+            `INSERT INTO "order_status_history" ("id","orderId","fromStatus","toStatus","actorRole","notes","createdAt")
+             VALUES (gen_random_uuid(),$1,'PENDING_PAYMENT'::"OrderStatus",'CANCELLED'::"OrderStatus",'SYSTEM','Cancelled due to payment unsuccessful (timeout)',NOW())`,
+            res.orderId,
+          );
+
+          this.logger.log(`Auto-cancelled order ${res.orderId} due to payment timeout`);
+        }
       } catch (e) {
         this.logger.error(`Failed to release reservation ${res.id}: ${e.message}`);
       }

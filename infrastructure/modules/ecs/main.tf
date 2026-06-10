@@ -2,6 +2,19 @@
 # ECS Module - main.tf
 # ---------------------------------------------------------
 
+locals {
+  # Tier 0 (100 users, max Rs 4,000):  Desired=1, Min=1, Max=1
+  # Tier 1 (500 users, max Rs 8,000):  Desired=2, Min=1, Max=3
+  # Tier 2 (1000 users, max Rs 12,000): Desired=3, Min=1, Max=6
+  backend_desired  = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
+  backend_min      = 1
+  backend_max      = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
+
+  frontend_desired = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
+  frontend_min     = 1
+  frontend_max     = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 
@@ -127,7 +140,7 @@ resource "aws_ecs_service" "backend" {
   name                   = "${var.project_name}-backend-service"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.backend.arn
-  desired_count          = 2
+  desired_count          = local.backend_desired
   enable_execute_command = true
 
   # Cost Optimization: Use SPOT capacity provider instead of hardcoded FARGATE
@@ -173,7 +186,7 @@ resource "aws_ecs_service" "frontend" {
   name                   = "${var.project_name}-frontend-service"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.frontend.arn
-  desired_count          = 2
+  desired_count          = local.frontend_desired
   enable_execute_command = true
 
   # Frontend (Next.js) is stateless — ideal for SPOT
@@ -254,8 +267,8 @@ resource "aws_cloudwatch_metric_alarm" "backend_memory" {
 
 # --- Backend Auto Scaling ---
 resource "aws_appautoscaling_target" "backend" {
-  max_capacity       = 4
-  min_capacity       = 1   # Cost Optimization: allow scaling to 1 at night (was 2)
+  max_capacity       = local.backend_max
+  min_capacity       = local.backend_min
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -297,8 +310,8 @@ resource "aws_appautoscaling_policy" "backend_memory_scale_out" {
 
 # --- Frontend Auto Scaling ---
 resource "aws_appautoscaling_target" "frontend" {
-  max_capacity       = 4
-  min_capacity       = 1   # Cost Optimization: allow scaling to 1 at night (was 2)
+  max_capacity       = local.frontend_max
+  min_capacity       = local.frontend_min
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"

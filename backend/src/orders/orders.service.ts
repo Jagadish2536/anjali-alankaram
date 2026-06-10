@@ -59,7 +59,7 @@ export class OrdersService {
     const settings = await this.prisma.storeSettings.findFirst();
     const freeShipThreshold = Number((settings as any)?.freeShippingThreshold ?? 499);
     const shippingFee = Number((settings as any)?.shippingCharge ?? 49);
-    const reservationMins = Number((settings as any)?.reservationTimeoutMins ?? 15);
+    const reservationMins = Number((settings as any)?.reservationTimeoutMins ?? 5);
     const platformFeeEnabled = (settings as any)?.platformFeeEnabled ?? false;
     const platformFeeAmt = platformFeeEnabled ? Number((settings as any)?.platformFeeAmount ?? 0) : 0;
     const codChargeAmt = dto.paymentMethod === 'COD' ? Number((settings as any)?.codCharges ?? 0) : 0;
@@ -173,8 +173,10 @@ export class OrdersService {
         });
       }
 
-      // Clear cart
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      // Clear cart immediately only for COD. For online payments, cart is cleared upon successful payment verification.
+      if (dto.paymentMethod === 'COD') {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      }
 
       return newOrder;
     });

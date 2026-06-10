@@ -60,6 +60,7 @@ module "ecs" {
   ecs_task_role_arn         = module.security.ecs_task_role_arn
   secrets_arn               = aws_secretsmanager_secret.backend_secrets.arn
   s3_bucket_name            = aws_s3_bucket.assets.id
+  tier                      = var.tier
   tags                      = local.common_tags
 
   depends_on = [module.alb]

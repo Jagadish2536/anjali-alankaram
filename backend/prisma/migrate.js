@@ -257,7 +257,7 @@ async function main() {
     `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "sentVia" TEXT[] DEFAULT '{}'`,
     // store_settings new columns
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "lowStockThreshold" INTEGER NOT NULL DEFAULT 5`,
-    `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "reservationTimeoutMins" INTEGER NOT NULL DEFAULT 15`,
+    `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "reservationTimeoutMins" INTEGER NOT NULL DEFAULT 5`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "platformFeeEnabled" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "platformFeeAmount" FLOAT NOT NULL DEFAULT 0`,
     `ALTER TABLE "store_settings" ADD COLUMN IF NOT EXISTS "couponsEnabled" BOOLEAN NOT NULL DEFAULT true`,

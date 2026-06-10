@@ -76,17 +76,17 @@ resource "aws_ecr_lifecycle_policy" "frontend" {
 # Extended window (9 PM to 7 AM = 10 hours vs old 11 PM to 6 AM = 7 hours)
 # Savings: ~$8-12/month
 
-# Scale DOWN — 9:00 PM IST = 15:30 UTC
+# Scale DOWN — 11:00 PM IST = 17:30 UTC
 resource "aws_appautoscaling_scheduled_action" "backend_scale_down_night" {
   name               = "anjali-backend-scale-down-night"
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-backend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 15 * * ? *)"   # 15:30 UTC = 9:00 PM IST daily
+  schedule           = "cron(30 17 * * ? *)"   # 17:30 UTC = 11:00 PM IST daily
 
   scalable_target_action {
     min_capacity = 1
-    max_capacity = 1   # Force down to exactly 1 task at night
+    max_capacity = 1   # Force down to exactly 1 task (single instance) at night
   }
 }
 
@@ -95,25 +95,25 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_down_night" {
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-frontend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 15 * * ? *)"   # 15:30 UTC = 9:00 PM IST daily
+  schedule           = "cron(30 17 * * ? *)"   # 17:30 UTC = 11:00 PM IST daily
 
   scalable_target_action {
     min_capacity = 1
-    max_capacity = 1   # Force down to exactly 1 task at night
+    max_capacity = 1   # Force down to exactly 1 task (single instance) at night
   }
 }
 
-# Scale UP — 7:00 AM IST = 01:30 UTC
+# Scale UP — 10:00 AM IST = 04:30 UTC
 resource "aws_appautoscaling_scheduled_action" "backend_scale_up_morning" {
   name               = "anjali-backend-scale-up-morning"
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-backend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 1 * * ? *)"    # 01:30 UTC = 7:00 AM IST daily
+  schedule           = "cron(30 4 * * ? *)"    # 04:30 UTC = 10:00 AM IST daily
 
   scalable_target_action {
-    min_capacity = 2
-    max_capacity = 4
+    min_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
+    max_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
   }
 }
 
@@ -122,11 +122,11 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-frontend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 1 * * ? *)"    # 01:30 UTC = 7:00 AM IST daily
+  schedule           = "cron(30 4 * * ? *)"    # 04:30 UTC = 10:00 AM IST daily
 
   scalable_target_action {
-    min_capacity = 2
-    max_capacity = 4
+    min_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
+    max_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
   }
 }
 

@@ -384,7 +384,18 @@ export class AdminController implements OnModuleInit {
             timeout: 5000,
           },
         );
-        whatsappBalance = waRes.data;
+        
+        if (waRes.data && waRes.data.status === 'success' && waRes.data.data) {
+          whatsappBalance = {
+            balance: waRes.data.data.prepaid_balance ?? 0,
+            currency: 'INR'
+          };
+        } else {
+          whatsappBalance = {
+            balance: waRes.data?.prepaid_balance ?? 0,
+            currency: 'INR'
+          };
+        }
       } catch (err: any) {
         this.logger.error(`Failed to fetch MSG91 WhatsApp balance: ${err.message}`);
         errorMsg = errorMsg 
