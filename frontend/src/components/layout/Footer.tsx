@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Instagram, MessageCircle, Mail, Phone, ArrowUp, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -92,11 +93,8 @@ export default function Footer() {
           <div className="space-y-4">
             {/* Logo mark */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                  <path d="M12 2C8 2 6 5 6 8C6 12 12 22 12 22C12 22 18 12 18 8C18 5 16 2 12 2Z" />
-                  <circle cx="12" cy="8" r="2.5" />
-                </svg>
+              <div className="relative w-10 h-10 rounded-full border border-white/30 overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
+                <Image src="/logo.png" alt={storeName} fill className="object-contain" />
               </div>
               <div>
                 <p className="font-cormorant text-xl font-bold text-white leading-none">{storeName}</p>

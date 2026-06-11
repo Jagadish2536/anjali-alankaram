@@ -4,18 +4,25 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { formatPrice } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { Trash2, Minus, Plus, ArrowRight, Tag, Percent, Copy, Check, Gift } from 'lucide-react';
+import { Trash2, Minus, Plus, ArrowRight, Tag, Percent, Copy, Check, Gift, ZoomIn, X } from 'lucide-react';
 
 export default function CartPage() {
   const { items, subtotal, fetchCart, updateItem, removeItem, isLoading, appliedOffer } = useCartStore();
   const { isAuthenticated } = useAuthStore();
+  const { settings, fetchSettings } = useSettingsStore();
 
   const [activeOffers, setActiveOffers] = useState<any[]>([]);
   const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
   const [loadingDeals, setLoadingDeals] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -72,8 +79,12 @@ export default function CartPage() {
     );
   }
 
+  const freeShippingThreshold = settings.freeShippingThreshold;
+  const shippingEnabled = settings.shippingEnabled ?? true;
+  const shippingCharge = settings.shippingCharge;
+
   const offerDiscount = appliedOffer ? Number(appliedOffer.discount) : 0;
-  const shipping = subtotal > 499 ? 0 : 49;
+  const shipping = !shippingEnabled ? 0 : (subtotal >= freeShippingThreshold ? 0 : shippingCharge);
   const total = Math.max(0, subtotal - offerDiscount + shipping);
 
   return (
@@ -100,27 +111,44 @@ export default function CartPage() {
             const unitPrice = Number(item.product.salePrice || item.product.basePrice) + Number(item.variant.extraPrice);
             return (
               <div key={item.id} className="flex gap-6 border-b pb-6">
-                <div className="relative w-24 h-32 rounded-lg overflow-hidden bg-accent/20 shrink-0">
+                <div 
+                  onClick={() => {
+                    const src = item.variant.images?.[0] || item.product.images?.[0];
+                    const finalSrc = (src && src.trim() !== '') ? src : '/placeholder.png';
+                    setActiveZoomImage(finalSrc);
+                  }}
+                  className="relative w-24 h-32 rounded-lg overflow-hidden bg-accent/20 shrink-0 cursor-zoom-in group border hover:border-primary/20 transition-all shadow-sm"
+                >
                   {(() => {
                     const src = item.variant.images?.[0] || item.product.images?.[0];
                     const finalSrc = (src && src.trim() !== '') ? src : '/placeholder.png';
                     return (
-                      <Image
-                        src={finalSrc}
-                        alt={item.product.name}
-                        fill
-                        className="object-cover"
-                      />
+                      <>
+                        <Image
+                          src={finalSrc}
+                          alt={item.product.name}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                          <ZoomIn className="w-5 h-5 text-white drop-shadow-sm" />
+                        </div>
+                      </>
                     );
                   })()}
                 </div>
                 <div className="flex-1 flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start gap-4">
                     <div>
-                      <h3 className="font-medium text-lg">{item.product.name}</h3>
+                      <Link 
+                        href={`/products/${item.product.slug}${item.variant.color ? `?color=${encodeURIComponent(item.variant.color)}` : ''}`}
+                        className="hover:text-primary transition-colors text-left"
+                      >
+                        <h3 className="font-medium text-lg hover:underline decoration-primary/30 leading-snug">{item.product.name}</h3>
+                      </Link>
                       <p className="text-sm text-muted-foreground mt-1">Size: {item.variant.size} {item.variant.color ? `| Color: ${item.variant.color}` : ''}</p>
                     </div>
-                    <span className="font-bold">{formatPrice(unitPrice * item.quantity)}</span>
+                    <span className="font-bold shrink-0">{formatPrice(unitPrice * item.quantity)}</span>
                   </div>
                   
                   <div className="flex justify-between items-center mt-4">
@@ -180,7 +208,7 @@ export default function CartPage() {
               )}
             </div>
             {shipping > 0 && (
-              <p className="text-xs text-muted-foreground">Add {formatPrice(499 - subtotal)} more for free shipping.</p>
+              <p className="text-xs text-muted-foreground">Add {formatPrice(freeShippingThreshold - subtotal)} more for free shipping.</p>
             )}
           </div>
           
@@ -289,6 +317,35 @@ export default function CartPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── IMAGE ZOOM MODAL / LIGHTBOX ── */}
+      {activeZoomImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setActiveZoomImage(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 border border-white/20 flex items-center justify-center z-10 transition-colors"
+            onClick={() => setActiveZoomImage(null)}
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+          
+          <div 
+            className="relative max-w-2xl max-h-[85vh] w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image 
+              src={activeZoomImage} 
+              alt="Enlarged product image" 
+              fill
+              className="object-contain"
+              sizes="(max-w-768px) 100vw, 800px"
+              priority
+            />
           </div>
         </div>
       )}

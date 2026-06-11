@@ -11,7 +11,8 @@ import { formatPrice } from '@/lib/utils';
 import Script from 'next/script';
 import {
   Tag, Gift, MapPin, ChevronRight, Check,
-  Loader2, ShieldCheck, X, Package, ChevronDown, Percent
+  Loader2, ShieldCheck, X, Package, ChevronDown, Percent,
+  AlertTriangle
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'COD'>('RAZORPAY');
   const [isProcessing, setIsProcessing] = useState(false);
   const isSuccessRef = useRef(false);
+  const [showPaymentWarningModal, setShowPaymentWarningModal] = useState(false);
 
   // Qty edit state
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
@@ -480,7 +482,7 @@ export default function CheckoutPage() {
                 ) : null}
 
                 {addresses.length > 0 && (
-                  <button onClick={() => setStep(2)} disabled={!selectedAddress}
+                  <button onClick={() => setShowPaymentWarningModal(true)} disabled={!selectedAddress}
                     className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 mt-2">
                     CONTINUE TO PAYMENT →
                   </button>
@@ -821,6 +823,69 @@ export default function CheckoutPage() {
               <button onClick={handleSaveAddress}
                 className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors shadow-md shadow-primary/30">
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── PAYMENT POLICY CONFIRMATION MODAL ── */}
+      {showPaymentWarningModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPaymentWarningModal(false)} />
+          <div className="relative bg-white rounded-2xl w-full max-w-md p-6 flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Header/Icon */}
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-amber-500">
+                <AlertTriangle className="w-8 h-8 text-amber-500" />
+              </div>
+              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight font-outfit">
+                Important Payment Policy
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Please review our terms before proceeding to payment.
+              </p>
+            </div>
+
+            {/* Warnings list */}
+            <div className="bg-[#FAF9F6] border border-amber-100 rounded-xl p-4 space-y-3 mb-6">
+              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                <span><strong>No Refund / Exchange / Returns:</strong> Once payment is successful, the order cannot be refunded, exchanged, or returned.</span>
+              </div>
+              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                <span><strong>No COD Support:</strong> Cash on Delivery is not supported/applicable once payment is completed online.</span>
+              </div>
+              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                <span><strong>No Cancellation:</strong> If the order is already shipped, it cannot be cancelled or refunded.</span>
+              </div>
+            </div>
+
+            <p className="text-center font-bold text-sm text-gray-800 mb-6">
+              Are you sure you want to continue?
+            </p>
+
+            {/* Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowPaymentWarningModal(false);
+                  setStep(2);
+                }}
+                className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
+              >
+                Yes, Continue to Payment
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowPaymentWarningModal(false);
+                  router.push('/cart');
+                }}
+                className="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 h-12 rounded-xl font-bold text-sm transition-colors border border-gray-200"
+              >
+                Go Back to Cart Page
               </button>
             </div>
           </div>

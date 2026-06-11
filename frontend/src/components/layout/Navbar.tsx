@@ -169,11 +169,15 @@ export default function Navbar() {
           </div>
 
           {/* Center: Logo */}
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center group">
-            <span className="font-cormorant text-2xl md:text-3xl font-bold text-primary tracking-wide leading-none group-hover:opacity-80 transition-opacity">
-              {storeName}
-            </span>
-            <span className="text-[9px] tracking-[0.2em] text-muted-foreground uppercase font-outfit">EST. 2024</span>
+          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center group h-12">
+            <Image
+              src="/logo.png"
+              alt={storeName}
+              width={48}
+              height={48}
+              className="object-contain h-12 w-12 rounded-full border border-primary/10 group-hover:opacity-80 transition-opacity"
+              priority
+            />
           </Link>
 
           {/* Right: icons */}
@@ -257,9 +261,15 @@ export default function Navbar() {
               <button onClick={() => setMobileOpen(false)} className="p-1 text-foreground">
                 <X className="w-5 h-5" />
               </button>
-              <Link href="/" onClick={() => setMobileOpen(false)} className="flex flex-col items-center">
-                <span className="font-cormorant text-xl font-bold text-primary tracking-wide">{storeName}</span>
-                <span className="text-[9px] tracking-[0.15em] text-muted-foreground uppercase font-outfit">EST. 2024</span>
+              <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center justify-center h-10 w-10">
+                <Image
+                  src="/logo.png"
+                  alt={storeName}
+                  width={40}
+                  height={40}
+                  className="object-contain h-10 w-10 rounded-full border border-primary/10"
+                  priority
+                />
               </Link>
               <div className="flex items-center gap-2">
                 <button onClick={() => { setMobileOpen(false); setShowSearch(true); }} className="p-1 text-foreground" aria-label="Search">
