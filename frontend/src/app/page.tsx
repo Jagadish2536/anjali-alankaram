@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -247,39 +247,69 @@ function ProductSection({
 // ── Featured Videos Carousel ───────────────────────────────────────────────────
 function VideoCarousel({ videos }: { videos: any[] }) {
   const [center, setCenter] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const total = videos.length;
 
   useEffect(() => {
-    if (videos.length > 0) setCenter(Math.min(2, videos.length - 1));
-  }, [videos.length]);
+    if (total > 0) setCenter(Math.min(2, total - 1));
+  }, [total]);
 
-  if (videos.length === 0) return null;
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || total === 0) return;
 
-  const total = videos.length;
+    let startX = 0;
+    let startY = 0;
+    let endX = 0;
+
+    const handleStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      endX = startX;
+    };
+
+    const handleMove = (e: TouchEvent) => {
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      
+      const deltaX = startX - currentX;
+      const deltaY = startY - currentY;
+
+      // If swipe is mostly horizontal, prevent page scroll for neat swiping
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+      endX = currentX;
+    };
+
+    const handleEnd = () => {
+      const distance = startX - endX;
+      if (Math.abs(distance) > 40) {
+        if (distance > 0) {
+          setCenter(c => (c + 1) % total);
+        } else {
+          setCenter(c => (c - 1 + total) % total);
+        }
+      }
+    };
+
+    element.addEventListener('touchstart', handleStart, { passive: true });
+    element.addEventListener('touchmove', handleMove, { passive: false });
+    element.addEventListener('touchend', handleEnd, { passive: true });
+
+    return () => {
+      element.removeEventListener('touchstart', handleStart);
+      element.removeEventListener('touchmove', handleMove);
+      element.removeEventListener('touchend', handleEnd);
+    };
+  }, [videos, total]);
+
+  if (total === 0) return null;
+
   const prev = () => setCenter(c => (c - 1 + total) % total);
   const next = () => setCenter(c => (c + 1) % total);
-
-  // Swipe handlers
-  const minSwipeDistance = 50;
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    if (isLeftSwipe) {
-      next();
-    } else if (isRightSwipe) {
-      prev();
-    }
-  };
 
   const getStyle = (i: number) => {
     const diff = ((i - center + total) % total + total) % total;
@@ -297,11 +327,9 @@ function VideoCarousel({ videos }: { videos: any[] }) {
     <section className="py-16 bg-background overflow-hidden">
       <h2 className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-12">Featured Videos</h2>
       <div
+        ref={containerRef}
         className="relative flex items-center justify-center select-none"
         style={{ height: 500 }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <button
           onClick={prev}
@@ -327,12 +355,7 @@ function VideoCarousel({ videos }: { videos: any[] }) {
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
-                    </div>
-                  </div>
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
                   <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary">
                     <Video className="w-4 h-4 text-white" />
                   </div>
