@@ -124,6 +124,11 @@ export class CreateProductDto {
   @IsString()
   instagramReelUrl?: string;
 
+  @ApiPropertyOptional({ example: 'https://example.com/uploads/products/video.mp4' })
+  @IsOptional()
+  @IsString()
+  videoUrl?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()

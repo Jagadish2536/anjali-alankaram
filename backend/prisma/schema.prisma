@@ -278,6 +278,7 @@ model Product {
   material         String?
   careInstructions String?
   instagramReelUrl String?
+  videoUrl         String?
   codAvailable     Boolean          @default(true)
   returnEnabled    Boolean          @default(true)
   replaceEnabled   Boolean          @default(true)

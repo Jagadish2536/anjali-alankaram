@@ -60,9 +60,15 @@ export class ProductsService {
       where.isBestseller = true;
     }
 
-    // Filter for products that have an Instagram reel URL (for featured videos)
+    // Filter for products that have an Instagram reel URL or a local video URL (for featured videos)
     if (hasReel === 'true') {
-      where.instagramReelUrl = { not: null };
+      if (!where.AND) where.AND = [];
+      where.AND.push({
+        OR: [
+          { instagramReelUrl: { not: null } },
+          { videoUrl: { not: null } }
+        ]
+      });
     }
 
     if (minPrice || maxPrice) {

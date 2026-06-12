@@ -137,6 +137,7 @@ interface EditFormData {
   categoryId: string;
   images: string[];
   instagramReelUrl: string;
+  videoUrl: string;
   codAvailable: boolean;
   returnEnabled: boolean;
   replaceEnabled: boolean;
@@ -152,10 +153,11 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
+  const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', videoUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
   const [editVariants, setEditVariants] = useState<ColorGroup[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   // ── Inventory Report state ────────────────────────────────────────
@@ -329,6 +331,7 @@ export default function AdminProductsPage() {
       categoryId: product.categoryId || '',
       images: product.images?.length > 0 ? product.images : [''],
       instagramReelUrl: product.instagramReelUrl || '',
+      videoUrl: product.videoUrl || '',
       codAvailable: product.codAvailable !== false,
       returnEnabled: product.returnEnabled !== false,
       replaceEnabled: product.replaceEnabled !== false,
@@ -392,6 +395,7 @@ export default function AdminProductsPage() {
         categoryId: editForm.categoryId,
         images: editForm.images.filter(img => img.trim() !== ''),
         instagramReelUrl: editForm.instagramReelUrl.trim() || null,
+        videoUrl: editForm.videoUrl.trim() || null,
         codAvailable: editForm.codAvailable,
         returnEnabled: editForm.returnEnabled,
         replaceEnabled: editForm.replaceEnabled,
@@ -426,6 +430,22 @@ export default function AdminProductsPage() {
       alert('Upload failed: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsUploading(null);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsVideoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setEditForm(prev => ({ ...prev, videoUrl: data.url }));
+    } catch (err: any) {
+      alert('Video upload failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsVideoUploading(false);
     }
   };
 
@@ -641,7 +661,62 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
+              {/* Product Video (Local Upload) */}
+              <div className="rounded-xl overflow-hidden border">
+                <div
+                  className="px-4 py-3 flex items-center gap-2 bg-primary text-primary-foreground"
+                >
+                  <PlusCircle className="w-4 h-4 text-white" />
+                  <span className="text-sm font-bold text-white">Product Video (Local Upload)</span>
+                  <span className="text-white/70 text-xs ml-1">(optional)</span>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Video URL (upload or paste direct MP4 link)</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/uploads/products/video.mp4"
+                      className="w-full px-3 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-sm transition-shadow"
+                      value={editForm.videoUrl}
+                      onChange={e => setEditForm({ ...editForm, videoUrl: e.target.value })}
+                    />
+                    <div className="mt-2.5 flex items-center gap-3">
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer bg-muted hover:bg-muted/80 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-border">
+                        {isVideoUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> : <Plus className="w-3.5 h-3.5" />}
+                        {isVideoUploading ? 'Uploading Video...' : editForm.videoUrl ? 'Change Local Video' : 'Upload MP4 from Device'}
+                        <input type="file" accept="video/mp4,video/quicktime,video/*" className="hidden" onChange={handleVideoUpload} disabled={isVideoUploading} />
+                      </label>
+                      {editForm.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, videoUrl: '' })}
+                          className="text-xs text-red-500 hover:text-red-700 font-bold hover:underline"
+                        >
+                          Clear Video
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
+                  {editForm.videoUrl && (
+                    <div className="space-y-2">
+                      <div className="p-2.5 bg-green-50 border border-green-100 rounded-lg text-xs text-green-700 font-medium">
+                        Video linked successfully ✓
+                      </div>
+                      <div className="flex justify-center bg-muted/20 rounded-xl py-3 border border-dashed">
+                        <video
+                          src={editForm.videoUrl}
+                          controls
+                          muted
+                          className="rounded-lg max-w-full"
+                          style={{ maxHeight: 240 }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-center text-muted-foreground">Autoplay preview (always muted on loop)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Size Guide */}
               <div className="border rounded-xl overflow-hidden">

@@ -53,8 +53,11 @@ export default function NewProductPage() {
       }
     ],
     instagramReelUrl: '',
+    videoUrl: '',
     sizeGuide: [] as SizeRow[],
   });
+
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
 
   useEffect(() => { fetchCategories(); }, []);
 
@@ -122,6 +125,22 @@ export default function NewProductPage() {
     }
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsVideoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setFormData(prev => ({ ...prev, videoUrl: data.url }));
+    } catch (err: any) {
+      alert('Video upload failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsVideoUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -159,6 +178,7 @@ export default function NewProductPage() {
         status: 'ACTIVE',
         variants: cleanVariants,
         instagramReelUrl: formData.instagramReelUrl.trim() || undefined,
+        videoUrl: formData.videoUrl.trim() || undefined,
         sizeGuide: formData.sizeGuide.length > 0 ? formData.sizeGuide : undefined,
       };
       if (formData.salePrice) payload.salePrice = Number(formData.salePrice);
@@ -367,6 +387,63 @@ export default function NewProductPage() {
                   <X className="w-4 h-4" /> URL does not look like a valid Instagram reel link.
                 </div>
               )
+            )}
+          </div>
+        </div>
+
+        {/* ── Product Video Upload ── */}
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+          <div className="px-8 py-5 border-b flex items-center gap-3 bg-primary text-primary-foreground">
+            <PlusCircle className="w-5 h-5" />
+            <div>
+              <h2 className="text-lg font-bold font-outfit text-white">Product Video (Local Upload)</h2>
+              <p className="text-white/80 text-xs">Optional — upload an MP4 video from your device to play and loop automatically on the product details page.</p>
+            </div>
+          </div>
+          <div className="p-8 space-y-5">
+            <div>
+              <label className="block text-sm font-medium mb-2">Video URL <span className="text-muted-foreground font-normal">(upload or paste direct MP4 link)</span></label>
+              <input
+                type="url"
+                placeholder="https://example.com/uploads/products/video.mp4"
+                className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                value={formData.videoUrl}
+                onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
+              />
+              <div className="mt-3 flex items-center gap-4">
+                <label className="inline-flex items-center gap-2 cursor-pointer bg-muted hover:bg-muted/80 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border border-border">
+                  {isVideoUploading ? <Loader2 className="w-3 h-3 animate-spin text-primary" /> : <Plus className="w-3 h-3" />}
+                  {isVideoUploading ? 'Uploading Video...' : formData.videoUrl ? 'Change Local Video' : 'Upload MP4 from Device'}
+                  <input type="file" accept="video/mp4,video/quicktime,video/*" className="hidden" onChange={handleVideoUpload} disabled={isVideoUploading} />
+                </label>
+                {formData.videoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, videoUrl: '' })}
+                    className="text-xs text-red-500 hover:text-red-700 font-bold hover:underline"
+                  >
+                    Clear Video
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {formData.videoUrl && (
+              <div className="space-y-2">
+                <div className="p-2.5 bg-green-50 border border-green-100 rounded-xl text-xs text-green-700 font-medium">
+                  Video linked successfully
+                </div>
+                <div className="flex justify-center bg-muted/20 rounded-2xl py-4 border border-dashed">
+                  <video
+                    src={formData.videoUrl}
+                    controls
+                    muted
+                    className="rounded-xl max-w-full"
+                    style={{ maxHeight: 320 }}
+                  />
+                </div>
+                <p className="text-[10px] text-center text-muted-foreground">Autoplay preview (always muted on loop)</p>
+              </div>
             )}
           </div>
         </div>

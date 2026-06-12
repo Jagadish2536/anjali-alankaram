@@ -9,7 +9,7 @@ import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   Star, Minus, Plus, ShoppingBag, Heart, Zap,
-  Instagram, ExternalLink, Truck, ShieldCheck,
+  Instagram, ExternalLink, Truck, ShieldCheck, Video,
   RefreshCw, CheckCircle2, MapPin, Package, Loader2,
   X, Ruler, Send, Trash2, ThumbsUp, ChevronRight, Eye, ChevronDown,
   Share2, MessageCircle, Link2, Copy, Check
@@ -1387,8 +1387,30 @@ export default function ProductDetailPage() {
       </div>
 
 
-      {/* ── Instagram Reel ─────────────────────────────────────────────── */}
-      {product.instagramReelUrl && (() => {
+      {/* ── Product Video or Instagram Reel ─────────────────────────────── */}
+      {product.videoUrl ? (
+        <div className="container mt-4 mb-8">
+          <div className="rounded-2xl overflow-hidden border shadow">
+            <div className="px-6 py-4 flex items-center justify-between bg-primary text-primary-foreground">
+              <div className="flex items-center gap-3">
+                <Video className="w-5 h-5 text-white animate-pulse" />
+                <span className="font-bold text-white">See it in action</span>
+              </div>
+            </div>
+            <div className="flex justify-center py-6 bg-muted/20">
+              <video
+                src={product.videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="rounded-xl shadow-xl max-w-full"
+                style={{ width: 360, height: 480, objectFit: 'cover' }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : product.instagramReelUrl && (() => {
         const match = product.instagramReelUrl.match(/instagram\.com\/(reel|p)\/([A-Za-z0-9_-]+)/);
         if (!match) return null;
         return (
