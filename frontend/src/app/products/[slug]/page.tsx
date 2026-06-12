@@ -12,7 +12,7 @@ import {
   Instagram, ExternalLink, Truck, ShieldCheck, Video,
   RefreshCw, CheckCircle2, MapPin, Package, Loader2,
   X, Ruler, Send, Trash2, ThumbsUp, ChevronRight, Eye, ChevronDown,
-  Share2, MessageCircle, Link2, Copy, Check
+  Share2, MessageCircle, Link2, Copy, Check, Volume2, VolumeX
 } from 'lucide-react';
 
 // ── Lotus marquee ──────────────────────────────────────────────────────────────
@@ -500,6 +500,7 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [viewerCount, setViewerCount] = useState(() => Math.floor(Math.random() * 25) + 8);
   const [activeDetailTab, setActiveDetailTab] = useState<'description' | 'shipping'>('description');
+  const [isMuted, setIsMuted] = useState(true);
 
   // Real-time active viewer counter heartbeat
   useEffect(() => {
@@ -1398,15 +1399,29 @@ export default function ProductDetailPage() {
               </div>
             </div>
             <div className="flex justify-center py-6 bg-muted/20">
-              <video
-                src={product.videoUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="rounded-xl shadow-xl max-w-full"
-                style={{ width: 360, height: 480, objectFit: 'cover' }}
-              />
+              <div className="relative">
+                <video
+                  src={product.videoUrl}
+                  autoPlay
+                  loop
+                  muted={isMuted}
+                  playsInline
+                  className="rounded-xl shadow-xl max-w-full"
+                  style={{ width: 360, height: 480, objectFit: 'cover' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="absolute bottom-4 right-4 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white shadow-lg backdrop-blur-sm transition-all hover:scale-105 active:scale-95 flex items-center justify-center border border-white/10"
+                  title={isMuted ? "Unmute Audio" : "Mute Audio"}
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-5 h-5 text-white" />
+                  ) : (
+                    <Volume2 className="w-5 h-5 text-white" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
