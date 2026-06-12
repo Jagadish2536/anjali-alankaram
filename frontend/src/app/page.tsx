@@ -286,7 +286,14 @@ function VideoCarousel({ videos }: { videos: any[] }) {
                   className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
                   style={{ aspectRatio: '9/16', maxHeight: 390 }}
                 >
-                  <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
+                  <video
+                    src={vid.videoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
