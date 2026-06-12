@@ -244,6 +244,46 @@ function ProductSection({
   );
 }
 
+// ── Robust Autoplay Video Component ──────────────────────────────────────────
+function AutoplayVideo({ src, className }: { src: string; className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Direct DOM mutation is more reliable in React/WebViews for autoplay policies
+    video.muted = true;
+    video.defaultMuted = true;
+
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Fallback: try playing on any user interaction with the document
+        const triggerPlay = () => {
+          video.play().catch(() => {});
+          document.removeEventListener('click', triggerPlay);
+          document.removeEventListener('touchstart', triggerPlay);
+        };
+        document.addEventListener('click', triggerPlay);
+        document.addEventListener('touchstart', triggerPlay);
+      });
+    }
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      loop
+      muted
+      playsInline
+      className={className}
+    />
+  );
+}
+
 // ── Featured Videos Carousel ───────────────────────────────────────────────────
 function VideoCarousel({ videos }: { videos: any[] }) {
   const [center, setCenter] = useState(0);
@@ -347,12 +387,8 @@ function VideoCarousel({ videos }: { videos: any[] }) {
                   className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
                   style={{ aspectRatio: '9/16', maxHeight: 390 }}
                 >
-                  <video
+                  <AutoplayVideo
                     src={vid.videoUrl}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />

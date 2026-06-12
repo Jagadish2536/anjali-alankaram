@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -501,6 +501,31 @@ export default function ProductDetailPage() {
   const [viewerCount, setViewerCount] = useState(() => Math.floor(Math.random() * 25) + 8);
   const [activeDetailTab, setActiveDetailTab] = useState<'description' | 'shipping'>('description');
   const [isMuted, setIsMuted] = useState(true);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Force DOM settings to bypass restrictions
+    video.muted = isMuted;
+    video.defaultMuted = true;
+
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Fallback: try playing on any user interaction with the document
+        const triggerPlay = () => {
+          video.play().catch(() => {});
+          document.removeEventListener('click', triggerPlay);
+          document.removeEventListener('touchstart', triggerPlay);
+        };
+        document.addEventListener('click', triggerPlay);
+        document.addEventListener('touchstart', triggerPlay);
+      });
+    }
+  }, [product?.videoUrl, isMuted]);
 
   // Real-time active viewer counter heartbeat
   useEffect(() => {
@@ -1401,6 +1426,7 @@ export default function ProductDetailPage() {
             <div className="flex justify-center py-6 bg-muted/20">
               <div className="relative">
                 <video
+                  ref={videoRef}
                   src={product.videoUrl}
                   autoPlay
                   loop
