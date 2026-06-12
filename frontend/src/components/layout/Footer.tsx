@@ -48,6 +48,7 @@ function FooterAccordion({ title, children }: { title: string; children: React.R
 
 export default function Footer() {
   const pathname = usePathname();
+  const isProductDetail = pathname.startsWith('/products/') && pathname.split('/').length === 3;
   const { settings, fetchSettings } = useSettingsStore();
   const s = settings as any;
   const [footerCats, setFooterCats] = useState<{ name: string; slug: string }[]>([]);
@@ -201,10 +202,14 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Scroll to top — above bottom nav on mobile */}
+      {/* Scroll to top — above bottom nav on mobile, higher on product detail page to clear buy bar */}
       <button
         onClick={scrollToTop}
-        className="fixed bottom-[130px] md:bottom-6 right-4 md:right-6 z-40 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
+        className={`fixed ${
+          isProductDetail
+            ? 'bottom-[calc(150px+env(safe-area-inset-bottom,0px))]'
+            : 'bottom-[calc(130px+env(safe-area-inset-bottom,0px))]'
+        } md:bottom-6 right-4 md:right-6 z-40 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5`}
         aria-label="Scroll to top"
       >
         <ArrowUp className="w-4 h-4" />

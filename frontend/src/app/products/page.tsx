@@ -85,13 +85,19 @@ function PriceSlider({ min, max, value, onChange }: {
 
 // ── Product card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, activeColor }: { product: any; activeColor?: string }) {
+  const [localColor, setLocalColor] = useState(activeColor || '');
+
+  useEffect(() => {
+    setLocalColor(activeColor || '');
+  }, [activeColor]);
+
   const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
   const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
 
   // When a color is active, compute stock only for that color's variants
   const totalStock = (() => {
-    if (activeColor) {
-      const colorVariants = product.variants?.filter((v: any) => v.color === activeColor) || [];
+    if (localColor) {
+      const colorVariants = product.variants?.filter((v: any) => v.color === localColor) || [];
       if (colorVariants.length > 0)
         return colorVariants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0);
     }
@@ -102,73 +108,116 @@ function ProductCard({ product, activeColor }: { product: any; activeColor?: str
 
   // If a colour filter is active, use the first variant image that matches the colour
   const displayImage = (() => {
-    if (activeColor) {
-      const match = product.variants?.find((v: any) => v.color === activeColor && v.images?.length > 0);
+    if (localColor) {
+      const match = product.variants?.find((v: any) => v.color === localColor && v.images?.length > 0);
       if (match?.images?.[0] && match.images[0].trim() !== '') return match.images[0];
     }
     const mainImg = product.images?.[0];
     return (mainImg && mainImg.trim() !== '') ? mainImg : '/placeholder.png';
   })();
 
-  const href = activeColor
-    ? `/products/${product.slug}?color=${encodeURIComponent(activeColor)}`
+  const href = localColor
+    ? `/products/${product.slug}?color=${encodeURIComponent(localColor)}`
     : `/products/${product.slug}`;
 
+  // Unique list of colors with their hex values
+  const productColors = (() => {
+    const map = new Map<string, string>();
+    product.variants?.forEach((v: any) => {
+      if (v.isActive !== false && v.color && v.color.trim() !== '' && !map.has(v.color)) {
+        map.set(v.color, v.colorHex || '');
+      }
+    });
+    return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
+  })();
+
   return (
-    <Link href={href} className="group flex flex-col">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
-        <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
+    <div className="group flex flex-col">
+      <Link href={href} className="flex flex-col">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
+          <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
-        {/* Top-left badge: Out of Stock OR Discount % */}
-        {isOutOfStock ? (
-          <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-            OUT OF STOCK
-          </span>
-        ) : hasDiscount ? (
-          <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-            {discountPct}% OFF
-          </span>
-        ) : null}
+          {/* Top-left badge: Out of Stock OR Discount % */}
+          {isOutOfStock ? (
+            <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+              OUT OF STOCK
+            </span>
+          ) : hasDiscount ? (
+            <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+              {discountPct}% OFF
+            </span>
+          ) : null}
 
-        {/* Low stock badge — bottom-left */}
-        {isLowStock && (
-          <span className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow animate-pulse">
-            Only {totalStock} left! Hurry
-          </span>
-        )}
+          {/* Low stock badge — bottom-left */}
+          {isLowStock && (
+            <span className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow animate-pulse">
+              Only {totalStock} left! Hurry
+            </span>
+          )}
 
-        {/* Out of stock overlay */}
-        {isOutOfStock && (
-          <div className="absolute inset-0 bg-black/20 flex items-end justify-center pb-4 pointer-events-none" />
-        )}
+          {/* Out of stock overlay */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/20 flex items-end justify-center pb-4 pointer-events-none" />
+          )}
 
-        {/* Heart */}
-        <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:scale-90 md:group-hover:scale-100 transition-all duration-200">
-          <Heart className="w-3.5 h-3.5 text-primary" />
+          {/* Heart */}
+          <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:scale-90 md:group-hover:scale-100 transition-all duration-200">
+            <Heart className="w-3.5 h-3.5 text-primary" />
+          </div>
+
+          {/* Cart — only show if in stock */}
+          {!isOutOfStock && (
+            <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0 transition-all duration-200">
+              <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+            </div>
+          )}
         </div>
 
-        {/* Cart — only show if in stock */}
-        {!isOutOfStock && (
-          <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0 transition-all duration-200">
-            <ShoppingBag className="w-3.5 h-3.5 text-primary" />
-          </div>
-        )}
-      </div>
+        <h3 className="font-medium text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">{product.name}</h3>
+        <div className="flex items-center gap-2 mt-1">
+          {isOutOfStock ? (
+            <span className="text-xs font-semibold text-muted-foreground">Out of Stock</span>
+          ) : (
+            <>
+              <span className="font-semibold text-sm">{formatPrice(product.salePrice || product.basePrice)}</span>
+              {hasDiscount && (
+                <span className="text-muted-foreground line-through text-xs">{formatPrice(product.basePrice)}</span>
+              )}
+            </>
+          )}
+        </div>
+      </Link>
 
-      <h3 className="font-medium text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">{product.name}</h3>
-      <div className="flex items-center gap-2 mt-1">
-        {isOutOfStock ? (
-          <span className="text-xs font-semibold text-muted-foreground">Out of Stock</span>
-        ) : (
-          <>
-            <span className="font-semibold text-sm">{formatPrice(product.salePrice || product.basePrice)}</span>
-            {hasDiscount && (
-              <span className="text-muted-foreground line-through text-xs">{formatPrice(product.basePrice)}</span>
-            )}
-          </>
-        )}
-      </div>
-    </Link>
+      {/* Render interactive color swatches */}
+      {productColors.length > 1 && (
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {productColors.map(({ name, hex }) => {
+            const isSelected = localColor === name || (!localColor && productColors[0].name === name);
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLocalColor(name);
+                }}
+                onMouseEnter={() => {
+                  setLocalColor(name);
+                }}
+                className={`w-4 h-4 rounded-full border transition-all duration-200 cursor-pointer ${
+                  isSelected
+                    ? 'ring-2 ring-primary ring-offset-1 border-transparent scale-110'
+                    : 'border-gray-300 hover:scale-105'
+                }`}
+                style={{ backgroundColor: hex || '#ccc' }}
+                title={name}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -261,6 +310,55 @@ function ProductsContent() {
 
     return list;
   })();
+
+  // ── Render Items Calculation (Flattening by Color on Shop All) ───────────
+  const renderItems: { key: string; product: any; activeColor: string | undefined }[] = (() => {
+    const isShopAll = !categorySlug;
+
+    if (isShopAll) {
+      // Shop All page: Expand each product by all its unique colors
+      return displayedProducts.flatMap((p): { key: string; product: any; activeColor: string | undefined }[] => {
+        const uniqueColors = Array.from(
+          new Set(
+            p.variants
+              ?.map((v: any) => v.color)
+              .filter((color: any) => typeof color === 'string' && color.trim() !== '')
+          )
+        ) as string[];
+
+        if (uniqueColors.length === 0) {
+          return [{ key: p.id, product: p, activeColor: undefined }];
+        }
+
+        // If color filters are active, only show the variants matching selectedColors
+        const colorsToShow = selectedColors.length > 0
+          ? uniqueColors.filter(c => selectedColors.includes(c))
+          : uniqueColors;
+
+        return colorsToShow.map(color => ({
+          key: `${p.id}-${color}`,
+          product: p,
+          activeColor: color
+        }));
+      });
+    } else {
+      // Category page: Show one card per product
+      return displayedProducts.map(p => {
+        // If color filters are active, set activeColor to the first matching color
+        let activeColor: string | undefined = undefined;
+        if (selectedColors.length > 0) {
+          activeColor = p.variants?.find((v: any) => selectedColors.includes(v.color))?.color;
+        }
+
+        return {
+          key: p.id,
+          product: p,
+          activeColor
+        };
+      });
+    }
+  })();
+
 
   // Derive available sizes and colors from ALL loaded products (before filter)
   const availableSizes = getUniqueSizes(allProducts);
@@ -443,7 +541,7 @@ function ProductsContent() {
         {/* Sort bar + count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading…' : `${displayedProducts.length} product${displayedProducts.length !== 1 ? 's' : ''}`}
+            {isLoading ? 'Loading…' : `${renderItems.length} product${renderItems.length !== 1 ? 's' : ''}`}
           </p>
           <div className="flex items-center gap-3">
             {/* Mobile filter toggle */}
@@ -509,7 +607,7 @@ function ProductsContent() {
                   </div>
                 ))}
               </div>
-            ) : displayedProducts.length === 0 ? (
+            ) : renderItems.length === 0 ? (
               <div className="py-24 text-center">
                 <p className="text-muted-foreground text-lg">No products found.</p>
                 {hasActiveFilters && (
@@ -523,22 +621,13 @@ function ProductsContent() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {selectedColors.length > 1
-                  ? displayedProducts.flatMap(p =>
-                      selectedColors
-                        .filter(color => p.variants?.some((v: any) => v.color === color))
-                        .map(color => (
-                          <ProductCard key={`${p.id}-${color}`} product={p} activeColor={color} />
-                        ))
-                    )
-                  : displayedProducts.map(p => (
-                      <ProductCard
-                        key={p.id}
-                        product={p}
-                        activeColor={selectedColors.length === 1 ? selectedColors[0] : undefined}
-                      />
-                    ))
-                }
+                {renderItems.map(({ key, product, activeColor }) => (
+                  <ProductCard
+                    key={key}
+                    product={product}
+                    activeColor={activeColor}
+                  />
+                ))}
               </div>
             )}
           </div>

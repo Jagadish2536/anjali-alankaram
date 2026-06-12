@@ -68,20 +68,53 @@ function CollectionCard({ cat }: { cat: any }) {
 
 // ── Product card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id: string) => void }) {
+  const [localColor, setLocalColor] = useState('');
+
   const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
   const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
 
   // Use variant-level stock totals (same as shop page)
-  const totalStock = product.variants && product.variants.length > 0
-    ? product.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
-    : (product.stock ?? 0);
+  const totalStock = (() => {
+    if (localColor) {
+      const colorVariants = product.variants?.filter((v: any) => v.color === localColor) || [];
+      if (colorVariants.length > 0)
+        return colorVariants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0);
+    }
+    return product.variants && product.variants.length > 0
+      ? product.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
+      : (product.stock ?? 0);
+  })();
   const isOutOfStock = totalStock === 0;
   const isLowStock = !isOutOfStock && totalStock > 0 && totalStock < 5;
 
+  const displayImage = (() => {
+    if (localColor) {
+      const match = product.variants?.find((v: any) => v.color === localColor && v.images?.length > 0);
+      if (match?.images?.[0] && match.images[0].trim() !== '') return match.images[0];
+    }
+    const mainImg = product.images?.[0];
+    return (mainImg && mainImg.trim() !== '') ? mainImg : '/placeholder.png';
+  })();
+
+  const href = localColor
+    ? `/products/${product.slug}?color=${encodeURIComponent(localColor)}`
+    : `/products/${product.slug}`;
+
+  // Unique list of colors with their hex values
+  const productColors = (() => {
+    const map = new Map<string, string>();
+    product.variants?.forEach((v: any) => {
+      if (v.isActive !== false && v.color && v.color.trim() !== '' && !map.has(v.color)) {
+        map.set(v.color, v.colorHex || '');
+      }
+    });
+    return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
+  })();
+
   return (
     <div className="group flex flex-col relative">
-      <Link href={`/products/${product.slug}`} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2">
-        <Image src={product.images?.[0] || '/placeholder.png'} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
+      <Link href={href} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2">
+        <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
         {/* Top-left badge: OUT OF STOCK takes priority over discount */}
         {isOutOfStock ? (
@@ -111,7 +144,7 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
           </button>
         )}
       </Link>
-      <Link href={`/products/${product.slug}`}>
+      <Link href={href}>
         <h3 className="text-sm font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
         <div className="flex items-center gap-2 mt-0.5">
           {isOutOfStock ? (
@@ -126,6 +159,36 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
           )}
         </div>
       </Link>
+
+      {/* Render interactive color swatches */}
+      {productColors.length > 1 && (
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {productColors.map(({ name, hex }) => {
+            const isSelected = localColor === name || (!localColor && productColors[0].name === name);
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLocalColor(name);
+                }}
+                onMouseEnter={() => {
+                  setLocalColor(name);
+                }}
+                className={`w-4 h-4 rounded-full border transition-all duration-200 cursor-pointer ${
+                  isSelected
+                    ? 'ring-2 ring-primary ring-offset-1 border-transparent scale-110'
+                    : 'border-gray-300 hover:scale-105'
+                }`}
+                style={{ backgroundColor: hex || '#ccc' }}
+                title={name}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -208,7 +271,7 @@ function VideoCarousel({ videos }: { videos: any[] }) {
   };
 
   return (
-    <section className="py-16 bg-background">
+    <section className="py-16 bg-background overflow-hidden">
       <h2 className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-12">Featured Videos</h2>
       <div className="relative flex items-center justify-center" style={{ height: 500 }}>
         <button onClick={prev} className="absolute left-4 md:left-12 z-20 w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground/5 transition-colors" aria-label="Previous">
