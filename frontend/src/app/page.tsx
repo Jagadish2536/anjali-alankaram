@@ -247,6 +247,8 @@ function ProductSection({
 // ── Featured Videos Carousel ───────────────────────────────────────────────────
 function VideoCarousel({ videos }: { videos: any[] }) {
   const [center, setCenter] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   useEffect(() => {
     if (videos.length > 0) setCenter(Math.min(2, videos.length - 1));
@@ -257,6 +259,27 @@ function VideoCarousel({ videos }: { videos: any[] }) {
   const total = videos.length;
   const prev = () => setCenter(c => (c - 1 + total) % total);
   const next = () => setCenter(c => (c + 1) % total);
+
+  // Swipe handlers
+  const minSwipeDistance = 50;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      next();
+    } else if (isRightSwipe) {
+      prev();
+    }
+  };
 
   const getStyle = (i: number) => {
     const diff = ((i - center + total) % total + total) % total;
@@ -273,8 +296,18 @@ function VideoCarousel({ videos }: { videos: any[] }) {
   return (
     <section className="py-16 bg-background overflow-hidden">
       <h2 className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-12">Featured Videos</h2>
-      <div className="relative flex items-center justify-center" style={{ height: 500 }}>
-        <button onClick={prev} className="absolute left-4 md:left-12 z-20 w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground/5 transition-colors" aria-label="Previous">
+      <div
+        className="relative flex items-center justify-center select-none"
+        style={{ height: 500 }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <button
+          onClick={prev}
+          className="hidden md:flex absolute left-4 md:left-12 z-20 w-10 h-10 rounded-full border border-foreground/20 items-center justify-center hover:bg-foreground/5 transition-colors"
+          aria-label="Previous"
+        >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="relative flex items-center justify-center" style={{ width: '100%', maxWidth: 760 }}>
@@ -344,7 +377,11 @@ function VideoCarousel({ videos }: { videos: any[] }) {
             </div>
           ))}
         </div>
-        <button onClick={next} className="absolute right-4 md:right-12 z-20 w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground/5 transition-colors" aria-label="Next">
+        <button
+          onClick={next}
+          className="hidden md:flex absolute right-4 md:right-12 z-20 w-10 h-10 rounded-full border border-foreground/20 items-center justify-center hover:bg-foreground/5 transition-colors"
+          aria-label="Next"
+        >
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
