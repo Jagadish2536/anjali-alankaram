@@ -67,11 +67,6 @@ resource "aws_iam_role_policy" "lambda_ses_send" {
   })
 }
 
-resource "aws_cloudwatch_log_group" "lambda_alerts" {
-  name              = "/aws/lambda/${var.project_name}-whatsapp-alert"
-  retention_in_days = 14
-  tags = local.common_tags
-}
 
 resource "aws_lambda_function" "whatsapp_alert" {
   filename         = data.archive_file.whatsapp_lambda_zip.output_path
@@ -88,7 +83,7 @@ resource "aws_lambda_function" "whatsapp_alert" {
     }
   }
 
-  depends_on = [aws_cloudwatch_log_group.lambda_alerts]
+  depends_on = [aws_cloudwatch_log_group.lambda_alerts_optimized]
   tags = local.common_tags
 }
 
@@ -257,7 +252,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = "app/anjali-alankaram-alb/1143608161"
+    LoadBalancer = module.alb.alb_arn_suffix
   }
 
   alarm_actions = [aws_sns_topic.alerts.arn]

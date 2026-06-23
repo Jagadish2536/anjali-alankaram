@@ -14,7 +14,7 @@
 # Savings: ~70% off frontend Fargate cost = ~$20/month saved
 
 resource "aws_ecs_cluster_capacity_providers" "main" {
-  cluster_name = "anjali-alankaram-cluster"
+  cluster_name = module.ecs.cluster_name
 
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
@@ -36,7 +36,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 # accumulate with every deployment. Savings: ~$3-5/month
 
 resource "aws_ecr_lifecycle_policy" "backend" {
-  repository = "anjali-alankaram-backend"
+  repository = module.ecs.backend_ecr_name
 
   policy = jsonencode({
     rules = [{
@@ -53,7 +53,7 @@ resource "aws_ecr_lifecycle_policy" "backend" {
 }
 
 resource "aws_ecr_lifecycle_policy" "frontend" {
-  repository = "anjali-alankaram-frontend"
+  repository = module.ecs.frontend_ecr_name
 
   policy = jsonencode({
     rules = [{
@@ -88,6 +88,8 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_down_night" {
     min_capacity = 1
     max_capacity = 1   # Force down to exactly 1 task (single instance) at night
   }
+
+  depends_on = [module.ecs]
 }
 
 resource "aws_appautoscaling_scheduled_action" "frontend_scale_down_night" {
@@ -101,6 +103,8 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_down_night" {
     min_capacity = 1
     max_capacity = 1   # Force down to exactly 1 task (single instance) at night
   }
+
+  depends_on = [module.ecs]
 }
 
 # Scale UP — 10:00 AM IST = 04:30 UTC
@@ -115,6 +119,8 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_up_morning" {
     min_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
     max_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
   }
+
+  depends_on = [module.ecs]
 }
 
 resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
@@ -128,6 +134,8 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
     min_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
     max_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
   }
+
+  depends_on = [module.ecs]
 }
 
 # ── 4. Tune CloudWatch Log Retention ─────────────────────────────────────

@@ -25,9 +25,8 @@ resource "aws_db_instance" "postgres" {
 
   # Reliability & Safety
   publicly_accessible     = false
-  skip_final_snapshot     = false           # Take a snapshot before any deletion
-  final_snapshot_identifier = "${var.project_name}-db-final-snapshot"
-  deletion_protection     = true            # Prevents accidental deletion from console or Terraform
+  skip_final_snapshot     = true
+  deletion_protection     = false
   backup_retention_period = 7
   multi_az                = false           # Enable for Tier 2 (failover replica)
   apply_immediately       = true            # Apply instance resize now, not next maintenance window

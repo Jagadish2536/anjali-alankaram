@@ -25,3 +25,8 @@ output "route53_zone_id" {
 output "route53_nameservers" {
   value = var.domain_name != "" ? aws_route53_zone.main[0].name_servers : []
 }
+
+output "alb_arn_suffix" {
+  value = aws_lb.main.arn_suffix
+}
+
