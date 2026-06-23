@@ -251,7 +251,7 @@ function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () 
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ background: 'linear-gradient(135deg, hsl(340,60%,52%), hsl(340,60%,40%))' }}>
+                <tr style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.8))' }}>
                   {['Size', `Bust (${unit})`, `Waist (${unit})`, `Hips (${unit})`, `Length (${unit})`].map(h => (
                     <th key={h} className="px-5 py-3.5 text-white font-semibold text-left">{h}</th>
                   ))}

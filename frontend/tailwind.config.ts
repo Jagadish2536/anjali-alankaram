@@ -52,12 +52,12 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        crimson: "#2e576b",
-        cream: "#FDF5EC",
+        crimson: "#2d556c",
+        cream: "#EDB4A5",
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'sans-serif'],
-        outfit: ['var(--font-outfit)', 'sans-serif'],
+        sans: ['var(--font-cormorant)', 'Georgia', 'serif'],
+        outfit: ['var(--font-cormorant)', 'Georgia', 'serif'],
         cormorant: ['var(--font-cormorant)', 'Georgia', 'serif'],
       },
       borderRadius: {

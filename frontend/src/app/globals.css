@@ -5,39 +5,39 @@
 @layer base {
   :root {
     /* Soft Peach-Cream background */
-    --background: 18 40% 98%;
-    --foreground: 200 40% 12%;
+    --background: 13 67% 98%;
+    --foreground: 199 41% 12%;
 
     /* Deep slate blue — navbar, CTAs, footer, category cards */
-    --primary: 200 40% 30%;
-    --primary-foreground: 18 40% 98%;
+    --primary: 199 41% 30%;
+    --primary-foreground: 13 67% 98%;
 
-    /* Butterfly peach tint */
-    --secondary: 18 49% 76%;
-    --secondary-foreground: 200 40% 30%;
+    /* Light slate blue (#9FC5D7) */
+    --secondary: 199 41% 73%;
+    --secondary-foreground: 199 41% 20%;
 
-    /* Butterfly peach accent */
-    --accent: 18 49% 76%;
-    --accent-foreground: 200 40% 30%;
+    /* Light peach/rose (#EDB4A5) */
+    --accent: 13 67% 79%;
+    --accent-foreground: 13 67% 20%;
 
     /* Muted colors */
-    --muted: 200 15% 94%;
-    --muted-foreground: 200 20% 45%;
+    --muted: 199 15% 94%;
+    --muted-foreground: 199 20% 45%;
 
-    --popover: 18 40% 98%;
-    --popover-foreground: 200 40% 12%;
+    --popover: 13 67% 98%;
+    --popover-foreground: 199 41% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 200 40% 12%;
+    --card-foreground: 199 41% 12%;
 
-    --border: 200 20% 88%;
-    --input: 200 20% 88%;
-    --ring: 200 40% 30%;
+    --border: 199 20% 88%;
+    --input: 199 20% 88%;
+    --ring: 199 41% 30%;
     --radius: 0.5rem;
 
     /* Custom variables updated for compatability */
-    --crimson: #2e576b;
-    --cream: #FDF5EC;
+    --crimson: #2d556c;
+    --cream: #EDB4A5;
   }
 
   .dark {
@@ -68,7 +68,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter), sans-serif;
+    font-family: var(--font-cormorant), Georgia, serif;
   }
 }
 

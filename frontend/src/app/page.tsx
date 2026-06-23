@@ -775,8 +775,8 @@ export default function Home() {
 
       {/* ── § 2 HERO — admin-configurable bg image + text ─────────────── */}
       <section
-        className="relative w-full overflow-hidden flex items-center"
-        style={{ minHeight: '60vh', background: 'hsl(345, 80%, 28%)' }}
+        className="relative w-full overflow-hidden flex items-center bg-primary"
+        style={{ minHeight: '60vh' }}
         aria-label="Hero banner"
       >
         <div className="absolute inset-0" style={{ backgroundImage: lilyBg, backgroundSize: '140px 140px', opacity: 0.25 }} />

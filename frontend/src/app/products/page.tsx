@@ -522,8 +522,8 @@ function ProductsContent() {
     <div>
       {/* ── Category Banner Header ─────────────────────────────────────────── */}
       <div
-        className="relative py-8 md:py-12"
-        style={{ background: 'hsl(345, 80%, 28%)', backgroundImage: damaskBg, backgroundSize: '80px 80px' }}
+        className="relative py-8 md:py-12 bg-primary"
+        style={{ backgroundImage: damaskBg, backgroundSize: '80px 80px' }}
       >
         <div className="container">
           <div className="flex items-center gap-1.5 text-white/50 text-xs mb-3">

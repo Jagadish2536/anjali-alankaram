@@ -218,7 +218,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Live Visitor Counter ─────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-[hsl(345,80%,25%)] to-[hsl(345,70%,35%)] rounded-2xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl shadow-lg p-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
 
           {/* Main count */}
@@ -227,7 +227,7 @@ export default function AdminDashboard() {
               <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
                 <Radio className="w-8 h-8 text-white" />
               </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-[hsl(345,80%,25%)] animate-pulse" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-primary animate-pulse" />
             </div>
             <div>
               <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-1">Live Visitors Right Now</p>

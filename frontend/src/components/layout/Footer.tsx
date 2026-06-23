@@ -83,8 +83,8 @@ export default function Footer() {
 
   return (
     <footer
-      className="relative overflow-hidden"
-      style={{ background: 'hsl(345, 80%, 28%)', backgroundImage: damaskBg, backgroundSize: '80px 80px' }}
+      className="relative overflow-hidden bg-primary"
+      style={{ backgroundImage: damaskBg, backgroundSize: '80px 80px' }}
     >
       {/* Main columns */}
       <div className="container py-10 md:py-16">
