@@ -19,8 +19,10 @@ export class EmailService {
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (!to) return;
 
+    this.logger.log(`[SES] Attempting to send "${subject}" to ${to} from ${this.fromEmail}`);
+
     try {
-      await this.ses.send(new SendEmailCommand({
+      const result = await this.ses.send(new SendEmailCommand({
         Source: `${this.fromName} <${this.fromEmail}>`,
         Destination: { ToAddresses: [to] },
         Message: {
@@ -28,9 +30,11 @@ export class EmailService {
           Body: { Html: { Data: html, Charset: 'UTF-8' } },
         },
       }));
-      this.logger.log(`Email sent to ${to}: ${subject}`);
+      this.logger.log(`[SES] Email sent successfully to ${to}: "${subject}" | MessageId: ${result.MessageId}`);
     } catch (err) {
-      this.logger.error(`Email failed to ${to}: ${err.message}`);
+      this.logger.error(
+        `[SES] FAILED to send email to ${to}: "${subject}" | Code: ${err?.name || err?.code} | Message: ${err?.message} | Stack: ${err?.stack}`,
+      );
       // Non-blocking — never throw
     }
   }

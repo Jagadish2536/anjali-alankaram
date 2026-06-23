@@ -97,7 +97,16 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "SHIPROCKET_PASSWORD", valueFrom = "${var.secrets_arn}:SHIPROCKET_PASSWORD::" },
         { name = "FIREBASE_SERVICE_ACCOUNT_BASE64", valueFrom = "${var.secrets_arn}:FIREBASE_SERVICE_ACCOUNT_BASE64::" },
         { name = "RATE_LIMIT_REQUESTS", valueFrom = "${var.secrets_arn}:RATE_LIMIT_REQUESTS::" },
-        { name = "ALLOWED_ORIGINS", valueFrom = "${var.secrets_arn}:ALLOWED_ORIGINS::" }
+        { name = "ALLOWED_ORIGINS", valueFrom = "${var.secrets_arn}:ALLOWED_ORIGINS::" },
+        { name = "SES_FROM_EMAIL", valueFrom = "${var.secrets_arn}:SES_FROM_EMAIL::" },
+        { name = "SES_FROM_NAME", valueFrom = "${var.secrets_arn}:SES_FROM_NAME::" },
+        { name = "MSG91_WHATSAPP_SENDER", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_SENDER::" },
+        { name = "MSG91_WHATSAPP_OTP_TEMPLATE_NAME", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_OTP_TEMPLATE_NAME::" },
+        { name = "MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME::" },
+        { name = "MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE::" },
+        { name = "MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE::" },
+        { name = "MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE::" },
+        { name = "MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE::" }
       ]
     }
   ])

@@ -4,59 +4,61 @@
 
 @layer base {
   :root {
-    /* Warm cream background */
-    --background: 36 60% 97%;
-    --foreground: 345 30% 12%;
+    /* Soft Peach-Cream background */
+    --background: 18 40% 98%;
+    --foreground: 200 40% 12%;
 
-    /* Deep crimson — navbar, CTAs, footer, category cards */
-    --primary: 345 80% 28%;
-    --primary-foreground: 36 60% 97%;
+    /* Deep slate blue — navbar, CTAs, footer, category cards */
+    --primary: 200 40% 30%;
+    --primary-foreground: 18 40% 98%;
 
-    /* Lighter crimson tint */
-    --secondary: 345 50% 92%;
-    --secondary-foreground: 345 80% 28%;
+    /* Butterfly peach tint */
+    --secondary: 18 49% 76%;
+    --secondary-foreground: 200 40% 30%;
 
-    /* Warm beige accent */
-    --accent: 36 40% 88%;
-    --accent-foreground: 345 30% 18%;
+    /* Butterfly peach accent */
+    --accent: 18 49% 76%;
+    --accent-foreground: 200 40% 30%;
 
-    --muted: 36 20% 92%;
-    --muted-foreground: 345 10% 45%;
+    /* Muted colors */
+    --muted: 200 15% 94%;
+    --muted-foreground: 200 20% 45%;
 
-    --popover: 36 60% 98%;
-    --popover-foreground: 345 30% 12%;
+    --popover: 18 40% 98%;
+    --popover-foreground: 200 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 345 30% 12%;
+    --card-foreground: 200 40% 12%;
 
-    --border: 36 20% 85%;
-    --input: 36 20% 85%;
-    --ring: 345 80% 28%;
+    --border: 200 20% 88%;
+    --input: 200 20% 88%;
+    --ring: 200 40% 30%;
     --radius: 0.5rem;
 
-    /* Crimson for direct use in inline styles */
-    --crimson: #8B0030;
+    /* Custom variables updated for compatability */
+    --crimson: #2e576b;
     --cream: #FDF5EC;
   }
 
   .dark {
-    --background: 345 20% 8%;
-    --foreground: 36 60% 95%;
-    --primary: 345 70% 50%;
-    --primary-foreground: 36 60% 97%;
-    --secondary: 345 30% 20%;
-    --secondary-foreground: 36 60% 97%;
-    --accent: 345 20% 18%;
-    --accent-foreground: 36 60% 97%;
-    --muted: 345 15% 15%;
-    --muted-foreground: 36 20% 60%;
-    --popover: 345 20% 10%;
-    --popover-foreground: 36 60% 97%;
-    --card: 345 20% 10%;
-    --card-foreground: 36 60% 97%;
-    --border: 345 20% 20%;
-    --input: 345 20% 20%;
-    --ring: 345 70% 50%;
+    /* Dark mode variants */
+    --background: 200 25% 10%;
+    --foreground: 18 40% 95%;
+    --primary: 200 45% 45%;
+    --primary-foreground: 18 40% 97%;
+    --secondary: 18 30% 20%;
+    --secondary-foreground: 18 40% 95%;
+    --accent: 200 25% 18%;
+    --accent-foreground: 18 40% 95%;
+    --muted: 200 15% 15%;
+    --muted-foreground: 200 15% 65%;
+    --popover: 200 25% 12%;
+    --popover-foreground: 18 40% 95%;
+    --card: 200 25% 12%;
+    --card-foreground: 18 40% 95%;
+    --border: 200 20% 20%;
+    --input: 200 20% 20%;
+    --ring: 200 45% 45%;
   }
 }
 

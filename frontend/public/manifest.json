@@ -4,8 +4,8 @@
   "description": "Discover premium designer lehengas, elegant gowns, and festive ethnic wear.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#800A26",
-  "theme_color": "#800A26",
+  "background_color": "#2e576b",
+  "theme_color": "#2e576b",
   "icons": [
     {
       "src": "/favicon.png",

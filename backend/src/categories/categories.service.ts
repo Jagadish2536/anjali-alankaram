@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import slugify from 'slugify';
 
@@ -18,6 +18,27 @@ export class CategoriesService {
 
   async create(dto: any) {
     const slug = slugify(dto.name, { lower: true, strict: true });
+
+    // Check if category with this slug already exists (including soft-deleted ones)
+    const existing = await this.prisma.category.findUnique({
+      where: { slug },
+    });
+
+    if (existing) {
+      if (existing.isActive) {
+        throw new ConflictException('Category with this name already exists');
+      } else {
+        // Reactivate and update the existing soft-deleted category
+        return this.prisma.category.update({
+          where: { id: existing.id },
+          data: {
+            ...dto,
+            isActive: true,
+          },
+        });
+      }
+    }
+
     return this.prisma.category.create({
       data: {
         ...dto,
@@ -28,7 +49,14 @@ export class CategoriesService {
 
   async update(id: string, dto: any) {
     if (dto.name) {
-      dto.slug = slugify(dto.name, { lower: true, strict: true });
+      const slug = slugify(dto.name, { lower: true, strict: true });
+      const existing = await this.prisma.category.findUnique({
+        where: { slug },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Category with this name already exists');
+      }
+      dto.slug = slug;
     }
     return this.prisma.category.update({
       where: { id },

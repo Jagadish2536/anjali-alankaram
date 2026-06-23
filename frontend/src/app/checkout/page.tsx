@@ -858,7 +858,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
                 <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>No Cancellation:</strong> If the order is already shipped, it cannot be cancelled or refunded.</span>
+                <span><strong>No Cancellation:</strong> Once payment is successful, no cancellation is allowed. Please check the order details once again.</span>
               </div>
             </div>
 
@@ -875,7 +875,7 @@ export default function CheckoutPage() {
                 }}
                 className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
               >
-                Yes, Continue to Payment
+                Go to Payment
               </button>
               
               <button
@@ -885,7 +885,7 @@ export default function CheckoutPage() {
                 }}
                 className="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 h-12 rounded-xl font-bold text-sm transition-colors border border-gray-200"
               >
-                Go Back to Cart Page
+                Go to Cart
               </button>
             </div>
           </div>

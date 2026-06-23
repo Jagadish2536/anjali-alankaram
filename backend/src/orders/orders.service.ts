@@ -676,6 +676,11 @@ export class OrdersService {
   // ─────────────────────────────────────────────
 
   async cancel(id: string, userId: string, reason: string) {
+    const isTimeoutCancel = reason && (reason.toLowerCase().includes('timeout') || reason.toLowerCase().includes('time out'));
+    if (!isTimeoutCancel) {
+      throw new BadRequestException('Order cancellation is disabled for customers. Please contact support.');
+    }
+
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
       include: { user: true },

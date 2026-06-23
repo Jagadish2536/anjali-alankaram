@@ -607,8 +607,8 @@ export default function OrderDetailPage() {
   // Detect replacement: returnReason starts with 'REPLACEMENT:'
   const isReplacementFlow = isReturnFlow && order.returnReason?.startsWith?.('REPLACEMENT:');
   const isDelivered = order.status === 'DELIVERED';
-  // Allow cancel until order is packed (inclusive) — admin can cancel any time
-  const canCancel = ['PENDING_PAYMENT','PAYMENT_VERIFIED','CONFIRMED','INVENTORY_RESERVED','PROCESSING','PICKING'].includes(order.status);
+  // Allow cancel until order is packed (inclusive) — disabled for customers
+  const canCancel = false;
 
   // Return/Replace eligibility
   const firstItem = order.items?.[0];
@@ -701,13 +701,6 @@ export default function OrderDetailPage() {
               >
                 {retryLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                 {retryLoading ? 'Opening Payment...' : 'Pay Now'}
-              </button>
-              <button
-                onClick={() => setModal('cancel')}
-                disabled={actionLoading}
-                className="flex items-center gap-2 bg-white border border-red-200 text-red-600 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-red-50 disabled:opacity-50 transition-all"
-              >
-                <X className="w-4 h-4" /> Cancel Order
               </button>
             </div>
           </div>

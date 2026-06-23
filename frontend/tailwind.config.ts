@@ -52,7 +52,7 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        crimson: "#8B0030",
+        crimson: "#2e576b",
         cream: "#FDF5EC",
       },
       fontFamily: {
