@@ -943,7 +943,7 @@ export default function Home() {
       </section>
 
       {/* ── § 3 SHOP BY COLLECTIONS — horizontal scroll ── */}
-      <section className="py-12 px-4 relative max-w-7xl mx-auto" aria-labelledby="collections-heading">
+      <section className="py-12 px-4 relative max-w-7xl mx-auto overflow-hidden" aria-labelledby="collections-heading">
         <div className="flex justify-between items-center mb-8 px-2">
           <div className="w-10 h-10 hidden md:block" /> {/* Spacer */}
           <h2 id="collections-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground">
@@ -972,7 +972,7 @@ export default function Home() {
         ) : (
           <div
             ref={collectionScrollRef}
-            className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-colors max-w-full px-2"
+            className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-colors w-full min-w-0 px-2"
             style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as any}
           >
             {categories.length > 6 && !showAllCollections ? (

@@ -50,7 +50,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="light">
-      <body className={`${inter.variable} ${outfit.variable} ${cormorant.variable} font-sans min-h-screen flex flex-col`}>
+      <body className={`${inter.variable} ${outfit.variable} ${cormorant.variable} font-sans min-h-screen flex flex-col overflow-x-hidden`}>
         <OAuthProvider>
           <MaintenanceProvider>
             <VisitorTracker />

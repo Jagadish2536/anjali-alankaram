@@ -960,7 +960,7 @@ export default function AdminSettingsPage() {
                     }}
                     className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FAF6F0] hover:bg-amber-50 text-[#2C5043] border border-[#2C5043]/20 hover:border-[#2C5043]/50 rounded-xl text-xs font-bold transition-all shadow-sm"
                   >
-                    Reset to Usha Defaults
+                    Reset to Default
                   </button>
                 </div>
 
