@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 
 // ── Confirm Dialog ───────────────────────────────────────────────
@@ -45,6 +45,12 @@ export default function AdminCategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CategoryForm>(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const showFeedback = (type: 'success' | 'error', text: string) => {
+    setFeedback({ type, text });
+    setTimeout(() => setFeedback(null), 4000);
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -102,16 +108,18 @@ export default function AdminCategoriesPage() {
       if (editingId) {
         const { data } = await api.put(`/categories/${editingId}`, payload);
         setCategories(cats => cats.map(c => c.id === editingId ? { ...c, ...data } : c));
+        showFeedback('success', 'Category updated successfully!');
       } else {
         const { data } = await api.post('/categories', payload);
         setCategories(prev => [...prev, data]);
+        showFeedback('success', 'Category created successfully!');
       }
 
       setShowForm(false);
       setEditingId(null);
       setFormData(emptyForm);
     } catch (e: any) {
-      alert('Failed to save category: ' + (e.response?.data?.message || e.message));
+      showFeedback('error', 'Failed to save category: ' + (e.response?.data?.message || e.message));
     } finally {
       setIsSaving(false);
     }
@@ -122,8 +130,9 @@ export default function AdminCategoriesPage() {
       await api.delete(`/categories/${id}`);
       setCategories(cats => cats.filter(c => c.id !== id));
       setConfirmDelete(null);
+      showFeedback('success', 'Category deleted successfully!');
     } catch (e: any) {
-      alert('Failed to delete category: ' + (e.response?.data?.message || e.message));
+      showFeedback('error', 'Failed to delete category: ' + (e.response?.data?.message || e.message));
     }
   };
 
@@ -135,6 +144,16 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      {feedback && (
+        <div className={`fixed top-6 right-6 z-[100] shadow-lg flex items-center gap-2.5 px-4 py-3 rounded-2xl border font-semibold text-sm animate-in fade-in slide-in-from-top-3 ${
+          feedback.type === 'success'
+            ? 'bg-green-50 text-green-700 border-green-200 shadow-green-100'
+            : 'bg-red-50 text-red-700 border-red-200 shadow-red-100'
+        }`}>
+          {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <AlertCircle className="w-5 h-5 text-red-600" />}
+          {feedback.text}
+        </div>
+      )}
       {confirmDelete && (
         <ConfirmDialog
           title={`Delete "${confirmDelete.name}"?`}

@@ -771,47 +771,81 @@ export default function Home() {
     <div className="flex flex-col">
 
       {/* ── § 1 MARQUEE TOP (same text as admin marquee) ──────────────── */}
-      <LotusDivider text={marqueeText} />
+      {s.marqueeEnabled !== false && <LotusDivider text={marqueeText} />}
 
-      {/* ── § 2 HERO — admin-configurable bg image + text ─────────────── */}
+      {/* ── § 2 HERO — Usha Designers inspired 3-image collage + custom theme ── */}
       <section
-        className="relative w-full overflow-hidden flex items-center bg-primary"
+        className="relative w-full overflow-hidden flex items-center bg-primary/10 py-12 md:py-16 lg:py-20"
         style={{ minHeight: '60vh' }}
         aria-label="Hero banner"
       >
-        <div className="absolute inset-0" style={{ backgroundImage: lilyBg, backgroundSize: '140px 140px', opacity: 0.25 }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: lilyBg, backgroundSize: '140px 140px', opacity: 0.15 }} />
 
-        {/* Left side hero image */}
-        {heroLeftImage && (
-          <div className="absolute left-0 top-0 h-full w-1/2 md:w-[45%] opacity-90">
-            <Image src={heroLeftImage} alt="Hero Left" fill className="object-cover object-top" priority />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-primary/30 to-primary/95" />
+        <div className="relative z-10 container mx-auto px-4 md:px-8 max-w-7xl w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            
+            {/* Left side content */}
+            <div className="lg:col-span-5 text-left space-y-6 md:space-y-8">
+              <h1 className="font-cormorant text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight tracking-tight uppercase">
+                {heroTitle}
+              </h1>
+              <p className="text-foreground/80 text-sm sm:text-base md:text-lg max-w-md leading-relaxed font-sans">
+                {heroSubtitle}
+              </p>
+              <div>
+                <Link
+                  href="/products"
+                  className="inline-block bg-primary text-primary-foreground font-semibold px-8 py-3.5 rounded-full hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 shadow-md font-sans"
+                >
+                  SHOP NOW
+                </Link>
+              </div>
+            </div>
+
+            {/* Right side collage */}
+            <div className="lg:col-span-7 flex justify-center lg:justify-end items-center w-full">
+              <div className="flex gap-3 sm:gap-4 md:gap-5 items-center justify-center h-[320px] sm:h-[380px] md:h-[450px] w-full max-w-xl">
+                
+                {/* Image 1 (Left slant) */}
+                <div className="relative w-1/3 h-[85%] rounded-tl-[3rem] rounded-br-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[-2deg] transition-all duration-500 bg-muted/20">
+                  <Image
+                    src={heroLeftImage || '/placeholder.png'}
+                    alt="Collage 1"
+                    fill
+                    className="object-cover object-top"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                </div>
+
+                {/* Image 2 (Middle capsule, taller) */}
+                <div className="relative w-1/3 h-[98%] rounded-t-[4rem] rounded-b-[4rem] overflow-hidden border border-white/20 shadow-xl hover:scale-105 transition-all duration-500 bg-muted/20">
+                  <Image
+                    src={heroImage || '/placeholder.png'}
+                    alt="Collage 2"
+                    fill
+                    className="object-cover object-top"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                </div>
+
+                {/* Image 3 (Right slant) */}
+                <div className="relative w-1/3 h-[85%] rounded-tr-[3rem] rounded-bl-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[2deg] transition-all duration-500 bg-muted/20">
+                  <Image
+                    src={s.heroImage3Url || '/placeholder.png'}
+                    alt="Collage 3"
+                    fill
+                    className="object-cover object-top"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                </div>
+
+              </div>
+            </div>
+
           </div>
-        )}
-
-        {/* Model / hero image — admin can set heroImageUrl in settings */}
-        <div className="absolute right-0 top-0 h-full w-1/2 md:w-[45%] opacity-90">
-          {heroImage ? (
-            <Image src={heroImage} alt="Hero" fill className="object-cover object-top" priority />
-          ) : (
-            <div className="w-full h-full bg-primary/30" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent to-primary/90" />
-        </div>
-
-        <div className="relative z-10 container py-16 md:py-24 max-w-2xl">
-          <h1 className="font-cormorant text-5xl md:text-7xl font-bold text-white leading-tight">
-            {heroTitle}
-          </h1>
-          <p className="text-white/80 text-base md:text-lg mt-4 mb-8 max-w-sm">
-            {heroSubtitle}
-          </p>
-          <Link
-            href="/products"
-            className="inline-block bg-white text-primary font-bold px-8 py-3 rounded-full hover:shadow-lg transition-all duration-200 active:scale-95"
-          >
-            Shop Now
-          </Link>
         </div>
       </section>
 
@@ -833,7 +867,7 @@ export default function Home() {
       </section>
 
       {/* ── § 4 LOTUS MARQUEE DIVIDER (admin text) ────────────────────── */}
-      <LotusDivider text={marqueeText} />
+      {s.marqueeEnabled !== false && <LotusDivider text={marqueeText} />}
 
       {/* ── § 5 BEST SELLERS ──────────────────────────────────────────── */}
       <ProductSection
@@ -857,7 +891,7 @@ export default function Home() {
       <VideoCarousel videos={reelProducts} />
 
       {/* ── § 8 LOTUS MARQUEE DIVIDER ─────────────────────────────────── */}
-      <LotusDivider text={marqueeText} />
+      {s.marqueeEnabled !== false && <LotusDivider text={marqueeText} />}
 
       {/* ── § 9 WHAT OUR CUSTOMERS SAY ────────────────────────────────── */}
       <CustomerReviewsSection reviews={recentReviews} />

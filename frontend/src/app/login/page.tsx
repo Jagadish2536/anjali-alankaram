@@ -30,6 +30,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
   const [otp, setOtp] = useState('');
   
   // Forgot Password states
@@ -39,7 +40,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
   
   // OTP flow step
-  const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
+  const [step, setStep] = useState<'EMAIL' | 'OTP'>('EMAIL');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,19 +51,20 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     setMode(newMode);
     setError('');
     setSuccessMessage('');
-    setStep('PHONE');
+    setStep('EMAIL');
     setForgotStep('REQUEST');
     setForgotEmailOrPhone('');
     setForgotOtp('');
     setForgotNewPassword('');
     setForgotConfirmPassword('');
+    setOtpEmail('');
   };
 
   // Submit Forgot Password Request (OTP request)
   const handleForgotPasswordRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmailOrPhone.trim()) {
-      setError('Please enter your email or WhatsApp number');
+      setError('Please enter your email or phone number');
       return;
     }
 
@@ -153,8 +155,8 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   // Submit Registration
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !phone) {
-      setError('Email, password, and WhatsApp number are required');
+    if (!email || !password) {
+      setError('Email and password are required');
       return;
     }
     if (password.length < 6) {
@@ -187,8 +189,8 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   // Submit Send OTP
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.length < 10) {
-      setError('Please enter a valid 10-digit WhatsApp number');
+    if (!otpEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail.trim())) {
+      setError('Please enter a valid email address');
       return;
     }
     
@@ -196,7 +198,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     setError('');
     
     try {
-      await api.post('/auth/otp/send', { phone });
+      await api.post('/auth/otp/send', { email: otpEmail.trim() });
       setStep('OTP');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
@@ -218,7 +220,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     
     try {
       const { data } = await api.post('/auth/otp/verify', { 
-        phone, 
+        email: otpEmail.trim(), 
         code: otp 
       });
       
@@ -273,8 +275,8 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
           <p className="text-sm text-muted-foreground mt-2">
             {mode === 'LOGIN' && 'Sign in to access your wishlist, orders, and cart'}
             {mode === 'REGISTER' && 'Join Anjali Alankaram to start shopping'}
-            {mode === 'OTP' && 'Sign in securely via one-time SMS verification'}
-            {mode === 'FORGOT_PASSWORD' && (forgotStep === 'REQUEST' ? 'Enter email or phone number to receive reset OTP' : 'Enter reset code and new password')}
+            {mode === 'OTP' && 'Sign in securely via one-time email OTP verification'}
+            {mode === 'FORGOT_PASSWORD' && (forgotStep === 'REQUEST' ? 'Enter email address to receive reset OTP' : 'Enter reset code and new password')}
           </p>
         </div>
 
@@ -439,7 +441,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
 
             <div>
               <label htmlFor="reg-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                WhatsApp Number
+                Phone Number (Optional)
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
@@ -447,7 +449,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                   id="reg-phone"
                   type="tel"
                   maxLength={10}
-                  placeholder="Enter 10-digit WhatsApp number"
+                  placeholder="Enter 10-digit phone number"
                   className="w-full h-12 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
@@ -485,33 +487,34 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
           </form>
         )}
 
-        {/* --- MODE: OTP (Phone / OTP input) --- */}
+        {/* --- MODE: OTP (Email / OTP input) --- */}
         {mode === 'OTP' && (
           <div>
-            {step === 'PHONE' ? (
+            {step === 'EMAIL' ? (
               <form onSubmit={handleSendOtp} className="space-y-5">
                 <div>
-                  <label htmlFor="otp-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    WhatsApp Number
+                  <label htmlFor="otp-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                    Email Address
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
+                    <span className="absolute left-4 text-muted-foreground">
+                      <Mail className="w-5 h-5" />
+                    </span>
                     <input
-                      id="otp-phone"
-                      type="tel"
+                      id="otp-email"
+                      type="email"
                       required
-                      maxLength={10}
                       className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
-                      placeholder="Enter 10-digit WhatsApp number"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="name@example.com"
+                      value={otpEmail}
+                      onChange={(e) => setOtpEmail(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isLoading || phone.length < 10}
+                  disabled={isLoading || !otpEmail}
                   className="w-full h-13 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none text-sm"
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send OTP'}
@@ -526,15 +529,15 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                     </label>
                     <button
                       type="button"
-                      onClick={() => setStep('PHONE')}
+                      onClick={() => setStep('EMAIL')}
                       className="text-xs text-primary hover:underline font-semibold"
                     >
-                      Change Number
+                      Change Email
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    Sent code to WhatsApp number +91 {phone}
+                    Sent code to email address {otpEmail}
                   </p>
                   <input
                     id="otp-code"

@@ -41,16 +41,16 @@ export class AuthController {
 
   @Post('otp/send')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Send OTP to phone number' })
+  @ApiOperation({ summary: 'Send OTP to email address' })
   async sendOtp(@Body() dto: SendOtpDto) {
-    return this.authService.sendOtp(dto.phone);
+    return this.authService.sendOtp(dto.email);
   }
 
   @Post('otp/verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP and login/register' })
   async verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOtp(dto.phone, dto.code);
+    return this.authService.verifyOtp(dto.email, dto.code);
   }
 
   @Post('forgot-password/request')

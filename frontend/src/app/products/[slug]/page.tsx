@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import {
   Star, Minus, Plus, ShoppingBag, Heart, Zap,
   Instagram, ExternalLink, Truck, ShieldCheck, Video,
@@ -491,6 +492,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
+  const { settings } = useSettingsStore();
 
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
@@ -696,6 +698,10 @@ export default function ProductDetailPage() {
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleAddToCart = async () => {
+    if (settings.maintenanceMode) {
+      alert('Shopping is temporarily offline due to scheduled maintenance. We will be back online soon!');
+      return;
+    }
     if (!selectedVariant) return;
     if (!isAuthenticated) { router.push('/login'); return; }
     try {
@@ -706,6 +712,10 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = async () => {
+    if (settings.maintenanceMode) {
+      alert('Shopping is temporarily offline due to scheduled maintenance. We will be back online soon!');
+      return;
+    }
     if (!selectedVariant) return;
     if (!isAuthenticated) { router.push('/login?returnUrl=' + window.location.pathname); return; }
     setIsBuyingNow(true);

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, Trash2, Image as ImageIcon, Save, Loader2,
-  X, PlusCircle, Instagram, ExternalLink, Truck, Ruler
+  X, PlusCircle, Instagram, ExternalLink, Truck, Ruler, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -30,9 +30,13 @@ export default function NewProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isUploading, setIsUploading] = useState<number | null>(null);
+
+  const showFeedback = (type: 'success' | 'error', text: string) => {
+    setFeedback({ type, text });
+    setTimeout(() => setFeedback(null), 4000);
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -144,7 +148,6 @@ export default function NewProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
     try {
       if (!formData.name || !formData.basePrice) throw new Error('Name and Base Price are required');
       const cleanVariants: any[] = [];
@@ -183,10 +186,10 @@ export default function NewProductPage() {
       };
       if (formData.salePrice) payload.salePrice = Number(formData.salePrice);
       await api.post('/products', payload);
-      setSuccess(true);
+      showFeedback('success', 'Product created successfully! Redirecting...');
       setTimeout(() => router.push('/admin/products'), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to create product');
+      showFeedback('error', err.response?.data?.message || err.message || 'Failed to create product');
     } finally {
       setIsLoading(false);
     }
@@ -196,6 +199,16 @@ export default function NewProductPage() {
 
   return (
     <div className="max-w-4xl mx-auto pb-20">
+      {feedback && (
+        <div className={`fixed top-6 right-6 z-[100] shadow-lg flex items-center gap-2.5 px-4 py-3 rounded-2xl border font-semibold text-sm animate-in fade-in slide-in-from-top-3 ${
+          feedback.type === 'success'
+            ? 'bg-green-50 text-green-700 border-green-200 shadow-green-100'
+            : 'bg-red-50 text-red-700 border-red-200 shadow-red-100'
+        }`}>
+          {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <AlertCircle className="w-5 h-5 text-red-600" />}
+          {feedback.text}
+        </div>
+      )}
       <button onClick={() => router.back()} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         Back to Catalogue
@@ -206,18 +219,7 @@ export default function NewProductPage() {
           <h1 className="text-3xl font-outfit font-bold">Add New Product</h1>
           <p className="text-muted-foreground mt-2">Create a new listing for your store catalog.</p>
         </div>
-        {success && (
-          <div className="bg-green-50 text-green-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold border border-green-200">
-            Product Created Successfully!
-          </div>
-        )}
       </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-8 border border-red-100 flex items-center gap-2">
-          <X className="w-5 h-5 shrink-0" /> {error}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
 

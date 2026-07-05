@@ -219,9 +219,18 @@ export default function CartPage() {
             </div>
           </div>
 
-          <Link href="/checkout" className="w-full bg-primary text-primary-foreground h-14 rounded-full font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
-            Proceed to Checkout <ArrowRight className="w-4 h-4" />
-          </Link>
+          {settings.maintenanceMode ? (
+            <button
+              disabled
+              className="w-full bg-primary/40 text-primary-foreground/75 h-14 rounded-full font-medium flex items-center justify-center gap-2 cursor-not-allowed"
+            >
+              Shopping Disabled (Store Maintenance)
+            </button>
+          ) : (
+            <Link href="/checkout" className="w-full bg-primary text-primary-foreground h-14 rounded-full font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+              Proceed to Checkout <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
 

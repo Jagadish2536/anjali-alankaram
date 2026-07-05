@@ -12,11 +12,11 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: '9876543210', description: '10-digit Indian WhatsApp number', required: true })
-  @IsNotEmpty()
+  @ApiProperty({ example: '9876543210', description: '10-digit Indian phone number', required: false })
+  @IsOptional()
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, { message: 'Invalid Indian WhatsApp number' })
-  phone: string;
+  @Matches(/^[6-9]\d{9}$/, { message: 'Invalid Indian phone number' })
+  phone?: string;
 
   @ApiProperty({ example: 'password123', description: 'User password (min 6 characters)' })
   @IsNotEmpty()

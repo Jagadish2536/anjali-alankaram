@@ -93,7 +93,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, removeItem, updateItem, fetchCart, clearCart, appliedOffer } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
-  const { settings, fetchSettings } = useSettingsStore();
+  const { settings, fetchSettings, isFetched } = useSettingsStore();
 
   const [step, setStep] = useState(0);
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -132,6 +132,12 @@ export default function CheckoutPage() {
     if (items.length === 0) fetchCart();
     loadAddresses();
   }, []);
+
+  useEffect(() => {
+    if (isFetched && settings.maintenanceMode) {
+      router.push('/cart');
+    }
+  }, [settings.maintenanceMode, isFetched]);
 
   useEffect(() => {
     if (items.length === 0 && !useCartStore.getState().isLoading && !isSuccessRef.current) {

@@ -45,6 +45,7 @@ interface StoreSettings {
   marqueeText: string;
   heroImageUrl: string;
   heroLeftImageUrl: string;
+  heroImage3Url: string;
   heroTitle: string;
   heroSubtitle: string;
   // Bank Details
@@ -52,6 +53,13 @@ interface StoreSettings {
   accountNumber: string;
   ifscCode: string;
   accountHolderName: string;
+  // Theme settings
+  themePrimaryColor: string;
+  themeBackgroundColor: string;
+  themeHeadingFont: string;
+  themeBodyFont: string;
+  themeFontSizeScale: string;
+  marqueeEnabled: boolean;
 }
 
 interface SettingsStore {
@@ -104,6 +112,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   marqueeText: 'Free Delivery on All Orders',
   heroImageUrl: '',
   heroLeftImageUrl: '',
+  heroImage3Url: '',
   heroTitle: 'Make Every Occasion Special',
   heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
   // Bank Details
@@ -111,6 +120,13 @@ const DEFAULT_SETTINGS: StoreSettings = {
   accountNumber: '',
   ifscCode: '',
   accountHolderName: '',
+  // Theme settings
+  themePrimaryColor: '#2C5043',
+  themeBackgroundColor: '#FAF6F0',
+  themeHeadingFont: 'Cormorant Garamond',
+  themeBodyFont: 'Outfit',
+  themeFontSizeScale: 'Medium',
+  marqueeEnabled: true,
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -126,6 +142,14 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           settings: {
             ...DEFAULT_SETTINGS,
             ...data,
+            // Fall back from null values
+            themePrimaryColor: data.themePrimaryColor || DEFAULT_SETTINGS.themePrimaryColor,
+            themeBackgroundColor: data.themeBackgroundColor || DEFAULT_SETTINGS.themeBackgroundColor,
+            themeHeadingFont: data.themeHeadingFont || DEFAULT_SETTINGS.themeHeadingFont,
+            themeBodyFont: data.themeBodyFont || DEFAULT_SETTINGS.themeBodyFont,
+            themeFontSizeScale: data.themeFontSizeScale || DEFAULT_SETTINGS.themeFontSizeScale,
+            marqueeEnabled: data.marqueeEnabled !== null && data.marqueeEnabled !== undefined ? Boolean(data.marqueeEnabled) : DEFAULT_SETTINGS.marqueeEnabled,
+            heroImage3Url: data.heroImage3Url || DEFAULT_SETTINGS.heroImage3Url,
             // Ensure numeric fields are proper numbers
             gstRate: Number(data.gstRate ?? DEFAULT_SETTINGS.gstRate),
             freeShippingThreshold: Number(data.freeShippingThreshold ?? DEFAULT_SETTINGS.freeShippingThreshold),

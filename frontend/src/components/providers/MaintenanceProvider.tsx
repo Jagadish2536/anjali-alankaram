@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Loader2, Mail, Phone, MessageCircle, Instagram, Clock, AlertTriangle } from 'lucide-react';
@@ -14,9 +15,11 @@ interface MaintenancePageProps {
     whatsappNumber: string;
     instagramUrl: string;
   };
+  user: any;
+  isManagementUser: boolean;
 }
 
-function MaintenancePage({ settings }: MaintenancePageProps) {
+function MaintenancePage({ settings, user, isManagementUser }: MaintenancePageProps) {
   // Format WhatsApp number link (remove all non-digit characters)
   const cleanWhatsApp = settings.whatsappNumber ? settings.whatsappNumber.replace(/\D/g, '') : '';
   const whatsappLink = cleanWhatsApp ? `https://wa.me/${cleanWhatsApp}` : null;
@@ -57,6 +60,45 @@ function MaintenancePage({ settings }: MaintenancePageProps) {
           <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
             Thank you for visiting <span className="font-semibold text-foreground">{settings.storeName}</span>. We are currently performing system maintenance to enhance your shopping experience with us.
           </p>
+        </div>
+
+        {/* Navigation Action Buttons under Maintenance */}
+        <div className="bg-muted/10 p-5 rounded-2xl border border-dashed border-border/80 flex flex-col items-center gap-3">
+          {user ? (
+            <div className="w-full space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Logged in as <span className="font-bold text-foreground">{user.name || user.email}</span>
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
+                <Link
+                  href="/profile"
+                  className="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all shadow-sm"
+                >
+                  View Profile & Orders
+                </Link>
+                {isManagementUser && (
+                  <Link
+                    href="/admin"
+                    className="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700 transition-all shadow-sm"
+                  >
+                    Go to Admin Dashboard
+                  </Link>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full text-center space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Already have an account, or want to check order status?
+              </p>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all shadow-sm"
+              >
+                Sign In / Register
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Separator */}
@@ -151,14 +193,115 @@ function MaintenancePage({ settings }: MaintenancePageProps) {
   );
 }
 
+// Helper to inject theme color configuration directly in the DOM
+function updateThemeStyles(
+  primaryColor: string,
+  backgroundColor: string,
+  headingFont: string,
+  bodyFont: string,
+  fontSizeScale: string
+) {
+  if (typeof window === 'undefined') return;
+
+  const root = document.documentElement;
+
+  // Convert Hex to HSL for theme bindings
+  const hexToHsl = (hex: string) => {
+    let r = 0, g = 0, b = 0;
+    const clean = hex.replace('#', '');
+    if (clean.length === 3) {
+      r = parseInt(clean[0] + clean[0], 16);
+      g = parseInt(clean[1] + clean[1], 16);
+      b = parseInt(clean[2] + clean[2], 16);
+    } else if (clean.length === 6) {
+      r = parseInt(clean.substring(0, 2), 16);
+      g = parseInt(clean.substring(2, 4), 16);
+      b = parseInt(clean.substring(4, 6), 16);
+    }
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  };
+
+  const primaryHsl = hexToHsl(primaryColor || '#2C5043');
+  const bgHsl = hexToHsl(backgroundColor || '#FAF6F0');
+
+  // Bind CSS custom variables to document element
+  root.style.setProperty('--primary', primaryHsl);
+  root.style.setProperty('--background', bgHsl);
+  root.style.setProperty('--foreground', '20 20 20');
+  root.style.setProperty('--secondary', '240 4.8% 95.9%');
+  root.style.setProperty('--accent', primaryHsl);
+  root.style.setProperty('--border', '240 5.9% 90%');
+  root.style.setProperty('--ring', primaryHsl);
+
+  root.style.setProperty('--crimson', hexToHsl('#8B2635'));
+  root.style.setProperty('--cream', hexToHsl('#FDF5EC'));
+
+  // Load custom google fonts
+  const loadFont = (fontFamily: string) => {
+    if (!fontFamily) return;
+    const linkId = `theme-font-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+    if (document.getElementById(linkId)) return;
+    const link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}:wght@300;400;500;600;700;800;900&display=swap`;
+    document.head.appendChild(link);
+  };
+
+  if (headingFont) loadFont(headingFont);
+  if (bodyFont) loadFont(bodyFont);
+
+  // Apply custom fonts to document body/headers
+  root.style.setProperty('--font-heading', headingFont ? `'${headingFont}', sans-serif` : 'var(--font-cormorant)');
+  root.style.setProperty('--font-body', bodyFont ? `'${bodyFont}', sans-serif` : 'var(--font-outfit)');
+
+  // Apply scaling to root font-size (fully responsive scale modifier)
+  let scale = '100%';
+  if (fontSizeScale === 'Small') scale = '92.5%';
+  else if (fontSizeScale === 'Large') scale = '107.5%';
+  else if (fontSizeScale === 'Extra Large') scale = '115%';
+  root.style.fontSize = scale;
+}
+
 export function MaintenanceProvider({ children }: { children: React.ReactNode }) {
   const { settings, fetchSettings, isFetched } = useSettingsStore();
   const { user } = useAuthStore();
   const pathname = usePathname();
 
+  // Setup 5-second polling interval to enter maintenance mode quickly without manual refresh
   useEffect(() => {
     fetchSettings();
+    const interval = setInterval(() => {
+      fetchSettings();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [fetchSettings]);
+
+  useEffect(() => {
+    if (isFetched && settings) {
+      updateThemeStyles(
+        settings.themePrimaryColor,
+        settings.themeBackgroundColor,
+        settings.themeHeadingFont,
+        settings.themeBodyFont,
+        settings.themeFontSizeScale
+      );
+    }
+  }, [isFetched, settings]);
 
   if (!isFetched) {
     return (
@@ -171,15 +314,25 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
     );
   }
 
-  // Bypass maintenance mode check for:
-  // 1. Admin/dashboard pages
-  // 2. Login/auth pages
-  // 3. Logged-in admin users (so they can preview the live site)
-  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/login');
-  const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  // Management users bypass maintenance completely so they can preview the site
+  const isManagementUser = user && ['ADMIN', 'SUPER_ADMIN', 'PRODUCT_MANAGER', 'ORDER_MANAGER', 'STOCK_MANAGER'].includes(user.role);
 
-  if (settings.maintenanceMode && !isAdminRoute && !isAdminUser) {
-    return <MaintenancePage settings={settings} />;
+  // Allowed pages during maintenance mode
+  const isBypassedRoute = pathname.startsWith('/admin') ||
+                          pathname === '/login' || pathname.startsWith('/login/') ||
+                          pathname === '/profile' || pathname.startsWith('/profile/') ||
+                          pathname === '/orders' || pathname.startsWith('/orders/') ||
+                          pathname === '/track-order' || pathname.startsWith('/track-order/');
+
+  // Block anyone who is not a management user from accessing non-bypassed routes during maintenance
+  if (settings.maintenanceMode && !isManagementUser && !isBypassedRoute) {
+    return (
+      <MaintenancePage 
+        settings={settings} 
+        user={user} 
+        isManagementUser={!!isManagementUser} 
+      />
+    );
   }
 
   return <>{children}</>;

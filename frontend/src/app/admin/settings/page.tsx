@@ -28,6 +28,7 @@ import {
   Upload,
   ImageIcon,
   Landmark,
+  Palette,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -431,6 +432,7 @@ export default function AdminSettingsPage() {
     marqueeText: 'Free Delivery on All Orders',
     heroImageUrl: '',
     heroLeftImageUrl: '',
+    heroImage3Url: '',
     heroTitle: 'Make Every Occasion Special',
     heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
     // Bank Details
@@ -438,6 +440,13 @@ export default function AdminSettingsPage() {
     accountNumber: '',
     ifscCode: '',
     accountHolderName: '',
+    // Theme Customisation
+    themePrimaryColor: '#2C5043',
+    themeBackgroundColor: '#FAF6F0',
+    themeHeadingFont: 'Cormorant Garamond',
+    themeBodyFont: 'Outfit',
+    themeFontSizeScale: 'Medium',
+    marqueeEnabled: true,
   });
 
   // ── Payment form state ────────────────────────────────────────────────────
@@ -596,6 +605,7 @@ export default function AdminSettingsPage() {
 
   const sections = [
     { name: 'General', icon: Settings, desc: 'Store details and contact info.' },
+    { name: 'Theme', icon: Palette, desc: 'Customize colours and typography.' },
     { name: 'Security', icon: Shield, desc: 'Admin roles and permissions.' },
     { name: 'Notifications', icon: Bell, desc: 'Email and SMS alerts.' },
     { name: 'Payments', icon: CreditCard, desc: 'Razorpay integration.' },
@@ -614,16 +624,16 @@ export default function AdminSettingsPage() {
           <h1 className="text-3xl font-outfit font-bold">Settings</h1>
           <p className="text-muted-foreground mt-1">Manage your store configuration and preferences.</p>
         </div>
-        {saveMsg && (
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-sm animate-in fade-in slide-in-from-right-4 ${
-            saveMsg.type === 'success'
-              ? 'bg-green-50 text-green-700 border-green-200'
-              : 'bg-red-50 text-red-700 border-red-200'
-          }`}>
-            {saveMsg.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-            {saveMsg.text}
-          </div>
-        )}
+      {saveMsg && (
+        <div className={`fixed top-6 right-6 z-[100] shadow-lg flex items-center gap-2.5 px-4 py-3 rounded-2xl border font-semibold text-sm animate-in fade-in slide-in-from-top-3 ${
+          saveMsg.type === 'success'
+            ? 'bg-green-50 text-green-700 border-green-200 shadow-green-100'
+            : 'bg-red-50 text-red-700 border-red-200 shadow-red-100'
+        }`}>
+          {saveMsg.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <AlertCircle className="w-5 h-5 text-red-600" />}
+          {saveMsg.text}
+        </div>
+      )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -696,25 +706,38 @@ export default function AdminSettingsPage() {
                   color="bg-orange-500"
                 />
               </div>
-              <div className="border-t pt-4">
+              <div className="border-t pt-4 space-y-4">
+                <Toggle
+                  checked={formData.marqueeEnabled}
+                  onChange={set('marqueeEnabled')}
+                  label="Enable Announcement Marquee"
+                  desc="Turn on/off the scrolling marquee banner on the store homepage."
+                  color="bg-primary"
+                />
                 <Field label="Marquee Banner Text" hint="This scrolling text appears at the top and between sections on the homepage (e.g. 'Free Delivery on All Orders').">
                   <TextInput value={formData.marqueeText || ''} onChange={set('marqueeText')} placeholder="Free Delivery on All Orders" />
                 </Field>
               </div>
               <div className="border-t pt-4 space-y-4">
                 <h3 className="text-base font-bold">Hero Banner</h3>
-                <p className="text-sm text-muted-foreground -mt-2">Customise the large banner that appears at the top of the homepage.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <Field label="Hero Left Image" hint="Placed at the left side of the hero section. Recommended: portrait, 900×1200px.">
+                <p className="text-sm text-muted-foreground -mt-2">Customise the collage banner that appears at the top of the homepage (3-image Usha layout).</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <Field label="Hero Collage Left Image" hint="Placed at the left side of the collage. Recommended: portrait.">
                     <HeroImageUploader
                       value={formData.heroLeftImageUrl || ''}
                       onChange={url => setFormData((p: any) => ({ ...p, heroLeftImageUrl: url }))}
                     />
                   </Field>
-                  <Field label="Hero Right (Model) Image" hint="Placed at the right side of the hero section. Recommended: portrait, 900×1200px.">
+                  <Field label="Hero Collage Middle Image" hint="Placed in the middle of the collage. Recommended: portrait.">
                     <HeroImageUploader
                       value={formData.heroImageUrl || ''}
                       onChange={url => setFormData((p: any) => ({ ...p, heroImageUrl: url }))}
+                    />
+                  </Field>
+                  <Field label="Hero Collage Right Image" hint="Placed at the right side of the collage. Recommended: portrait.">
+                    <HeroImageUploader
+                      value={formData.heroImage3Url || ''}
+                      onChange={url => setFormData((p: any) => ({ ...p, heroImage3Url: url }))}
                     />
                   </Field>
                 </div>
@@ -780,6 +803,87 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* ── THEME ────────────────────────────────────────────────── */}
+          {activeSection === 'Theme' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <Field label="Primary Theme Color" hint="This is the main brand color used for navbars, buttons, and footers. Reference (Usha Designers): #2C5043">
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="color"
+                      value={formData.themePrimaryColor || '#2C5043'}
+                      onChange={e => setFormData(p => ({ ...p, themePrimaryColor: e.target.value }))}
+                      className="w-10 h-10 border rounded-lg cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={formData.themePrimaryColor || ''}
+                      onChange={e => setFormData(p => ({ ...p, themePrimaryColor: e.target.value }))}
+                      placeholder="#2C5043"
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary transition-shadow font-mono"
+                    />
+                  </div>
+                </Field>
+                <Field label="Background Color" hint="This is the page background color. Reference (Usha Designers): #FAF6F0">
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="color"
+                      value={formData.themeBackgroundColor || '#FAF6F0'}
+                      onChange={e => setFormData(p => ({ ...p, themeBackgroundColor: e.target.value }))}
+                      className="w-10 h-10 border rounded-lg cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={formData.themeBackgroundColor || ''}
+                      onChange={e => setFormData(p => ({ ...p, themeBackgroundColor: e.target.value }))}
+                      placeholder="#FAF6F0"
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary transition-shadow font-mono"
+                    />
+                  </div>
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-6">
+                <Field label="Heading Font" hint="Used for section titles, headers, and banner headings.">
+                  <select
+                    value={formData.themeHeadingFont || 'Cormorant Garamond'}
+                    onChange={e => setFormData(p => ({ ...p, themeHeadingFont: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Cormorant Garamond">Cormorant Garamond (Serif)</option>
+                    <option value="Outfit">Outfit (Sans-Serif)</option>
+                    <option value="Inter">Inter (Sans-Serif)</option>
+                  </select>
+                </Field>
+
+                <Field label="Body Font" hint="Used for general body text, product labels, lists, and forms.">
+                  <select
+                    value={formData.themeBodyFont || 'Outfit'}
+                    onChange={e => setFormData(p => ({ ...p, themeBodyFont: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Cormorant Garamond">Cormorant Garamond (Serif)</option>
+                    <option value="Outfit">Outfit (Sans-Serif)</option>
+                    <option value="Inter">Inter (Sans-Serif)</option>
+                  </select>
+                </Field>
+
+                <Field label="Base Font Size Scale" hint="Scale the whole application font size proportionally. Safe for all screen sizes.">
+                  <select
+                    value={formData.themeFontSizeScale || 'Medium'}
+                    onChange={e => setFormData(p => ({ ...p, themeFontSizeScale: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Small">Small (92.5%)</option>
+                    <option value="Medium">Medium (100% - Default)</option>
+                    <option value="Large">Large (107.5%)</option>
+                    <option value="Extra Large">Extra Large (115%)</option>
+                  </select>
+                </Field>
+              </div>
             </div>
           )}
 

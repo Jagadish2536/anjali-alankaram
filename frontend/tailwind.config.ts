@@ -56,9 +56,9 @@ const config = {
         cream: "#EDB4A5",
       },
       fontFamily: {
-        sans: ['var(--font-cormorant)', 'Georgia', 'serif'],
-        outfit: ['var(--font-cormorant)', 'Georgia', 'serif'],
-        cormorant: ['var(--font-cormorant)', 'Georgia', 'serif'],
+        sans: ['var(--font-body)', 'sans-serif'],
+        outfit: ['var(--font-body)', 'sans-serif'],
+        cormorant: ['var(--font-heading)', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

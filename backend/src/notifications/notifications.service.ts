@@ -90,56 +90,7 @@ export class NotificationsService {
       },
     });
 
-    // Send WhatsApp notification if user has a phone number
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { phone: true, name: true },
-    });
-
-    if (user?.phone) {
-      let templateName = '';
-      let params: string[] = [];
-      const userName = user.name || 'Customer';
-
-      switch (type) {
-        case 'ORDER_PLACED':
-          templateName = this.config.get('MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE') || 'anjali_order_placed';
-          params = [userName, orderNumber];
-          break;
-        case 'ORDER_CONFIRMED':
-          templateName = this.config.get('MSG91_WHATSAPP_ORDER_CONFIRMED_TEMPLATE') || '';
-          params = [userName, orderNumber];
-          break;
-        case 'ORDER_SHIPPED':
-          templateName = this.config.get('MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE') || 'anjali_order_shipped';
-          params = [userName, orderNumber];
-          break;
-        case 'ORDER_OUT_FOR_DELIVERY':
-          templateName = this.config.get('MSG91_WHATSAPP_ORDER_OUT_FOR_DELIVERY_TEMPLATE') || '';
-          params = [userName, orderNumber];
-          break;
-        case 'ORDER_DELIVERED':
-          templateName = this.config.get('MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE') || 'anjali_order_delivered';
-          params = [userName, orderNumber];
-          break;
-        case 'ORDER_CANCELLED':
-          templateName = this.config.get('MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE') || 'anjali_order_cancelled';
-          params = [userName, orderNumber];
-          break;
-        case 'RETURN_UPDATE':
-          templateName = this.config.get('MSG91_WHATSAPP_RETURN_UPDATE_TEMPLATE') || '';
-          params = [userName, orderNumber];
-          break;
-        case 'REFUND_UPDATE':
-          templateName = this.config.get('MSG91_WHATSAPP_REFUND_UPDATE_TEMPLATE') || '';
-          params = [userName, orderNumber];
-          break;
-      }
-
-      if (templateName) {
-        await this.sendWhatsAppMessage(user.phone, templateName, params);
-      }
-    }
+    // WhatsApp order notifications disabled as requested (only email notifications enabled)
 
     // Send push notification
     if (this.firebaseInitialized) {

@@ -24,31 +24,33 @@ export class AuthService {
   ) {}
 
   // ── OTP Auth ──────────────────────────────────────────
-  async sendOtp(phone: string): Promise<{ message: string }> {
+  async sendOtp(email: string): Promise<{ message: string }> {
+    const formattedEmail = email.toLowerCase().trim();
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Invalidate previous OTPs
     await this.prisma.otpCode.updateMany({
-      where: { phone, used: false },
+      where: { email: formattedEmail, used: false },
       data: { used: true },
     });
 
     // Save new OTP
     await this.prisma.otpCode.create({
-      data: { phone, code, expiresAt },
+      data: { email: formattedEmail, code, expiresAt },
     });
 
-    // Send via MSG91
-    await this.sendSmsViaMSG91(phone, code);
+    // Send via Email AWS SES
+    await this.emailService.sendOtpEmail(formattedEmail, code, 'login');
 
     return { message: 'OTP sent successfully' };
   }
 
-  async verifyOtp(phone: string, code: string) {
+  async verifyOtp(email: string, code: string) {
+    const formattedEmail = email.toLowerCase().trim();
     const otp = await this.prisma.otpCode.findFirst({
       where: {
-        phone,
+        email: formattedEmail,
         code,
         used: false,
         expiresAt: { gte: new Date() },
@@ -66,25 +68,25 @@ export class AuthService {
     });
 
     // Find or create user
-    let user = await this.prisma.user.findUnique({ where: { phone } });
+    let user = await this.prisma.user.findUnique({ where: { email: formattedEmail } });
     let isNewUser = false;
     if (!user) {
       isNewUser = true;
       user = await this.prisma.user.create({
-        data: { phone, isPhoneVerified: true },
+        data: { email: formattedEmail, isEmailVerified: true },
       });
-    } else if (!user.isPhoneVerified) {
+    } else if (!user.isEmailVerified) {
       user = await this.prisma.user.update({
         where: { id: user.id },
-        data: { isPhoneVerified: true },
+        data: { isEmailVerified: true },
       });
     }
 
     if (isNewUser) {
       this.notificationsService.sendAdminAlert('CUSTOMER_SIGNUP', {
         customerId: user.id,
-        customerName: user.name || 'New Phone User',
-        customerPhone: user.phone,
+        customerName: user.name || 'New User',
+        customerEmail: user.email,
       }).catch(err => console.error('Failed to send admin signup alert', err));
     }
 

@@ -159,6 +159,12 @@ export default function AdminProductsPage() {
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const showFeedback = (type: 'success' | 'error', text: string) => {
+    setFeedback({ type, text });
+    setTimeout(() => setFeedback(null), 4000);
+  };
 
   // ── Inventory Report state ────────────────────────────────────────
   const [showReport, setShowReport] = useState(false);
@@ -313,8 +319,9 @@ export default function AdminProductsPage() {
     try {
       await api.put(`/products/${productId}`, { [field]: !currentValue });
       setProducts(products.map(p => p.id === productId ? { ...p, [field]: !currentValue } : p));
+      showFeedback('success', 'Product badge status updated!');
     } catch (e) {
-      alert('Failed to update product');
+      showFeedback('error', 'Failed to update product badge status.');
     }
   };
 
@@ -408,8 +415,9 @@ export default function AdminProductsPage() {
       const { data } = await api.put(`/products/${editingProduct.id}`, payload);
       setProducts(prods => prods.map(p => p.id === editingProduct.id ? { ...p, ...data } : p));
       closeEdit();
+      showFeedback('success', 'Product updated successfully!');
     } catch (err: any) {
-      alert('Failed to save: ' + (err.response?.data?.message || err.message));
+      showFeedback('error', 'Failed to save product: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
     }
@@ -454,8 +462,9 @@ export default function AdminProductsPage() {
       await api.delete(`/products/${productId}`);
       setProducts(prods => prods.filter(p => p.id !== productId));
       setConfirmDelete(null);
+      showFeedback('success', 'Product deleted successfully!');
     } catch (err: any) {
-      alert('Failed to delete: ' + (err.response?.data?.message || err.message));
+      showFeedback('error', 'Failed to delete product: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -465,6 +474,16 @@ export default function AdminProductsPage() {
 
   return (
     <div className="container py-6 sm:py-10">
+      {feedback && (
+        <div className={`fixed top-6 right-6 z-[100] shadow-lg flex items-center gap-2.5 px-4 py-3 rounded-2xl border font-semibold text-sm animate-in fade-in slide-in-from-top-3 ${
+          feedback.type === 'success'
+            ? 'bg-green-50 text-green-700 border-green-200 shadow-green-100'
+            : 'bg-red-50 text-red-700 border-red-200 shadow-red-100'
+        }`}>
+          {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <AlertCircle className="w-5 h-5 text-red-600" />}
+          {feedback.text}
+        </div>
+      )}
       {confirmDelete && (
         <ConfirmDialog
           title={`Delete "${confirmDelete.name}"?`}
