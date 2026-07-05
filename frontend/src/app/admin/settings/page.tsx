@@ -562,6 +562,8 @@ export default function AdminSettingsPage() {
     heroImage3Url: '',
     heroTitle: 'Make Every Occasion Special',
     heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
+    heroTitleEnabled: true,
+    heroSubtitleEnabled: true,
     // Bank Details
     bankName: '',
     accountNumber: '',
@@ -882,12 +884,55 @@ export default function AdminSettingsPage() {
                     />
                   </Field>
                 </div>
-                <Field label="Hero Title" hint="Main heading on the hero banner.">
-                  <TextInput value={formData.heroTitle || ''} onChange={set('heroTitle')} placeholder="Make Every Occasion Special" />
-                </Field>
-                <Field label="Hero Subtitle" hint="Subtext below the heading.">
-                  <TextInput value={formData.heroSubtitle || ''} onChange={set('heroSubtitle')} placeholder="Designer Lehengas & Elegant Gowns for Festive Looks" />
-                </Field>
+                {/* Hero Title with toggle */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium">Hero Title</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, heroTitleEnabled: !p.heroTitleEnabled }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        (formData as any).heroTitleEnabled ? 'bg-primary' : 'bg-gray-300'
+                      }`}
+                      title={(formData as any).heroTitleEnabled ? 'Hide title on homepage' : 'Show title on homepage'}
+                    >
+                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        (formData as any).heroTitleEnabled ? 'translate-x-5' : ''
+                      }`} />
+                    </button>
+                  </div>
+                  <div className={`transition-opacity duration-200 ${ (formData as any).heroTitleEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none' }`}>
+                    <TextInput value={formData.heroTitle || ''} onChange={set('heroTitle')} placeholder="Make Every Occasion Special" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {(formData as any).heroTitleEnabled ? '✓ Title is visible on homepage' : '✗ Title is hidden on homepage'}
+                  </p>
+                </div>
+
+                {/* Hero Subtitle with toggle */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium">Hero Subtitle</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, heroSubtitleEnabled: !p.heroSubtitleEnabled }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        (formData as any).heroSubtitleEnabled ? 'bg-primary' : 'bg-gray-300'
+                      }`}
+                      title={(formData as any).heroSubtitleEnabled ? 'Hide subtitle on homepage' : 'Show subtitle on homepage'}
+                    >
+                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        (formData as any).heroSubtitleEnabled ? 'translate-x-5' : ''
+                      }`} />
+                    </button>
+                  </div>
+                  <div className={`transition-opacity duration-200 ${ (formData as any).heroSubtitleEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none' }`}>
+                    <TextInput value={formData.heroSubtitle || ''} onChange={set('heroSubtitle')} placeholder="Designer Lehengas & Elegant Gowns for Festive Looks" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {(formData as any).heroSubtitleEnabled ? '✓ Subtitle is visible on homepage' : '✗ Subtitle is hidden on homepage'}
+                  </p>
+                </div>
               </div>
 
               {/* ── STORE INFO / FOOTER ───────────────────────────────────── */}

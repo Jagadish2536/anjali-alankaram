@@ -48,6 +48,8 @@ interface StoreSettings {
   heroImage3Url: string;
   heroTitle: string;
   heroSubtitle: string;
+  heroTitleEnabled: boolean;
+  heroSubtitleEnabled: boolean;
   // Bank Details
   bankName: string;
   accountNumber: string;
@@ -115,6 +117,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   heroImage3Url: '',
   heroTitle: 'Make Every Occasion Special',
   heroSubtitle: 'Designer Lehengas & Elegant Gowns for Festive Looks',
+  heroTitleEnabled: true,
+  heroSubtitleEnabled: true,
   // Bank Details
   bankName: '',
   accountNumber: '',

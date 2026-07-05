@@ -48,7 +48,7 @@ export class SettingsController {
       lowStockThreshold, reservationTimeoutMins,
       storeDescription, storeAddress, businessHours, contactEmail, contactPhone,
       returnPolicyDays, footerCategories,
-      marqueeText, heroImageUrl, heroLeftImageUrl, heroImage3Url, heroTitle, heroSubtitle,
+      marqueeText, heroImageUrl, heroLeftImageUrl, heroImage3Url, heroTitle, heroSubtitle, heroTitleEnabled, heroSubtitleEnabled,
       bankName, accountNumber, ifscCode, accountHolderName,
       themePrimaryColor, themeBackgroundColor, themeHeadingFont, themeBodyFont, themeFontSizeScale, marqueeEnabled,
     } = data;
@@ -97,6 +97,8 @@ export class SettingsController {
     safe('heroImage3Url', heroImage3Url);
     safe('heroTitle', heroTitle);
     safe('heroSubtitle', heroSubtitle);
+    safe('heroTitleEnabled', heroTitleEnabled !== undefined ? Boolean(heroTitleEnabled) : undefined);
+    safe('heroSubtitleEnabled', heroSubtitleEnabled !== undefined ? Boolean(heroSubtitleEnabled) : undefined);
     safe('bankName', bankName);
     safe('accountNumber', accountNumber);
     safe('ifscCode', ifscCode);

@@ -84,6 +84,22 @@ function CollectionCard({ cat }: { cat: any }) {
   );
 }
 
+// ── Category card — mobile 3-col circular grid ────────────────────────────────
+function MobileCollectionCard({ cat }: { cat: any }) {
+  const img = (cat.image && cat.image.trim() !== '') ? cat.image : '/placeholder.png';
+  return (
+    <Link
+      href={`/products?category=${cat.slug}`}
+      className="flex flex-col items-center gap-2 group animate-scale-in"
+    >
+      <div className="relative w-full aspect-square rounded-full overflow-hidden border-2 border-primary/10 shadow-md group-active:scale-95 transition-transform duration-200">
+        <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-500" />
+      </div>
+      <span className="text-[11px] font-semibold text-center text-foreground leading-tight px-1">{cat.name}</span>
+    </Link>
+  );
+}
+
 // ── Product card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id: string) => void }) {
   const [localColor, setLocalColor] = useState('');
@@ -824,7 +840,7 @@ export default function Home() {
     // Best sellers
     api.get('/products', { params: { isBestseller: 'true', limit: 4, t: Date.now() } })
       .then(({ data }) => { const l = Array.isArray(data) ? data : data?.data || []; setBestSellers(l.slice(0, 4)); setBsLoading(false); })
-      .catch(() => { setBestSellers([]); setBsLoading(false); });
+.catch(() => { setBestSellers([]); setBsLoading(false); });
 
     // New arrivals
     api.get('/products', { params: { isNewArrival: 'true', limit: 4, t: Date.now() } })
@@ -853,6 +869,8 @@ export default function Home() {
   const heroLeftImage = s.heroLeftImageUrl || '';
   const heroTitle = s.heroTitle || 'Make Every Occasion Special';
   const heroSubtitle = s.heroSubtitle || 'Designer Lehengas & Elegant Gowns for Festive Looks';
+  const heroTitleEnabled = s.heroTitleEnabled !== false;
+  const heroSubtitleEnabled = s.heroSubtitleEnabled !== false;
 
   return (
     <div className="flex flex-col">
@@ -860,157 +878,108 @@ export default function Home() {
       {/* ── § 1 MARQUEE TOP (same text as admin marquee) ──────────────── */}
       {s.marqueeEnabled !== false && <LotusDivider text={marqueeText} />}
 
-      {/* ── § 2 HERO — Usha Designers inspired 3-image collage + custom theme ── */}
+      {/* ── § 2 HERO — Usha Designers layout (all screens) ── */}
       <section
-        className="relative w-full overflow-hidden flex items-center bg-primary/10 py-12 md:py-16 lg:py-20"
-        style={{ minHeight: '60vh' }}
+        className="w-full overflow-hidden relative"
+        style={{ minHeight: 'clamp(280px, 42vw, 560px)', background: 'linear-gradient(135deg, #b8d4c4 0%, #7aab90 30%, #4a7a62 65%, #2c5043 100%)' }}
         aria-label="Hero banner"
       >
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: lilyBg, backgroundSize: '140px 140px', opacity: 0.15 }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px', opacity: 0.06 }} />
 
-        <div className="relative z-10 container mx-auto px-4 md:px-8 max-w-7xl w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            
-            {/* Left side content */}
-            <div className="lg:col-span-5 text-left space-y-6 md:space-y-8">
-              <h1 className="font-cormorant text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight tracking-tight uppercase animate-slide-up">
+        <div className="relative z-10 h-full grid grid-cols-2" style={{ minHeight: 'clamp(280px, 42vw, 560px)' }}>
+
+          {/* ── Left: text on gradient ── */}
+          <div className="flex flex-col justify-center px-[5%] py-8 md:py-12 lg:py-16 space-y-2 md:space-y-4">
+            {heroTitleEnabled && (
+              <h1
+                className="font-cormorant font-bold text-[#1a3828] leading-none tracking-tight uppercase animate-slide-up"
+                style={{ fontSize: 'clamp(1.8rem, 6vw, 5.5rem)' }}
+              >
                 {heroTitle}
               </h1>
-              <p className="text-foreground/80 text-sm sm:text-base md:text-lg max-w-md leading-relaxed font-sans animate-slide-up delay-200">
+            )}
+            {heroSubtitleEnabled && (
+              <p
+                className="text-[#1a3828]/80 leading-snug animate-slide-up delay-100 font-sans max-w-xs md:max-w-sm"
+                style={{ fontSize: 'clamp(0.7rem, 1.4vw, 1.1rem)' }}
+              >
                 {heroSubtitle}
               </p>
-              <div className="animate-slide-up delay-300">
-                <Link
-                  href="/products"
-                  className="inline-block bg-primary text-primary-foreground font-semibold px-8 py-3.5 rounded-full hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 shadow-md font-sans"
-                >
-                  SHOP NOW
-                </Link>
-              </div>
-            </div>
-
-            {/* Right side collage */}
-            <div className="lg:col-span-7 flex justify-center lg:justify-end items-center w-full">
-              <div className="flex gap-3 sm:gap-4 md:gap-5 items-center justify-center h-[320px] sm:h-[380px] md:h-[450px] w-full max-w-xl">
-                
-                {/* Image 1 (Left slant) */}
-                <div className="w-1/3 h-[85%] animate-slide-up delay-100">
-                  <div className="relative w-full h-full rounded-tl-[3rem] rounded-br-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[-2deg] transition-all duration-500 bg-muted/20 animate-float">
-                    <Image
-                      src={heroLeftImage || '/placeholder.png'}
-                      alt="Collage 1"
-                      fill
-                      className="object-cover object-top"
-                      priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-                  </div>
-                </div>
-
-                {/* Image 2 (Middle capsule, taller) */}
-                <div className="w-1/3 h-[98%] animate-slide-up delay-300">
-                  <div className="relative w-full h-full rounded-t-[4rem] rounded-b-[4rem] overflow-hidden border border-white/20 shadow-xl hover:scale-105 transition-all duration-500 bg-muted/20 animate-float delay-300">
-                    <Image
-                      src={heroImage || '/placeholder.png'}
-                      alt="Collage 2"
-                      fill
-                      className="object-cover object-top"
-                      priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-                  </div>
-                </div>
-
-                {/* Image 3 (Right slant) */}
-                <div className="w-1/3 h-[85%] animate-slide-up delay-500">
-                  <div className="relative w-full h-full rounded-tr-[3rem] rounded-bl-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[2deg] transition-all duration-500 bg-muted/20 animate-float-reverse">
-                    <Image
-                      src={s.heroImage3Url || '/placeholder.png'}
-                      alt="Collage 3"
-                      fill
-                      className="object-cover object-top"
-                      priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
+            )}
+            <Link
+              href="/products"
+              className="mt-2 md:mt-4 self-start inline-block bg-[#1a3828] text-white font-bold uppercase tracking-widest rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all animate-slide-up delay-200 font-sans"
+              style={{ fontSize: 'clamp(0.6rem, 1.1vw, 0.85rem)', padding: 'clamp(7px, 1.1vw, 14px) clamp(16px, 2.8vw, 36px)' }}
+            >
+              SHOP NOW
+            </Link>
           </div>
+
+          {/* ── Right: 3 angled photo collage ── */}
+          <div className="relative flex items-center justify-center overflow-hidden pr-[2%]">
+            {/* 3 photos in angled/tilted frames */}
+            <div className="flex items-center justify-center gap-[clamp(4px,1.2vw,16px)] h-[80%] w-full">
+              {/* Photo 1 — left, tilted left */}
+              <div
+                className="relative overflow-hidden shadow-xl flex-shrink-0 animate-slide-up delay-100"
+                style={{
+                  width: 'clamp(70px, 18vw, 200px)',
+                  height: 'clamp(110px, 28vw, 320px)',
+                  borderRadius: 'clamp(16px, 3vw, 40px)',
+                  transform: 'rotate(-4deg)',
+                }}
+              >
+                <Image src={heroLeftImage || '/placeholder.png'} alt="Look 1" fill className="object-cover object-top" priority />
+              </div>
+              {/* Photo 2 — center, tallest, straight */}
+              <div
+                className="relative overflow-hidden shadow-2xl flex-shrink-0 animate-slide-up delay-300"
+                style={{
+                  width: 'clamp(80px, 20vw, 220px)',
+                  height: 'clamp(130px, 34vw, 380px)',
+                  borderRadius: 'clamp(20px, 4vw, 50px)',
+                  transform: 'rotate(0deg)',
+                  zIndex: 10,
+                }}
+              >
+                <Image src={heroImage || '/placeholder.png'} alt="Look 2" fill className="object-cover object-top" priority />
+              </div>
+              {/* Photo 3 — right, tilted right */}
+              <div
+                className="relative overflow-hidden shadow-xl flex-shrink-0 animate-slide-up delay-500"
+                style={{
+                  width: 'clamp(70px, 18vw, 200px)',
+                  height: 'clamp(110px, 28vw, 320px)',
+                  borderRadius: 'clamp(16px, 3vw, 40px)',
+                  transform: 'rotate(4deg)',
+                }}
+              >
+                <Image src={s.heroImage3Url || '/placeholder.png'} alt="Look 3" fill className="object-cover object-top" priority />
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      {/* ── § 3 SHOP BY COLLECTIONS — horizontal scroll ── */}
-      <section className="py-12 px-4 relative max-w-7xl mx-auto overflow-hidden" aria-labelledby="collections-heading">
-        <div className="flex justify-between items-center mb-8 px-2">
-          <div className="w-10 h-10 hidden md:block" /> {/* Spacer */}
-          <h2 id="collections-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground">
-            Shop by collections
-          </h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => scrollCollections('left')}
-              className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => scrollCollections('right')}
-              className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+      {/* ── § 3 SHOP BY COLLECTIONS — circular grid (all screens) ── */}
+      <section className="pt-6 pb-10 md:pt-10 md:pb-14 px-4 max-w-7xl mx-auto overflow-hidden" aria-labelledby="collections-heading">
+        {/* Heading — visible on desktop only */}
+        <h2 id="collections-heading" className="hidden md:block font-cormorant text-4xl font-bold text-center text-foreground mb-8">
+          Shop by Collections
+        </h2>
 
         {categories.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm py-6">No collections yet</p>
         ) : (
-          <div
-            ref={collectionScrollRef}
-            className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-colors w-full min-w-0 px-2"
-            style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as any}
-          >
-            {categories.length > 6 && !showAllCollections ? (
-              <>
-                {categories.slice(0, 6).map(cat => (
-                  <CollectionCard key={cat.id} cat={cat} />
-                ))}
-                <button
-                  onClick={() => setShowAllCollections(true)}
-                  className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl border-2 border-dashed border-primary/30 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center transition-all duration-300 gap-2 cursor-pointer"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                    <span className="text-xl font-bold">+</span>
-                  </div>
-                  <span className="font-outfit font-bold text-sm text-primary">More Collections</span>
-                </button>
-              </>
-            ) : (
-              <>
-                {categories.map(cat => (
-                  <CollectionCard key={cat.id} cat={cat} />
-                ))}
-                {categories.length > 6 && (
-                  <button
-                    onClick={() => setShowAllCollections(false)}
-                    className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl border-2 border-dashed border-primary/30 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center transition-all duration-300 gap-2 cursor-pointer"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                      <span className="text-xl font-bold">−</span>
-                    </div>
-                    <span className="font-outfit font-bold text-sm text-primary">Show Less</span>
-                  </button>
-                )}
-              </>
-            )}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-8">
+            {categories.map(cat => (
+              <MobileCollectionCard key={cat.id} cat={cat} />
+            ))}
           </div>
         )}
       </section>
+
 
       {/* ── § 4 LOTUS MARQUEE DIVIDER (admin text) ────────────────────── */}
       {s.marqueeEnabled !== false && <LotusDivider text={marqueeText} />}

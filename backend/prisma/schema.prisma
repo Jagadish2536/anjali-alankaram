@@ -730,6 +730,8 @@ model StoreSettings {
   heroImage3Url           String?
   heroTitle               String?  @default("Make Every Occasion Special")
   heroSubtitle            String?  @default("Designer Lehengas & Elegant Gowns for Festive Looks")
+  heroTitleEnabled        Boolean? @default(true)
+  heroSubtitleEnabled     Boolean? @default(true)
   themePrimaryColor       String?  @default("#2C5043")
   themeBackgroundColor    String?  @default("#FAF6F0")
   themeHeadingFont        String?  @default("Cormorant Garamond")
