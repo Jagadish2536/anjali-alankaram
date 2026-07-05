@@ -941,6 +941,29 @@ export default function AdminSettingsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
               {/* Left Column: Editor Controls */}
               <div className="space-y-6">
+                <div className="flex justify-between items-center pb-4 border-b">
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">Customise Store Theme</h3>
+                    <p className="text-xs text-muted-foreground font-sans">Set brand values for colors, layout background, and typography.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(p => ({
+                        ...p,
+                        themePrimaryColor: '#2C5043',
+                        themeBackgroundColor: '#FAF6F0',
+                        themeHeadingFont: 'Cormorant Garamond',
+                        themeBodyFont: 'Outfit',
+                        themeFontSizeScale: 'Medium'
+                      }));
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FAF6F0] hover:bg-amber-50 text-[#2C5043] border border-[#2C5043]/20 hover:border-[#2C5043]/50 rounded-xl text-xs font-bold transition-all shadow-sm"
+                  >
+                    Reset to Usha Defaults
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <Field label="Primary Theme Color" hint="This is the main brand color used for navbars, buttons, and footers. Reference (Usha Designers): #2C5043">
                     <div className="flex gap-3 items-center">

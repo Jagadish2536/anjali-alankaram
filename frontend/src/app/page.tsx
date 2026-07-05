@@ -50,11 +50,29 @@ const lilyBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg
 // ── Category card — horizontal scroll card style ──────────────────────────────
 function CollectionCard({ cat }: { cat: any }) {
   const img = (cat.image && cat.image.trim() !== '') ? cat.image : '/placeholder.png';
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const nX = (x / rect.width) - 0.5;
+    const nY = (y / rect.height) - 0.5;
+    setTilt({ x: -nY * 14, y: nX * 14 });
+  };
 
   return (
     <Link
       href={`/products?category=${cat.slug}`}
-      className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block animate-scale-in transition-all duration-500 ease-out hover:shadow-xl hover:-translate-y-1.5"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+      className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block animate-scale-in"
+      style={{
+        transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`,
+        transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease' : 'transform 0.08s ease-out, box-shadow 0.08s ease-out',
+        boxShadow: tilt.x !== 0 || tilt.y !== 0 ? '0 20px 40px rgba(0,0,0,0.18)' : 'none'
+      }}
     >
       <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700" />
       {/* Light gradient only at bottom for text readability */}
@@ -69,6 +87,17 @@ function CollectionCard({ cat }: { cat: any }) {
 // ── Product card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id: string) => void }) {
   const [localColor, setLocalColor] = useState('');
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const nX = (x / rect.width) - 0.5;
+    const nY = (y / rect.height) - 0.5;
+    setTilt({ x: -nY * 14, y: nX * 14 });
+  };
 
   const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
   const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
@@ -112,8 +141,19 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
   })();
 
   return (
-    <div className="group flex flex-col relative animate-scale-in transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-1 rounded-2xl">
-      <Link href={href} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2 shadow-sm">
+    <div className="group flex flex-col relative animate-scale-in transition-all duration-300 ease-out p-1 rounded-2xl">
+      <Link
+        href={href}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+        className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2 shadow-sm"
+        style={{
+          transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`,
+          transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease' : 'transform 0.08s ease-out, box-shadow 0.08s ease-out',
+          boxShadow: tilt.x !== 0 || tilt.y !== 0 ? '0 15px 30px rgba(0,0,0,0.15)' : 'none',
+          zIndex: tilt.x !== 0 || tilt.y !== 0 ? 10 : 1
+        }}
+      >
         <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
         {/* Top-left badge: OUT OF STOCK takes priority over discount */}
@@ -284,6 +324,96 @@ function AutoplayVideo({ src, className }: { src: string; className?: string }) 
   );
 }
 
+// ── Video Card Item — with custom 3D cursor tilt ────────────────────────────────
+function VideoCard({ vid, index, getStyle }: { vid: any; index: number; getStyle: (i: number) => any }) {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const nX = (x / rect.width) - 0.5;
+    const nY = (y / rect.height) - 0.5;
+    setTilt({ x: -nY * 14, y: nX * 14 });
+  };
+
+  const style = getStyle(index);
+  
+  // Combine dynamic translate from carousel style with mouse tilt!
+  const combinedTransform = `${style.transform} perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`;
+  const combinedTransition = tilt.x === 0 && tilt.y === 0 ? style.transition : 'transform 0.08s ease-out, opacity 0.4s ease, filter 0.4s ease';
+
+  return (
+    <div 
+      className="absolute flex flex-col items-center animate-scale-in" 
+      style={{ 
+        ...style, 
+        transform: combinedTransform, 
+        transition: combinedTransition,
+        zIndex: tilt.x !== 0 || tilt.y !== 0 ? 30 : style.zIndex 
+      }}
+    >
+      {vid.videoUrl ? (
+        <Link
+          href={`/products/${vid.slug}`}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+          className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+          style={{ aspectRatio: '9/16', maxHeight: 390 }}
+        >
+          <AutoplayVideo
+            src={vid.videoUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
+          <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary">
+            <Video className="w-4 h-4 text-white" />
+          </div>
+          <div className="absolute bottom-3 left-3 right-3">
+            <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
+          </div>
+        </Link>
+      ) : (
+        <a
+          href={vid.instagramReelUrl || `/products/${vid.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+          className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+          style={{ aspectRatio: '9/16', maxHeight: 390 }}
+        >
+          <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
+            </div>
+          </div>
+          <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)' }}>
+            <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current" aria-hidden="true">
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+            </svg>
+          </div>
+          <div className="absolute bottom-3 left-3 right-3">
+            <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
+          </div>
+        </a>
+      )}
+      {/* Premium style View Product button */}
+      <Link
+        href={`/products/${vid.slug}`}
+        className="mt-3.5 inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[11px] font-bold tracking-wider uppercase bg-primary text-primary-foreground rounded-full hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all hover:shadow-md shadow-sm"
+      >
+        <span>View Product</span>
+        <ChevronRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
+  );
+}
+
 // ── Featured Videos Carousel ───────────────────────────────────────────────────
 function VideoCarousel({ videos }: { videos: any[] }) {
   const [center, setCenter] = useState(0);
@@ -380,60 +510,7 @@ function VideoCarousel({ videos }: { videos: any[] }) {
         </button>
         <div className="relative flex items-center justify-center" style={{ width: '100%', maxWidth: 760 }}>
           {videos.map((vid, i) => (
-            <div key={vid.id} className="absolute flex flex-col items-center" style={getStyle(i)}>
-              {vid.videoUrl ? (
-                <Link
-                  href={`/products/${vid.slug}`}
-                  className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
-                  style={{ aspectRatio: '9/16', maxHeight: 390 }}
-                >
-                  <AutoplayVideo
-                    src={vid.videoUrl}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
-                  <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary">
-                    <Video className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
-                  </div>
-                </Link>
-              ) : (
-                <a
-                  href={vid.instagramReelUrl || `/products/${vid.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
-                  style={{ aspectRatio: '9/16', maxHeight: 390 }}
-                >
-                  <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
-                    </div>
-                  </div>
-                  <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)' }}>
-                    <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current" aria-hidden="true">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                    </svg>
-                  </div>
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
-                  </div>
-                </a>
-              )}
-              {/* Premium style View Product button */}
-              <Link
-                href={`/products/${vid.slug}`}
-                className="mt-3.5 inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[11px] font-bold tracking-wider uppercase bg-primary text-primary-foreground rounded-full hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all hover:shadow-md shadow-sm"
-              >
-                <span>View Product</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+            <VideoCard key={vid.id} vid={vid} index={i} getStyle={getStyle} />
           ))}
         </div>
         <button

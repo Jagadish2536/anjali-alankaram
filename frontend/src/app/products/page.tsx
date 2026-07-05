@@ -86,6 +86,17 @@ function PriceSlider({ min, max, value, onChange }: {
 // ── Product card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, activeColor }: { product: any; activeColor?: string }) {
   const [localColor, setLocalColor] = useState(activeColor || '');
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const nX = (x / rect.width) - 0.5;
+    const nY = (y / rect.height) - 0.5;
+    setTilt({ x: -nY * 14, y: nX * 14 });
+  };
 
   useEffect(() => {
     setLocalColor(activeColor || '');
@@ -132,9 +143,19 @@ function ProductCard({ product, activeColor }: { product: any; activeColor?: str
   })();
 
   return (
-    <div className="group flex flex-col">
+    <div className="group flex flex-col animate-scale-in transition-all duration-300 ease-out p-1 rounded-2xl">
       <Link href={href} className="flex flex-col">
-        <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3">
+        <div
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+          className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3 shadow-sm"
+          style={{
+            transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`,
+            transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease' : 'transform 0.08s ease-out, box-shadow 0.08s ease-out',
+            boxShadow: tilt.x !== 0 || tilt.y !== 0 ? '0 15px 30px rgba(0,0,0,0.15)' : 'none',
+            zIndex: tilt.x !== 0 || tilt.y !== 0 ? 10 : 1
+          }}
+        >
           <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
           {/* Top-left badge: Out of Stock OR Discount % */}
