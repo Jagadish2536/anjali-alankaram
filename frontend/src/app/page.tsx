@@ -54,7 +54,7 @@ function CollectionCard({ cat }: { cat: any }) {
   return (
     <Link
       href={`/products?category=${cat.slug}`}
-      className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block"
+      className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer block animate-scale-in transition-all duration-500 ease-out hover:shadow-xl hover:-translate-y-1.5"
     >
       <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-700" />
       {/* Light gradient only at bottom for text readability */}
@@ -112,8 +112,8 @@ function ProductCard({ product, onAddToCart }: { product: any; onAddToCart?: (id
   })();
 
   return (
-    <div className="group flex flex-col relative">
-      <Link href={href} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2">
+    <div className="group flex flex-col relative animate-scale-in transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-1 rounded-2xl">
+      <Link href={href} className="block relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-2 shadow-sm">
         <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
 
         {/* Top-left badge: OUT OF STOCK takes priority over discount */}
@@ -725,6 +725,16 @@ export default function Home() {
   const [bsLoading, setBsLoading] = useState(true);
   const [naLoading, setNaLoading] = useState(true);
 
+  const [showAllCollections, setShowAllCollections] = useState(false);
+  const collectionScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCollections = (direction: 'left' | 'right') => {
+    const container = collectionScrollRef.current;
+    if (!container) return;
+    const scrollAmount = direction === 'left' ? -350 : 350;
+    container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     fetchSettings();
 
@@ -786,13 +796,13 @@ export default function Home() {
             
             {/* Left side content */}
             <div className="lg:col-span-5 text-left space-y-6 md:space-y-8">
-              <h1 className="font-cormorant text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight tracking-tight uppercase">
+              <h1 className="font-cormorant text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight tracking-tight uppercase animate-slide-up">
                 {heroTitle}
               </h1>
-              <p className="text-foreground/80 text-sm sm:text-base md:text-lg max-w-md leading-relaxed font-sans">
+              <p className="text-foreground/80 text-sm sm:text-base md:text-lg max-w-md leading-relaxed font-sans animate-slide-up delay-200">
                 {heroSubtitle}
               </p>
-              <div>
+              <div className="animate-slide-up delay-300">
                 <Link
                   href="/products"
                   className="inline-block bg-primary text-primary-foreground font-semibold px-8 py-3.5 rounded-full hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 shadow-md font-sans"
@@ -807,39 +817,45 @@ export default function Home() {
               <div className="flex gap-3 sm:gap-4 md:gap-5 items-center justify-center h-[320px] sm:h-[380px] md:h-[450px] w-full max-w-xl">
                 
                 {/* Image 1 (Left slant) */}
-                <div className="relative w-1/3 h-[85%] rounded-tl-[3rem] rounded-br-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[-2deg] transition-all duration-500 bg-muted/20">
-                  <Image
-                    src={heroLeftImage || '/placeholder.png'}
-                    alt="Collage 1"
-                    fill
-                    className="object-cover object-top"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                <div className="w-1/3 h-[85%] animate-slide-up delay-100">
+                  <div className="relative w-full h-full rounded-tl-[3rem] rounded-br-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[-2deg] transition-all duration-500 bg-muted/20 animate-float">
+                    <Image
+                      src={heroLeftImage || '/placeholder.png'}
+                      alt="Collage 1"
+                      fill
+                      className="object-cover object-top"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                  </div>
                 </div>
 
                 {/* Image 2 (Middle capsule, taller) */}
-                <div className="relative w-1/3 h-[98%] rounded-t-[4rem] rounded-b-[4rem] overflow-hidden border border-white/20 shadow-xl hover:scale-105 transition-all duration-500 bg-muted/20">
-                  <Image
-                    src={heroImage || '/placeholder.png'}
-                    alt="Collage 2"
-                    fill
-                    className="object-cover object-top"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                <div className="w-1/3 h-[98%] animate-slide-up delay-300">
+                  <div className="relative w-full h-full rounded-t-[4rem] rounded-b-[4rem] overflow-hidden border border-white/20 shadow-xl hover:scale-105 transition-all duration-500 bg-muted/20 animate-float delay-300">
+                    <Image
+                      src={heroImage || '/placeholder.png'}
+                      alt="Collage 2"
+                      fill
+                      className="object-cover object-top"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                  </div>
                 </div>
 
                 {/* Image 3 (Right slant) */}
-                <div className="relative w-1/3 h-[85%] rounded-tr-[3rem] rounded-bl-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[2deg] transition-all duration-500 bg-muted/20">
-                  <Image
-                    src={s.heroImage3Url || '/placeholder.png'}
-                    alt="Collage 3"
-                    fill
-                    className="object-cover object-top"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                <div className="w-1/3 h-[85%] animate-slide-up delay-500">
+                  <div className="relative w-full h-full rounded-tr-[3rem] rounded-bl-[3rem] overflow-hidden border border-white/20 shadow-md hover:scale-105 hover:rotate-[2deg] transition-all duration-500 bg-muted/20 animate-float-reverse">
+                    <Image
+                      src={s.heroImage3Url || '/placeholder.png'}
+                      alt="Collage 3"
+                      fill
+                      className="object-cover object-top"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                  </div>
                 </div>
 
               </div>
@@ -849,19 +865,72 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── § 3 SHOP BY COLLECTIONS — horizontal scroll (like marquee) ── */}
-      <section className="py-12 px-4" aria-labelledby="collections-heading">
-        <h2 id="collections-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-8">
-          Shop by collections
-        </h2>
+      {/* ── § 3 SHOP BY COLLECTIONS — horizontal scroll ── */}
+      <section className="py-12 px-4 relative max-w-7xl mx-auto" aria-labelledby="collections-heading">
+        <div className="flex justify-between items-center mb-8 px-2">
+          <div className="w-10 h-10 hidden md:block" /> {/* Spacer */}
+          <h2 id="collections-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground">
+            Shop by collections
+          </h2>
+          <div className="flex gap-2">
+            <button
+              onClick={() => scrollCollections('left')}
+              className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => scrollCollections('right')}
+              className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
         {categories.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm py-6">No collections yet</p>
         ) : (
           <div
-            className="flex gap-4 overflow-x-auto pb-4 md:overflow-visible md:grid md:grid-cols-4 md:gap-6 max-w-7xl mx-auto"
-            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as any}
+            ref={collectionScrollRef}
+            className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-colors max-w-full px-2"
+            style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as any}
           >
-            {categories.map(cat => <CollectionCard key={cat.id} cat={cat} />)}
+            {categories.length > 6 && !showAllCollections ? (
+              <>
+                {categories.slice(0, 6).map(cat => (
+                  <CollectionCard key={cat.id} cat={cat} />
+                ))}
+                <button
+                  onClick={() => setShowAllCollections(true)}
+                  className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl border-2 border-dashed border-primary/30 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center transition-all duration-300 gap-2 cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                    <span className="text-xl font-bold">+</span>
+                  </div>
+                  <span className="font-outfit font-bold text-sm text-primary">More Collections</span>
+                </button>
+              </>
+            ) : (
+              <>
+                {categories.map(cat => (
+                  <CollectionCard key={cat.id} cat={cat} />
+                ))}
+                {categories.length > 6 && (
+                  <button
+                    onClick={() => setShowAllCollections(false)}
+                    className="group relative flex-shrink-0 w-40 md:w-52 aspect-[3/4] rounded-2xl border-2 border-dashed border-primary/30 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center transition-all duration-300 gap-2 cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                      <span className="text-xl font-bold">−</span>
+                    </div>
+                    <span className="font-outfit font-bold text-sm text-primary">Show Less</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </section>

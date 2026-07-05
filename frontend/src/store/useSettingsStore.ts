@@ -136,7 +136,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   fetchSettings: async () => {
     // Always re-fetch to pick up latest admin changes (don't cache indefinitely)
     try {
-      const { data } = await api.get('/settings');
+      const { data } = await api.get(`/settings?t=${Date.now()}`);
       if (data) {
         set({
           settings: {

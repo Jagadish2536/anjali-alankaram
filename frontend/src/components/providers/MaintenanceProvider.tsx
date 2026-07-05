@@ -324,8 +324,8 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
                           pathname === '/orders' || pathname.startsWith('/orders/') ||
                           pathname === '/track-order' || pathname.startsWith('/track-order/');
 
-  // Block anyone who is not a management user from accessing non-bypassed routes during maintenance
-  if (settings.maintenanceMode && !isManagementUser && !isBypassedRoute) {
+  // Block anyone from accessing non-bypassed routes during maintenance
+  if (settings.maintenanceMode && !isBypassedRoute) {
     return (
       <MaintenancePage 
         settings={settings} 

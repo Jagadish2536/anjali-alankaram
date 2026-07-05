@@ -382,7 +382,134 @@ function CouponManagement() {
   );
 }
 
-// ── Main Settings Page ────────────────────────────────────────────────────────
+const GOOGLE_FONTS = [
+  "Cormorant Garamond", "Playfair Display", "Cinzel", "Lora", "Prata", 
+  "Merriweather", "EB Garamond", "Libre Baskerville", "Bodoni Moda", "Cardo",
+  "DM Serif Display", "Noto Serif", "Arvo", "Crimson Text", "Alice", 
+  "Castoro", "Yeseva One", "Volkhov", "Neuton", "Domine", 
+  "Quattrocento", "Old Standard TT", "Goudy Bookletter 1911", "IM Fell Double Pica", "Josefin Serif", 
+  "Kurale", "Poly", "Taviraj", "Trirong", "Pridi", 
+  "Maitree", "Italiana", "Sorts Mill Goudy", "Lustria", "Fanwood Text", 
+  "Oranienbaum", "Radley", "Federo", "Alegreya", "Amiri",
+  "Baskervville", "Fraunces", "Noto Serif Display", "Rozha One",
+  "Rasa", "Suranna", "Yatra One", "Gurajada",
+  "Outfit", "Inter", "Montserrat", "Roboto", "Open Sans",
+  "Lato", "Poppins", "Raleway", "Nunito", "Rubik",
+  "Work Sans", "DM Sans", "Plus Jakarta Sans", "Heebo", "Kanit",
+  "Quicksand", "Questrial", "Jost", "Manrope", "Syne",
+  "Urbanist", "Space Grotesk", "Lexend", "Archivo", "Cabin",
+  "Assistant", "Fira Sans", "PT Sans", "Ubuntu", "Titillium Web",
+  "Josefin Sans", "Overpass", "Maven Pro", "Signika", "Barlow",
+  "Mulish", "Hind", "Noto Sans", "Mukta", "Karla",
+  "Source Sans 3", "Albert Sans", "Figtree", "Epilogue", "Hanken Grotesk",
+  "Sen", "Red Hat Display", "Geologica", "Sora", "Abel"
+].sort();
+
+const PRIMARY_COLORS = [
+  { label: 'Usha Green', value: '#2C5043' },
+  { label: 'Emerald Green', value: '#0F5257' },
+  { label: 'Forest Green', value: '#1B4332' },
+  { label: 'Sage Green', value: '#606C38' },
+  { label: 'Olive Drab', value: '#556B2F' },
+  { label: 'Teal Deep', value: '#005F73' },
+  { label: 'Ocean Blue', value: '#0A9396' },
+  { label: 'Turquoise', value: '#94D2BD' },
+  { label: 'Mint Dark', value: '#386641' },
+  { label: 'Basil', value: '#3B7A57' },
+  { label: 'Crimson Red', value: '#8B2635' },
+  { label: 'Crimson Deep', value: '#6F1D1B' },
+  { label: 'Scarlet Rose', value: '#9E2A2B' },
+  { label: 'Maroon Rich', value: '#5E0B15' },
+  { label: 'Rust Red', value: '#B8001F' },
+  { label: 'Burgundy', value: '#800020' },
+  { label: 'Ruby Red', value: '#E0115F' },
+  { label: 'Wine Purple', value: '#581845' },
+  { label: 'Plum Wine', value: '#4A0E17' },
+  { label: 'Rosewood', value: '#65000B' },
+  { label: 'Classic Navy', value: '#1B2A4A' },
+  { label: 'Royal Navy', value: '#0D1B2A' },
+  { label: 'Midnight Navy', value: '#1A2530' },
+  { label: 'Slate Navy', value: '#415A77' },
+  { label: 'Indigo Blue', value: '#3F51B5' },
+  { label: 'Steel Blue', value: '#4682B4' },
+  { label: 'Teal Blue', value: '#2E5B70' },
+  { label: 'Prussian Blue', value: '#003153' },
+  { label: 'Peacock Blue', value: '#004B49' },
+  { label: 'Sapphire', value: '#0F52BA' },
+  { label: 'Ochre Gold', value: '#D4A373' },
+  { label: 'Amber Gold', value: '#FFB703' },
+  { label: 'Honey Gold', value: '#DAA520' },
+  { label: 'Bronze Rich', value: '#8C6239' },
+  { label: 'Copper Tone', value: '#B87333' },
+  { label: 'Rich Mahogany', value: '#582F0E' },
+  { label: 'Caramel Warm', value: '#7F4F24' },
+  { label: 'Terracotta', value: '#E76F51' },
+  { label: 'Dark Ochre', value: '#B5838D' },
+  { label: 'Sand Drift', value: '#DDB892' },
+  { label: 'Rose Gold', value: '#B76E79' },
+  { label: 'Dusty Pink', value: '#E5989B' },
+  { label: 'Soft Mauve', value: '#B5A6C9' },
+  { label: 'Plum Purple', value: '#4A154B' },
+  { label: 'Lavender Deep', value: '#7B2CBF' },
+  { label: 'Dark Violet', value: '#3C096C' },
+  { label: 'Charcoal Black', value: '#1F2022' },
+  { label: 'Slate Grey', value: '#4A5759' },
+  { label: 'Taupe Grey', value: '#8D99AE' },
+  { label: 'Chocolate Brown', value: '#3D2626' }
+];
+
+const BACKGROUND_COLORS = [
+  { label: 'Usha Cream', value: '#FAF6F0' },
+  { label: 'Pure White', value: '#FFFFFF' },
+  { label: 'Soft Alabaster', value: '#FFFDF9' },
+  { label: 'Warm Linen', value: '#F4EFEA' },
+  { label: 'Antique Cream', value: '#EAE5D9' },
+  { label: 'Soft Parchment', value: '#F5F2EB' },
+  { label: 'Warm Bone', value: '#F5F5DC' },
+  { label: 'Silk Warm', value: '#FFF8E7' },
+  { label: 'Cotton White', value: '#FBFBF9' },
+  { label: 'Oatmeal', value: '#EFECE6' },
+  { label: 'Linen Clean', value: '#F3EFE0' },
+  { label: 'Rice White', value: '#FEFDFB' },
+  { label: 'Snow White', value: '#F8F9FA' },
+  { label: 'Off White', value: '#FAF9F6' },
+  { label: 'Ivory Shine', value: '#FFFFF0' },
+  { label: 'Mist Grey', value: '#F2F4F7' },
+  { label: 'Soft Stone', value: '#E8ECF1' },
+  { label: 'Cool Ice', value: '#F0F4F8' },
+  { label: 'Slate Tint', value: '#ECEFF1' },
+  { label: 'Silver Mist', value: '#E0E0E0' },
+  { label: 'Chalk Dust', value: '#F0F0F0' },
+  { label: 'Soft Pewter', value: '#E5E5E5' },
+  { label: 'Fog Grey', value: '#EBF0F5' },
+  { label: 'Platinum Pale', value: '#EFEFEF' },
+  { label: 'Cloud Blue', value: '#F0F8FF' },
+  { label: 'Sea Foam Mint', value: '#F4F9F4' },
+  { label: 'Soft Sage Tint', value: '#EAEFEA' },
+  { label: 'Pale Olive Tint', value: '#F0F3EB' },
+  { label: 'Mint Breeze', value: '#E8F5E9' },
+  { label: 'Herbal Clean', value: '#F1F8E9' },
+  { label: 'Dusty Rose Tint', value: '#FAF0F1' },
+  { label: 'Blush Silk', value: '#FFF0F2' },
+  { label: 'Peach Cream', value: '#FFF5EE' },
+  { label: 'Champagne', value: '#F7E7CE' },
+  { label: 'Nectar Blush', value: '#FFF3E0' },
+  { label: 'Shell Pink', value: '#FFF5F5' },
+  { label: 'Lavender Tint', value: '#F3E5F5' },
+  { label: 'Wisteria Mist', value: '#F8F5FC' },
+  { label: 'Soft Orchid', value: '#FAEBFA' },
+  { label: 'Periwinkle Tint', value: '#E8EAF6' },
+  { label: 'Warm Sand Tint', value: '#F5ECE3' },
+  { label: 'Wheat Straw', value: '#F5EBE6' },
+  { label: 'Soft Tan Glow', value: '#F6F0EB' },
+  { label: 'Driftwood Pale', value: '#EDE6DE' },
+  { label: 'Clay Tint', value: '#F3EDE6' },
+  { label: 'Dune Grass', value: '#EDECE4' },
+  { label: 'Oyster Shell', value: '#F2ECE4' },
+  { label: 'Soft Pearl', value: '#F0EDE9' },
+  { label: 'Cotton Mist', value: '#F7F7F7' },
+  { label: 'Warm Cream', value: '#FAF4E8' }
+];
 
 export default function AdminSettingsPage() {
   const { updateSettings } = useSettingsStore();
@@ -494,9 +621,24 @@ export default function AdminSettingsPage() {
     }
   }, [activeSection]);
 
+  useEffect(() => {
+    const loadFont = (fontFamily: string) => {
+      if (!fontFamily) return;
+      const linkId = `preview-font-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+      if (document.getElementById(linkId)) return;
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}:wght@400;600;700&display=swap`;
+      document.head.appendChild(link);
+    };
+    loadFont(formData.themeHeadingFont);
+    loadFont(formData.themeBodyFont);
+  }, [formData.themeHeadingFont, formData.themeBodyFont]);
+
   const fetchSettings = async () => {
     try {
-      const { data } = await api.get('/settings');
+      const { data } = await api.get(`/settings?t=${Date.now()}`);
       if (data) {
         setFormData(prev => ({
           ...prev,
@@ -606,7 +748,6 @@ export default function AdminSettingsPage() {
   const sections = [
     { name: 'General', icon: Settings, desc: 'Store details and contact info.' },
     { name: 'Theme', icon: Palette, desc: 'Customize colours and typography.' },
-    { name: 'Security', icon: Shield, desc: 'Admin roles and permissions.' },
     { name: 'Notifications', icon: Bell, desc: 'Email and SMS alerts.' },
     { name: 'Payments', icon: CreditCard, desc: 'Razorpay integration.' },
     { name: 'Bank Details', icon: Landmark, desc: 'Change store bank details.' },
@@ -789,17 +930,6 @@ export default function AdminSettingsPage() {
                         className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
                     </Field>
                   </div>
-                  <Field label="Return Policy Window (days)" hint="Customers see this in the footer and on product pages">
-                    <input type="number" min={1} max={90} value={formData.returnPolicyDays}
-                      onChange={e => setFormData(prev => ({ ...prev, returnPolicyDays: parseInt(e.target.value) || 7 }))}
-                      className="w-32 px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary" />
-                  </Field>
-                  <Field label="Footer Category Links (JSON)" hint='e.g. [{"name":"Sarees","slug":"sarees"},{"name":"New","slug":"new"}]'>
-                    <textarea rows={3} value={formData.footerCategories}
-                      onChange={e => setFormData(prev => ({ ...prev, footerCategories: e.target.value }))}
-                      placeholder='[{"name":"New Arrivals","slug":"new"},{"name":"Sarees","slug":"sarees"}]'
-                      className="w-full px-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-primary resize-none" />
-                  </Field>
                 </div>
               </div>
 
@@ -808,116 +938,201 @@ export default function AdminSettingsPage() {
 
           {/* ── THEME ────────────────────────────────────────────────── */}
           {activeSection === 'Theme' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Primary Theme Color" hint="This is the main brand color used for navbars, buttons, and footers. Reference (Usha Designers): #2C5043">
-                  <div className="flex gap-3 items-center">
-                    <input
-                      type="color"
-                      value={formData.themePrimaryColor || '#2C5043'}
-                      onChange={e => setFormData(p => ({ ...p, themePrimaryColor: e.target.value }))}
-                      className="w-10 h-10 border rounded-lg cursor-pointer shrink-0"
-                    />
-                    <input
-                      type="text"
-                      value={formData.themePrimaryColor || ''}
-                      onChange={e => setFormData(p => ({ ...p, themePrimaryColor: e.target.value }))}
-                      placeholder="#2C5043"
-                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary transition-shadow font-mono"
-                    />
-                  </div>
-                </Field>
-                <Field label="Background Color" hint="This is the page background color. Reference (Usha Designers): #FAF6F0">
-                  <div className="flex gap-3 items-center">
-                    <input
-                      type="color"
-                      value={formData.themeBackgroundColor || '#FAF6F0'}
-                      onChange={e => setFormData(p => ({ ...p, themeBackgroundColor: e.target.value }))}
-                      className="w-10 h-10 border rounded-lg cursor-pointer shrink-0"
-                    />
-                    <input
-                      type="text"
-                      value={formData.themeBackgroundColor || ''}
-                      onChange={e => setFormData(p => ({ ...p, themeBackgroundColor: e.target.value }))}
-                      placeholder="#FAF6F0"
-                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary transition-shadow font-mono"
-                    />
-                  </div>
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-6">
-                <Field label="Heading Font" hint="Used for section titles, headers, and banner headings.">
-                  <select
-                    value={formData.themeHeadingFont || 'Cormorant Garamond'}
-                    onChange={e => setFormData(p => ({ ...p, themeHeadingFont: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="Cormorant Garamond">Cormorant Garamond (Serif)</option>
-                    <option value="Outfit">Outfit (Sans-Serif)</option>
-                    <option value="Inter">Inter (Sans-Serif)</option>
-                  </select>
-                </Field>
-
-                <Field label="Body Font" hint="Used for general body text, product labels, lists, and forms.">
-                  <select
-                    value={formData.themeBodyFont || 'Outfit'}
-                    onChange={e => setFormData(p => ({ ...p, themeBodyFont: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="Cormorant Garamond">Cormorant Garamond (Serif)</option>
-                    <option value="Outfit">Outfit (Sans-Serif)</option>
-                    <option value="Inter">Inter (Sans-Serif)</option>
-                  </select>
-                </Field>
-
-                <Field label="Base Font Size Scale" hint="Scale the whole application font size proportionally. Safe for all screen sizes.">
-                  <select
-                    value={formData.themeFontSizeScale || 'Medium'}
-                    onChange={e => setFormData(p => ({ ...p, themeFontSizeScale: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="Small">Small (92.5%)</option>
-                    <option value="Medium">Medium (100% - Default)</option>
-                    <option value="Large">Large (107.5%)</option>
-                    <option value="Extra Large">Extra Large (115%)</option>
-                  </select>
-                </Field>
-              </div>
-            </div>
-          )}
-
-          {/* ── SECURITY ─────────────────────────────────────────────── */}
-          {activeSection === 'Security' && (
-            <div className="space-y-8">
-              <div>
-                <h3 className="text-base font-bold mb-1">Admin Access</h3>
-                <p className="text-sm text-muted-foreground mb-4">Manage who has access to this dashboard.</p>
-                <div className="bg-muted/10 border rounded-xl p-4 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                      {user?.name?.[0]?.toUpperCase() || 'A'}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
+              {/* Left Column: Editor Controls */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Field label="Primary Theme Color" hint="This is the main brand color used for navbars, buttons, and footers. Reference (Usha Designers): #2C5043">
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="color"
+                        value={formData.themePrimaryColor || '#2C5043'}
+                        onChange={e => setFormData(p => ({ ...p, themePrimaryColor: e.target.value }))}
+                        className="w-10 h-10 border rounded-lg cursor-pointer shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={formData.themePrimaryColor || ''}
+                        onChange={e => setFormData(p => ({ ...p, themePrimaryColor: e.target.value }))}
+                        placeholder="#2C5043"
+                        className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary transition-shadow font-mono"
+                      />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold">{user?.name || 'Admin'}</p>
-                      <p className="text-xs text-muted-foreground">{user?.role}</p>
+                    {/* Preset Swatches Grid (50 variants) */}
+                    <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 mt-2.5 max-h-36 overflow-y-auto border p-2.5 rounded-xl bg-white/70 scrollbar-thin">
+                      {PRIMARY_COLORS.map(preset => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, themePrimaryColor: preset.value }))}
+                          className="w-full aspect-square bg-white border rounded-xl hover:border-primary transition-all flex flex-col items-center justify-center relative group p-1 shadow-sm"
+                          title={preset.label}
+                        >
+                          <span className="w-full h-full rounded-lg border shadow-inner shrink-0" style={{ backgroundColor: preset.value }} />
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-black text-white text-[9px] px-2 py-0.5 rounded shadow-lg whitespace-nowrap z-50">
+                            {preset.label}
+                          </span>
+                        </button>
+                      ))}
                     </div>
-                  </div>
-                  <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">ACTIVE</span>
+                  </Field>
+                  <Field label="Background Color" hint="This is the page background color. Reference (Usha Designers): #FAF6F0">
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="color"
+                        value={formData.themeBackgroundColor || '#FAF6F0'}
+                        onChange={e => setFormData(p => ({ ...p, themeBackgroundColor: e.target.value }))}
+                        className="w-10 h-10 border rounded-lg cursor-pointer shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={formData.themeBackgroundColor || ''}
+                        onChange={e => setFormData(p => ({ ...p, themeBackgroundColor: e.target.value }))}
+                        placeholder="#FAF6F0"
+                        className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary transition-shadow font-mono"
+                      />
+                    </div>
+                    {/* Preset Swatches Grid (50 variants) */}
+                    <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 mt-2.5 max-h-36 overflow-y-auto border p-2.5 rounded-xl bg-white/70 scrollbar-thin">
+                      {BACKGROUND_COLORS.map(preset => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, themeBackgroundColor: preset.value }))}
+                          className="w-full aspect-square bg-white border rounded-xl hover:border-primary transition-all flex flex-col items-center justify-center relative group p-1 shadow-sm"
+                          title={preset.label}
+                        >
+                          <span className="w-full h-full rounded-lg border shadow-inner shrink-0" style={{ backgroundColor: preset.value }} />
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-black text-white text-[9px] px-2 py-0.5 rounded shadow-lg whitespace-nowrap z-50">
+                            {preset.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-6">
+                  <Field label="Heading Font" hint="Used for section titles, headers, and banner headings.">
+                    <select
+                      value={formData.themeHeadingFont || 'Cormorant Garamond'}
+                      onChange={e => setFormData(p => ({ ...p, themeHeadingFont: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {GOOGLE_FONTS.map(font => (
+                        <option key={font} value={font}>{font}</option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Body Font" hint="Used for general body text, product labels, lists, and forms.">
+                    <select
+                      value={formData.themeBodyFont || 'Outfit'}
+                      onChange={e => setFormData(p => ({ ...p, themeBodyFont: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {GOOGLE_FONTS.map(font => (
+                        <option key={font} value={font}>{font}</option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Base Font Size Scale" hint="Scale the whole application font size proportionally. Safe for all screen sizes.">
+                    <select
+                      value={formData.themeFontSizeScale || 'Medium'}
+                      onChange={e => setFormData(p => ({ ...p, themeFontSizeScale: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="Small">Small (92.5%)</option>
+                      <option value="Medium">Medium (100% - Default)</option>
+                      <option value="Large">Large (107.5%)</option>
+                      <option value="Extra Large">Extra Large (115%)</option>
+                    </select>
+                  </Field>
                 </div>
               </div>
-              <div className="pt-4 border-t space-y-3">
-                <h3 className="text-base font-bold mb-3">Security Settings</h3>
-                <Toggle
-                  checked={formData.require2FA}
-                  onChange={set('require2FA')}
-                  label="Require 2FA for all admins"
-                  desc="All admin accounts must set up two-factor authentication."
-                  color="bg-primary"
-                />
+
+              {/* Right Column: Live Theme Preview Card */}
+              <div className="lg:sticky lg:top-6 h-fit bg-muted/10 border rounded-2xl p-5 space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    ✨ Live Theme Preview
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Instantly view how your fonts and colours look together. Save when ready.
+                  </p>
+                </div>
+
+                <div 
+                  className="rounded-xl border border-gray-200 shadow-md overflow-hidden p-5 space-y-4 transition-all duration-300"
+                  style={{ backgroundColor: formData.themeBackgroundColor || '#FAF6F0' }}
+                >
+                  {/* Mock Navbar Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <span 
+                      className="text-sm font-bold transition-all tracking-wider"
+                      style={{ 
+                        color: formData.themePrimaryColor || '#2C5043',
+                        fontFamily: formData.themeHeadingFont ? `'${formData.themeHeadingFont}', sans-serif` : 'inherit'
+                      }}
+                    >
+                      ANJALI ALANKARAM
+                    </span>
+                    <span 
+                      className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: formData.themePrimaryColor || '#2C5043' }}
+                    >
+                      PREVIEW
+                    </span>
+                  </div>
+
+                  {/* Mock Product Details Card */}
+                  <div className="space-y-1.5">
+                    <h2 
+                      className="text-lg font-bold tracking-tight transition-all"
+                      style={{ 
+                        color: '#1f2937',
+                        fontFamily: formData.themeHeadingFont ? `'${formData.themeHeadingFont}', sans-serif` : 'inherit'
+                      }}
+                    >
+                      Kalamkari Designer Frock
+                    </h2>
+                    <p 
+                      className="text-xs text-gray-600 leading-relaxed transition-all"
+                      style={{ 
+                        fontFamily: formData.themeBodyFont ? `'${formData.themeBodyFont}', sans-serif` : 'inherit'
+                      }}
+                    >
+                      Handcrafted handloom cotton with traditional motif prints. Designed to deliver an exceptionally premium and heritage-inspired aesthetic.
+                    </p>
+                  </div>
+
+                  {/* Mock Interactive Buttons */}
+                  <div className="flex gap-2 pt-2.5">
+                    <button
+                      type="button"
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm cursor-default"
+                      style={{ backgroundColor: formData.themePrimaryColor || '#2C5043' }}
+                    >
+                      Add To Bag
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-default"
+                      style={{ 
+                        borderColor: formData.themePrimaryColor || '#2C5043',
+                        color: formData.themePrimaryColor || '#2C5043'
+                      }}
+                    >
+                      Buy Now
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
+
+
 
           {/* ── NOTIFICATIONS ─────────────────────────────────────────── */}
           {activeSection === 'Notifications' && (

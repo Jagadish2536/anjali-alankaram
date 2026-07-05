@@ -33,6 +33,7 @@ export default function Navbar() {
   const [showSearch, setShowSearch] = useState(false);
   const [navCategories, setNavCategories] = useState<{name:string,slug:string}[]>([]);
   const [announcementVisible, setAnnouncementVisible] = useState(true);
+  const [showMore, setShowMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -233,15 +234,52 @@ export default function Navbar() {
             <Link href="/products" className="px-4 h-full flex items-center text-sm font-medium text-primary-foreground/90 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
               Shop All
             </Link>
-            {navCategories.map(cat => (
-              <Link
-                key={cat.slug}
-                href={`/products?category=${cat.slug}`}
-                className="px-4 h-full flex items-center text-sm font-medium text-primary-foreground/90 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
-              >
-                {cat.name}
-              </Link>
-            ))}
+            {navCategories.length > 6 ? (
+              <>
+                {navCategories.slice(0, 6).map(cat => (
+                  <Link
+                    key={cat.slug}
+                    href={`/products?category=${cat.slug}`}
+                    className="px-4 h-full flex items-center text-sm font-medium text-primary-foreground/90 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
+                  >
+                    {cat.name}
+                  </Link>
+                ))}
+                {/* More Dropdown */}
+                <div className="relative h-full text-left" onMouseLeave={() => setShowMore(false)}>
+                  <button
+                    onClick={() => setShowMore(p => !p)}
+                    className="px-4 h-full flex items-center gap-1 text-sm font-medium text-primary-foreground/90 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap focus:outline-none"
+                  >
+                    More <span className="text-[10px] opacity-70">▼</span>
+                  </button>
+                  {showMore && (
+                    <div className="absolute right-0 top-full bg-white text-gray-900 border border-gray-100 rounded-xl shadow-xl py-2 min-w-[200px] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                      {navCategories.slice(6).map(cat => (
+                        <Link
+                          key={cat.slug}
+                          href={`/products?category=${cat.slug}`}
+                          onClick={() => setShowMore(false)}
+                          className="block px-5 py-2.5 text-sm hover:bg-gray-50 text-left font-medium transition-colors border-b last:border-0 border-gray-50"
+                        >
+                          {cat.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              navCategories.map(cat => (
+                <Link
+                  key={cat.slug}
+                  href={`/products?category=${cat.slug}`}
+                  className="px-4 h-full flex items-center text-sm font-medium text-primary-foreground/90 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
+                >
+                  {cat.name}
+                </Link>
+              ))
+            )}
           </div>
         </nav>
       </header>

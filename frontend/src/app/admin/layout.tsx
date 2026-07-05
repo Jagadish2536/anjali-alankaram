@@ -30,7 +30,6 @@ const ALL_NAV_ITEMS = [
   { name: 'Dashboard',     icon: LayoutDashboard, href: '/admin',                roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Catalogue',     icon: Package,          href: '/admin/products',       roles: ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'] },
   { name: 'Categories',    icon: Tag,              href: '/admin/categories',     roles: ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'] },
-  { name: 'Warehouse',     icon: Warehouse,        href: '/admin/warehouse',      roles: ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER', 'WAREHOUSE_STAFF'] },
   { name: 'Orders',        icon: ShoppingBag,      href: '/admin/orders',         roles: ['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER'] },
   { name: 'Customers',     icon: Users,             href: '/admin/customers',      roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Offers',        icon: Percent,           href: '/admin/offers',         roles: ['ADMIN', 'SUPER_ADMIN'] },
