@@ -226,7 +226,7 @@ export default function Navbar() {
         </div>
 
         {/* ── Desktop Category Nav ─────────────────────────────────────── */}
-        <nav className="hidden md:block w-full bg-primary overflow-x-auto">
+        <nav className="hidden md:block w-full bg-primary overflow-visible">
           <div className="flex items-center h-11 container justify-center gap-0">
             <Link href="/" className="px-4 h-full flex items-center text-sm font-medium text-primary-foreground/90 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
               Home
