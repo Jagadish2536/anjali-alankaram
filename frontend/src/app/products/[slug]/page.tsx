@@ -33,10 +33,13 @@ const MARQUEE_ITEMS = [
   'Exchange is allowed only for damaged, defective, or wrong products',
 ];
 
-function LotusPolicyMarquee() {
-  const items = MARQUEE_ITEMS.flatMap((t, i) => [{ type: 'text', val: t, key: `t${i}` }, { type: 'lotus', key: `l${i}` }]);
-  const totalLength = MARQUEE_ITEMS.reduce((acc, t) => acc + t.length, 0);
-  const duration = Math.max(80, Math.round(totalLength * 1.5));
+function LotusPolicyMarquee({ text }: { text?: string }) {
+  const displayText = text || 'Free Delivery on All Orders';
+  const items = Array(12).fill(null).flatMap((_, i) => [
+    { type: 'text', val: displayText, key: `t${i}` },
+    { type: 'lotus', key: `l${i}` },
+  ]);
+  const duration = Math.max(40, Math.min(300, Math.round(displayText.length * 1.8)));
   return (
     <div className="w-full bg-primary overflow-hidden py-2" aria-hidden="true">
       <div className="flex animate-marquee" style={{ animationDuration: `${duration}s`, width: 'max-content' }}>
@@ -437,7 +440,7 @@ function StarRater({ value, onChange }: { value: number; onChange: (v: number) =
           onClick={() => onChange(s)}
           className="text-2xl transition-transform hover:scale-125"
         >
-          <Star className={`w-7 h-7 transition-colors ${s <= (hover || value) ? 'fill-yellow-400 stroke-yellow-400' : 'stroke-muted-foreground'}`} />
+          <Star className={`w-7 h-7 transition-colors ${s <= (hover || value) ? 'fill-primary stroke-primary' : 'stroke-muted-foreground'}`} />
         </button>
       ))}
     </div>
@@ -447,7 +450,7 @@ function StarRater({ value, onChange }: { value: number; onChange: (v: number) =
 // ── Review Card ─────────────────────────────────────────────────────────────
 function ReviewCard({ review, onDelete, currentUserId }: { review: any; onDelete: () => void; currentUserId?: string }) {
   return (
-    <div className="border rounded-2xl p-5 space-y-3 hover:border-primary/20 transition-colors bg-white">
+    <div className="border border-primary/10 rounded-2xl p-5 space-y-3 hover:border-primary/20 transition-colors bg-primary/5">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm">
@@ -458,7 +461,7 @@ function ReviewCard({ review, onDelete, currentUserId }: { review: any; onDelete
             <div className="flex items-center gap-2 mt-0.5">
               <div className="flex">
                 {[1,2,3,4,5].map(s => (
-                  <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-yellow-400 stroke-yellow-400' : 'stroke-muted-foreground'}`} />
+                  <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-primary stroke-primary' : 'stroke-primary/30'}`} />
                 ))}
               </div>
               {review.isVerified && (
@@ -492,12 +495,16 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
-  const { settings } = useSettingsStore();
+  const { settings, fetchSettings } = useSettingsStore();
 
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    fetchSettings().catch(() => {});
+  }, [fetchSettings]);
   const [isLoading, setIsLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [viewerCount, setViewerCount] = useState(() => Math.floor(Math.random() * 25) + 8);
@@ -1011,7 +1018,7 @@ export default function ProductDetailPage() {
             <h1 className="font-outfit text-2xl md:text-3xl font-bold text-foreground leading-tight">{product.name}</h1>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1">
-                {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-yellow-400 stroke-yellow-400' : 'stroke-muted-foreground fill-none opacity-40'}`} />)}
+                {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-primary stroke-primary' : 'stroke-primary/30 fill-none opacity-40'}`} />)}
               </div>
               <button onClick={() => { setActiveTab('reviews'); document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' }); }}
                 className="text-xs text-muted-foreground hover:text-primary underline">{product.reviewCount} reviews</button>
@@ -1262,7 +1269,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* ── Lotus Policy Marquee ────────────────────────────────────────────── */}
-      <LotusPolicyMarquee />
+      {settings.marqueeEnabled !== false && <LotusPolicyMarquee text={settings.marqueeText} />}
 
       {/* ── Product Description + Shipping Tabs ─────────────────────────────── */}
       <div className="container py-10">
@@ -1322,10 +1329,10 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Summary panel */}
           <div className="space-y-6">
-            <div className="p-6 border rounded-2xl text-center bg-white shadow-sm">
+            <div className="p-6 border border-primary/15 rounded-2xl text-center bg-primary/5 shadow-sm">
               <div className="text-6xl font-outfit font-bold text-foreground">{Number(product.avgRating).toFixed(1)}</div>
               <div className="flex justify-center gap-1 my-2">
-                {[1,2,3,4,5].map(s => <Star key={s} className={`w-5 h-5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-yellow-400 stroke-yellow-400' : 'stroke-muted-foreground fill-none'}`} />)}
+                {[1,2,3,4,5].map(s => <Star key={s} className={`w-5 h-5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-primary stroke-primary' : 'stroke-primary/30 fill-none'}`} />)}
               </div>
               <p className="text-sm text-muted-foreground">{product.reviewCount} reviews</p>
             </div>
@@ -1333,9 +1340,9 @@ export default function ProductDetailPage() {
               {ratingBreakdown.map(({ star, count, pct }) => (
                 <div key={star} className="flex items-center gap-3 text-sm">
                   <span className="w-4 text-right font-medium">{star}</span>
-                  <Star className="w-3.5 h-3.5 fill-yellow-400 stroke-yellow-400 shrink-0" />
-                  <div className="flex-1 bg-muted/20 rounded-full h-2 overflow-hidden">
-                    <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  <Star className="w-3.5 h-3.5 fill-primary stroke-primary shrink-0" />
+                  <div className="flex-1 bg-primary/10 rounded-full h-2 overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-xs text-muted-foreground w-5">{count}</span>
                 </div>
@@ -1344,7 +1351,7 @@ export default function ProductDetailPage() {
 
             {/* Write review form */}
             {isAuthenticated ? (
-              <div className="border rounded-2xl p-5 bg-white shadow-sm">
+              <div className="border border-primary/15 rounded-2xl p-5 bg-primary/5 shadow-sm">
                 <h3 className="font-bold mb-4 flex items-center gap-2"><ThumbsUp className="w-4 h-4 text-primary" /> Write a Review</h3>
                 {reviewSuccess && (
                   <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl text-sm text-green-700 font-medium flex items-center gap-2">

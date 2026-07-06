@@ -92,10 +92,10 @@ function MobileCollectionCard({ cat }: { cat: any }) {
       href={`/products?category=${cat.slug}`}
       className="flex flex-col items-center gap-2 group animate-scale-in"
     >
-      <div className="relative w-full aspect-square rounded-full overflow-hidden border-2 border-primary/10 shadow-md group-active:scale-95 transition-transform duration-200">
+      <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 xl:w-44 xl:h-44 rounded-full overflow-hidden border-2 border-primary/10 shadow-md group-hover:shadow-lg group-active:scale-95 transition-all duration-300">
         <Image src={img} alt={cat.name} fill className="object-cover object-top group-hover:scale-105 transition-transform duration-500" />
       </div>
-      <span className="text-[11px] font-semibold text-center text-foreground leading-tight px-1">{cat.name}</span>
+      <span className="text-[11px] md:text-xs lg:text-sm font-semibold text-center text-foreground leading-tight px-1 group-hover:text-primary transition-colors">{cat.name}</span>
     </Link>
   );
 }
@@ -355,77 +355,82 @@ function VideoCard({ vid, index, getStyle }: { vid: any; index: number; getStyle
   };
 
   const style = getStyle(index);
-  
-  // Combine dynamic translate from carousel style with mouse tilt!
-  const combinedTransform = `${style.transform} perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`;
-  const combinedTransition = tilt.x === 0 && tilt.y === 0 ? style.transition : 'transform 0.08s ease-out, opacity 0.4s ease, filter 0.4s ease';
 
   return (
     <div 
-      className="absolute flex flex-col items-center animate-scale-in" 
+      className="absolute flex flex-col items-center" 
       style={{ 
         ...style, 
-        transform: combinedTransform, 
-        transition: combinedTransition,
         zIndex: tilt.x !== 0 || tilt.y !== 0 ? 30 : style.zIndex 
       }}
     >
-      {vid.videoUrl ? (
+      <div className="animate-scale-in flex flex-col items-center">
+        {vid.videoUrl ? (
+          <Link
+            href={`/products/${vid.slug}`}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+            className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+            style={{ 
+              aspectRatio: '9/16', 
+              maxHeight: 390,
+              transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`,
+              transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' : 'transform 0.08s ease-out'
+            }}
+          >
+            <AutoplayVideo
+              src={vid.videoUrl}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
+            <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary">
+              <Video className="w-4 h-4 text-white" />
+            </div>
+            <div className="absolute bottom-3 left-3 right-3">
+              <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
+            </div>
+          </Link>
+        ) : (
+          <a
+            href={vid.instagramReelUrl || `/products/${vid.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+            className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+            style={{ 
+              aspectRatio: '9/16', 
+              maxHeight: 390,
+              transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`,
+              transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' : 'transform 0.08s ease-out'
+            }}
+          >
+            <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
+            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
+              </div>
+            </div>
+            <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)' }}>
+              <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current" aria-hidden="true">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
+            </div>
+            <div className="absolute bottom-3 left-3 right-3">
+              <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
+            </div>
+          </a>
+        )}
         <Link
           href={`/products/${vid.slug}`}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-          className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
-          style={{ aspectRatio: '9/16', maxHeight: 390 }}
+          className="mt-3.5 inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[11px] font-bold tracking-wider uppercase bg-primary text-primary-foreground rounded-full hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all hover:shadow-md shadow-sm"
         >
-          <AutoplayVideo
-            src={vid.videoUrl}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
-          <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary">
-            <Video className="w-4 h-4 text-white" />
-          </div>
-          <div className="absolute bottom-3 left-3 right-3">
-            <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
-          </div>
+          <span>View Product</span>
+          <ChevronRight className="w-3.5 h-3.5" />
         </Link>
-      ) : (
-        <a
-          href={vid.instagramReelUrl || `/products/${vid.slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-          className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
-          style={{ aspectRatio: '9/16', maxHeight: 390 }}
-        >
-          <Image src={vid.images?.[0] || ''} alt={vid.name} fill className="object-cover" />
-          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
-            </div>
-          </div>
-          <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)' }}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current" aria-hidden="true">
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-            </svg>
-          </div>
-          <div className="absolute bottom-3 left-3 right-3">
-            <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
-          </div>
-        </a>
-      )}
-      {/* Premium style View Product button */}
-      <Link
-        href={`/products/${vid.slug}`}
-        className="mt-3.5 inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[11px] font-bold tracking-wider uppercase bg-primary text-primary-foreground rounded-full hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all hover:shadow-md shadow-sm"
-      >
-        <span>View Product</span>
-        <ChevronRight className="w-3.5 h-3.5" />
-      </Link>
+      </div>
     </div>
   );
 }
@@ -806,6 +811,59 @@ function AppDownloadSection() {
   );
 }
 
+// Helper to compute dynamic color gradient & text styles for hero section
+function getHeroThemeStyles(primaryColorHex: string) {
+  let hex = primaryColorHex || '#2C5043';
+  if (hex.startsWith('#')) {
+    hex = hex.slice(1);
+  }
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 6) {
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  } else if (hex.length === 3) {
+    r = parseInt(hex[0] + hex[0], 16);
+    g = parseInt(hex[1] + hex[1], 16);
+    b = parseInt(hex[2] + hex[2], 16);
+  } else {
+    return {
+      gradient: 'linear-gradient(135deg, #b8d4c4 0%, #7aab90 30%, #4a7a62 65%, #2c5043 100%)',
+      textColor: '#1a3828'
+    };
+  }
+
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  const hue = Math.round(h * 360);
+  const sat = Math.round(s * 100);
+  const baseL = Math.round(l * 100);
+
+  // Staggered light to dark gradient stops
+  const l1 = Math.min(95, Math.max(70, baseL + 54));
+  const l2 = Math.min(85, Math.max(50, baseL + 34));
+  const l3 = Math.min(70, Math.max(35, baseL + 14));
+  const l4 = baseL;
+
+  return {
+    gradient: `linear-gradient(135deg, hsl(${hue}, ${sat}%, ${l1}%) 0%, hsl(${hue}, ${sat}%, ${l2}%) 30%, hsl(${hue}, ${sat}%, ${l3}%) 65%, hsl(${hue}, ${sat}%, ${l4}%) 100%)`,
+    textColor: `hsl(${hue}, ${sat}%, 12%)`
+  };
+}
+
 // ── Main Homepage ─────────────────────────────────────────────────────────────
 export default function Home() {
   const { settings, fetchSettings } = useSettingsStore();
@@ -872,6 +930,8 @@ export default function Home() {
   const heroTitleEnabled = s.heroTitleEnabled !== false;
   const heroSubtitleEnabled = s.heroSubtitleEnabled !== false;
 
+  const heroStyles = getHeroThemeStyles(s.themePrimaryColor);
+
   return (
     <div className="flex flex-col">
 
@@ -880,81 +940,93 @@ export default function Home() {
 
       {/* ── § 2 HERO — Usha Designers layout (all screens) ── */}
       <section
-        className="w-full overflow-hidden relative"
-        style={{ minHeight: 'clamp(280px, 42vw, 560px)', background: 'linear-gradient(135deg, #b8d4c4 0%, #7aab90 30%, #4a7a62 65%, #2c5043 100%)' }}
+        className="w-full overflow-hidden relative md:min-h-[clamp(280px,42vw,560px)]"
+        style={{ background: heroStyles.gradient }}
         aria-label="Hero banner"
       >
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px', opacity: 0.06 }} />
 
-        <div className="relative z-10 h-full grid grid-cols-2" style={{ minHeight: 'clamp(280px, 42vw, 560px)' }}>
+        <div className="relative z-10 md:h-full flex flex-col md:grid md:grid-cols-2 py-4 md:py-0">
 
           {/* ── Left: text on gradient ── */}
-          <div className="flex flex-col justify-center px-[5%] py-8 md:py-12 lg:py-16 space-y-2 md:space-y-4">
+          <div className="flex flex-col justify-center px-[5%] py-4 md:py-12 lg:py-16 space-y-2 md:space-y-4 text-center md:text-left items-center md:items-start">
             {heroTitleEnabled && (
               <h1
-                className="font-cormorant font-bold text-[#1a3828] leading-none tracking-tight uppercase animate-slide-up"
-                style={{ fontSize: 'clamp(1.8rem, 6vw, 5.5rem)' }}
+                className="font-cormorant font-bold leading-none tracking-tight uppercase animate-slide-up"
+                style={{ fontSize: 'clamp(1.8rem, 6vw, 5.5rem)', color: heroStyles.textColor }}
               >
                 {heroTitle}
               </h1>
             )}
             {heroSubtitleEnabled && (
               <p
-                className="text-[#1a3828]/80 leading-snug animate-slide-up delay-100 font-sans max-w-xs md:max-w-sm"
-                style={{ fontSize: 'clamp(0.7rem, 1.4vw, 1.1rem)' }}
+                className="leading-snug animate-slide-up animate-delay-100 font-sans max-w-xs md:max-w-sm"
+                style={{ fontSize: 'clamp(0.7rem, 1.4vw, 1.1rem)', color: heroStyles.textColor, opacity: 0.8 }}
               >
                 {heroSubtitle}
               </p>
             )}
             <Link
               href="/products"
-              className="mt-2 md:mt-4 self-start inline-block bg-[#1a3828] text-white font-bold uppercase tracking-widest rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all animate-slide-up delay-200 font-sans"
-              style={{ fontSize: 'clamp(0.6rem, 1.1vw, 0.85rem)', padding: 'clamp(7px, 1.1vw, 14px) clamp(16px, 2.8vw, 36px)' }}
+              className="mt-2 md:mt-4 inline-block text-white font-bold uppercase tracking-widest rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all animate-slide-up animate-delay-200 font-sans"
+              style={{ 
+                fontSize: 'clamp(0.6rem, 1.1vw, 0.85rem)', 
+                padding: 'clamp(7px, 1.1vw, 14px) clamp(16px, 2.8vw, 36px)',
+                backgroundColor: heroStyles.textColor
+              }}
             >
               SHOP NOW
             </Link>
           </div>
 
           {/* ── Right: 3 angled photo collage ── */}
-          <div className="relative flex items-center justify-center overflow-hidden pr-[2%]">
+          <div className="relative flex items-center justify-center overflow-hidden pr-[2%] pb-2 md:pb-0">
             {/* 3 photos in angled/tilted frames */}
             <div className="flex items-center justify-center gap-[clamp(4px,1.2vw,16px)] h-[80%] w-full">
               {/* Photo 1 — left, tilted left */}
-              <div
-                className="relative overflow-hidden shadow-xl flex-shrink-0 animate-slide-up delay-100"
-                style={{
-                  width: 'clamp(70px, 18vw, 200px)',
-                  height: 'clamp(110px, 28vw, 320px)',
-                  borderRadius: 'clamp(16px, 3vw, 40px)',
-                  transform: 'rotate(-4deg)',
-                }}
-              >
-                <Image src={heroLeftImage || '/placeholder.png'} alt="Look 1" fill className="object-cover object-top" priority />
+              <div className="animate-slide-up animate-delay-100 flex-shrink-0">
+                <div className="animate-float">
+                  <div
+                    className="relative overflow-hidden shadow-xl -rotate-6 transition-all duration-500 hover:scale-105 hover:rotate-0 cursor-pointer"
+                    style={{
+                      width: 'clamp(70px, 18vw, 200px)',
+                      height: 'clamp(110px, 28vw, 320px)',
+                      borderRadius: 'clamp(16px, 3vw, 40px)',
+                    }}
+                  >
+                    <Image src={heroLeftImage || '/placeholder.png'} alt="Look 1" fill className="object-cover object-top" priority />
+                  </div>
+                </div>
               </div>
               {/* Photo 2 — center, tallest, straight */}
-              <div
-                className="relative overflow-hidden shadow-2xl flex-shrink-0 animate-slide-up delay-300"
-                style={{
-                  width: 'clamp(80px, 20vw, 220px)',
-                  height: 'clamp(130px, 34vw, 380px)',
-                  borderRadius: 'clamp(20px, 4vw, 50px)',
-                  transform: 'rotate(0deg)',
-                  zIndex: 10,
-                }}
-              >
-                <Image src={heroImage || '/placeholder.png'} alt="Look 2" fill className="object-cover object-top" priority />
+              <div className="animate-slide-up animate-delay-300 flex-shrink-0" style={{ zIndex: 10 }}>
+                <div className="animate-float-reverse">
+                  <div
+                    className="relative overflow-hidden shadow-2xl transition-all duration-500 hover:scale-105 cursor-pointer"
+                    style={{
+                      width: 'clamp(80px, 20vw, 220px)',
+                      height: 'clamp(130px, 34vw, 380px)',
+                      borderRadius: 'clamp(20px, 4vw, 50px)',
+                    }}
+                  >
+                    <Image src={heroImage || '/placeholder.png'} alt="Look 2" fill className="object-cover object-top" priority />
+                  </div>
+                </div>
               </div>
               {/* Photo 3 — right, tilted right */}
-              <div
-                className="relative overflow-hidden shadow-xl flex-shrink-0 animate-slide-up delay-500"
-                style={{
-                  width: 'clamp(70px, 18vw, 200px)',
-                  height: 'clamp(110px, 28vw, 320px)',
-                  borderRadius: 'clamp(16px, 3vw, 40px)',
-                  transform: 'rotate(4deg)',
-                }}
-              >
-                <Image src={s.heroImage3Url || '/placeholder.png'} alt="Look 3" fill className="object-cover object-top" priority />
+              <div className="animate-slide-up animate-delay-500 flex-shrink-0">
+                <div className="animate-float">
+                  <div
+                    className="relative overflow-hidden shadow-xl rotate-6 transition-all duration-500 hover:scale-105 hover:rotate-0 cursor-pointer"
+                    style={{
+                      width: 'clamp(70px, 18vw, 200px)',
+                      height: 'clamp(110px, 28vw, 320px)',
+                      borderRadius: 'clamp(16px, 3vw, 40px)',
+                    }}
+                  >
+                    <Image src={s.heroImage3Url || '/placeholder.png'} alt="Look 3" fill className="object-cover object-top" priority />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -963,16 +1035,15 @@ export default function Home() {
       </section>
 
       {/* ── § 3 SHOP BY COLLECTIONS — circular grid (all screens) ── */}
-      <section className="pt-6 pb-10 md:pt-10 md:pb-14 px-4 max-w-7xl mx-auto overflow-hidden" aria-labelledby="collections-heading">
-        {/* Heading — visible on desktop only */}
-        <h2 id="collections-heading" className="hidden md:block font-cormorant text-4xl font-bold text-center text-foreground mb-8">
+      <section className="pt-3 pb-10 md:pt-10 md:pb-14 px-4 max-w-7xl mx-auto overflow-hidden" aria-labelledby="collections-heading">
+        <h2 id="collections-heading" className="block font-cormorant text-2xl md:text-4xl font-bold text-center text-foreground mb-6 md:mb-8">
           Shop by Collections
         </h2>
 
         {categories.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm py-6">No collections yet</p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-8">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-8 justify-items-center">
             {categories.map(cat => (
               <MobileCollectionCard key={cat.id} cat={cat} />
             ))}

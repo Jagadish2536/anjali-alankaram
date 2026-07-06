@@ -155,11 +155,11 @@
   animation: floatSlowReverse 5s ease-in-out infinite;
 }
 
-/* Staggered Delay classes */
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
-.delay-500 { animation-delay: 500ms; }
-.delay-700 { animation-delay: 700ms; }
+/* Staggered Animation Delay classes */
+.animate-delay-100 { animation-delay: 100ms !important; }
+.animate-delay-200 { animation-delay: 200ms !important; }
+.animate-delay-300 { animation-delay: 300ms !important; }
+.animate-delay-400 { animation-delay: 400ms !important; }
+.animate-delay-500 { animation-delay: 500ms !important; }
+.animate-delay-700 { animation-delay: 700ms !important; }
 
