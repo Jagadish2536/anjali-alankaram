@@ -117,7 +117,9 @@ export default function AdminDashboard() {
 
       const dash = dashRes.data;
       const allUsers: any[] = Array.isArray(usersRes.data) ? usersRes.data : [];
-      const allProducts: any[] = productsRes.data?.products || productsRes.data || [];
+      const allProducts: any[] = Array.isArray(productsRes.data?.data)
+        ? productsRes.data.data
+        : (Array.isArray(productsRes.data) ? productsRes.data : []);
 
       // Stats from dashboard endpoint
       setStats({

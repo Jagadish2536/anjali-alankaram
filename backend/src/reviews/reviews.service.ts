@@ -52,6 +52,18 @@ export class ReviewsService {
     await this.updateProductRating(review.productId);
   }
 
+  async findRecent() {
+    return this.prisma.review.findMany({
+      where: { isApproved: true },
+      include: {
+        user: { select: { name: true, avatar: true } },
+        product: { select: { name: true, slug: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+  }
+
   private async updateProductRating(productId: string) {
     const aggr = await this.prisma.review.aggregate({
       where: { productId, isApproved: true },

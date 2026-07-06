@@ -9,6 +9,13 @@ import { Public } from '../auth/decorators/public.decorator';
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
+  @Get()
+  @Public()
+  @ApiOperation({ summary: 'Get recent reviews' })
+  async findRecent() {
+    return this.reviewsService.findRecent();
+  }
+
   @Get('product/:productId')
   @Public()
   @ApiOperation({ summary: 'Get reviews for a product' })

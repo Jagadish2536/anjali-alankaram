@@ -946,7 +946,7 @@ export default function Home() {
       >
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: lilyBg, backgroundSize: '120px 120px', opacity: 0.06 }} />
 
-        <div className="relative z-10 md:h-full flex flex-col md:grid md:grid-cols-2 py-4 md:py-0">
+        <div className="relative z-10 md:h-full flex flex-col md:grid md:grid-cols-2 py-2 md:py-0">
 
           {/* ── Left: text on gradient ── */}
           <div className="flex flex-col justify-center px-[5%] py-4 md:py-12 lg:py-16 space-y-2 md:space-y-4 text-center md:text-left items-center md:items-start">
@@ -980,9 +980,9 @@ export default function Home() {
           </div>
 
           {/* ── Right: 3 angled photo collage ── */}
-          <div className="relative flex items-center justify-center overflow-hidden pr-[2%] pb-2 md:pb-0">
+          <div className="relative flex items-center justify-center overflow-hidden pr-[2%] pb-0 md:pb-0 h-[140px] md:h-auto">
             {/* 3 photos in angled/tilted frames */}
-            <div className="flex items-center justify-center gap-[clamp(4px,1.2vw,16px)] h-[80%] w-full">
+            <div className="flex items-center justify-center gap-[clamp(4px,1.2vw,16px)] h-full md:h-[80%] w-full">
               {/* Photo 1 — left, tilted left */}
               <div className="animate-slide-up animate-delay-100 flex-shrink-0">
                 <div className="animate-float">
