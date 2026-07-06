@@ -103,6 +103,14 @@ export default function CheckoutPage() {
   const isSuccessRef = useRef(false);
   const [showPaymentWarningModal, setShowPaymentWarningModal] = useState(false);
 
+  // Lock body scroll when payment policy modal is open
+  useEffect(() => {
+    if (!showPaymentWarningModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showPaymentWarningModal]);
+
   // Qty edit state
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
@@ -119,6 +127,14 @@ export default function CheckoutPage() {
 
   // New address form
   const [showAddressForm, setShowAddressForm] = useState(false);
+
+  // Lock body scroll when address form modal is open
+  useEffect(() => {
+    if (!showAddressForm) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showAddressForm]);
   const [newAddress, setNewAddress] = useState({
     name: '', phone: '', pincode: '', line1: '', line2: '', locality: '', city: '', state: '',
     addressType: 'Home' as 'Home' | 'Office',

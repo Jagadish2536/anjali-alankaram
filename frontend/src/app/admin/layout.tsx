@@ -21,6 +21,7 @@ import {
   Warehouse,
   Coins,
   Percent,
+  Star,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
@@ -32,6 +33,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Categories',    icon: Tag,              href: '/admin/categories',     roles: ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'] },
   { name: 'Orders',        icon: ShoppingBag,      href: '/admin/orders',         roles: ['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER'] },
   { name: 'Customers',     icon: Users,             href: '/admin/customers',      roles: ['ADMIN', 'SUPER_ADMIN'] },
+  { name: 'Reviews',       icon: Star,              href: '/admin/reviews',        roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Offers',        icon: Percent,           href: '/admin/offers',         roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Notifications', icon: Bell,              href: '/admin/notifications',  roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'AWS Billing',   icon: CreditCard,        href: '/admin/billing',        roles: ['ADMIN', 'SUPER_ADMIN'] },

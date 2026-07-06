@@ -738,6 +738,7 @@ model StoreSettings {
   themeBodyFont           String?  @default("Outfit")
   themeFontSizeScale      String?  @default("Medium")
   marqueeEnabled          Boolean? @default(true)
+  reviewsEnabled          Boolean? @default(true)
   updatedAt               DateTime @updatedAt
 
   @@map("store_settings")

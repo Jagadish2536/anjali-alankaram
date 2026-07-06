@@ -62,6 +62,7 @@ interface StoreSettings {
   themeBodyFont: string;
   themeFontSizeScale: string;
   marqueeEnabled: boolean;
+  reviewsEnabled: boolean;
 }
 
 interface SettingsStore {
@@ -131,6 +132,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   themeBodyFont: 'Outfit',
   themeFontSizeScale: 'Medium',
   marqueeEnabled: true,
+  reviewsEnabled: true,
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -153,6 +155,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             themeBodyFont: data.themeBodyFont || DEFAULT_SETTINGS.themeBodyFont,
             themeFontSizeScale: data.themeFontSizeScale || DEFAULT_SETTINGS.themeFontSizeScale,
             marqueeEnabled: data.marqueeEnabled !== null && data.marqueeEnabled !== undefined ? Boolean(data.marqueeEnabled) : DEFAULT_SETTINGS.marqueeEnabled,
+            reviewsEnabled: data.reviewsEnabled !== null && data.reviewsEnabled !== undefined ? Boolean(data.reviewsEnabled) : DEFAULT_SETTINGS.reviewsEnabled,
             heroImage3Url: data.heroImage3Url || DEFAULT_SETTINGS.heroImage3Url,
             // Ensure numeric fields are proper numbers
             gstRate: Number(data.gstRate ?? DEFAULT_SETTINGS.gstRate),

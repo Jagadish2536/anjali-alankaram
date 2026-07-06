@@ -572,10 +572,12 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
   if (reviews.length === 0) return null;
 
   const review = reviews[idx];
+  const currentImage = review.product?.images?.[0] || '/placeholder.png';
+  const nextImage = reviews[(idx + 1) % reviews.length]?.product?.images?.[0] || '/placeholder.png';
 
   return (
     <section className="py-14 px-4" aria-labelledby="testimonials-heading">
-      <h2 id="testimonials-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-foreground mb-12">
+      <h2 id="testimonials-heading" className="font-cormorant text-3xl md:text-4xl font-bold text-center text-primary mb-12">
         What Our Customers Say
       </h2>
       <div className="max-w-3xl mx-auto">
@@ -586,7 +588,7 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
           <div className="relative shrink-0 w-52 h-64">
             <div className="absolute -top-3 -left-3 w-40 h-52 rounded-2xl overflow-hidden border-4 border-white shadow-md rotate-[-4deg]">
               <Image
-                src={reviews[(idx + 1) % reviews.length]?.product?.images?.[0] || ''}
+                src={nextImage}
                 alt=""
                 fill
                 className="object-cover"
@@ -594,7 +596,7 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
             </div>
             <div className="absolute top-4 left-4 w-44 h-56 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
               <Image
-                src={review.product?.images?.[0] || ''}
+                src={currentImage}
                 alt={review.product?.name || 'Product'}
                 fill
                 className="object-cover"
@@ -611,14 +613,14 @@ function CustomerReviewsSection({ reviews }: { reviews: any[] }) {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={(e) => { e.preventDefault(); setIdx(i => (i - 1 + reviews.length) % reviews.length); }}
-                className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                className="w-9 h-9 rounded-full border border-primary/20 flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary text-primary transition-all shadow-sm"
                 aria-label="Previous review"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); setIdx(i => (i + 1) % reviews.length); }}
-                className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                className="w-9 h-9 rounded-full border border-primary/20 flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary text-primary transition-all shadow-sm"
                 aria-label="Next review"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -700,7 +702,7 @@ function AppDownloadSection() {
                     <p className="text-[11px] text-white/70 mt-1">Download and install our mobile app directly onto your Android device.</p>
                   </div>
                   <a
-                    href="/app-release.apk"
+                    href="/AnjaliAlankaram.apk"
                     download="AnjaliAlankaram.apk"
                     className="flex items-center justify-center gap-3 bg-black/80 hover:bg-black/95 px-5 py-2.5 rounded-xl border border-white/10 transition-all active:scale-95 group shadow-md w-full cursor-pointer"
                   >
@@ -1080,7 +1082,7 @@ export default function Home() {
       {s.marqueeEnabled !== false && <LotusDivider text={marqueeText} />}
 
       {/* ── § 9 WHAT OUR CUSTOMERS SAY ────────────────────────────────── */}
-      <CustomerReviewsSection reviews={recentReviews} />
+      {s.reviewsEnabled !== false && <CustomerReviewsSection reviews={recentReviews} />}
       
       {/* ── § 10 APP DOWNLOAD SECTION ─────────────────────────────────── */}
       <AppDownloadSection />

@@ -7,6 +7,7 @@ import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { OAuthProvider } from '@/components/providers/OAuthProvider'
 import { MaintenanceProvider } from '@/components/providers/MaintenanceProvider'
 import VisitorTracker from '@/components/VisitorTracker'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' })
@@ -25,6 +26,12 @@ export const metadata: Metadata = {
     icon: '/favicon.png',
     shortcut: '/favicon.png',
     apple: '/favicon.png',
+  },
+  appleWebApp: {
+    title: 'Anjali Alankaram',
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    startupImage: '/favicon.png',
   },
   openGraph: {
     title: 'Anjali Alankaram | Premium Women\'s Fashion',
@@ -53,6 +60,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${outfit.variable} ${cormorant.variable} font-sans min-h-screen flex flex-col overflow-x-hidden`}>
         <OAuthProvider>
           <MaintenanceProvider>
+            <ServiceWorkerRegistration />
             <VisitorTracker />
             <Navbar />
             {/* pb-16 on mobile so content isn't hidden behind bottom nav */}

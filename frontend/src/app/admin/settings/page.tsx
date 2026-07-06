@@ -576,6 +576,7 @@ export default function AdminSettingsPage() {
     themeBodyFont: 'Outfit',
     themeFontSizeScale: 'Medium',
     marqueeEnabled: true,
+    reviewsEnabled: true,
   });
 
   // ── Payment form state ────────────────────────────────────────────────────
@@ -860,6 +861,15 @@ export default function AdminSettingsPage() {
                 <Field label="Marquee Banner Text" hint="This scrolling text appears at the top and between sections on the homepage (e.g. 'Free Delivery on All Orders').">
                   <TextInput value={formData.marqueeText || ''} onChange={set('marqueeText')} placeholder="Free Delivery on All Orders" />
                 </Field>
+              </div>
+              <div className="border-t pt-4">
+                <Toggle
+                  checked={formData.reviewsEnabled ?? true}
+                  onChange={set('reviewsEnabled')}
+                  label="Enable Customer Reviews Section"
+                  desc="Turn on/off the 'What Our Customers Say' reviews carousel on the store homepage."
+                  color="bg-primary"
+                />
               </div>
               <div className="border-t pt-4 space-y-4">
                 <h3 className="text-base font-bold">Hero Banner</h3>

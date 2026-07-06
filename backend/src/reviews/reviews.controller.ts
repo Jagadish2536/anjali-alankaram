@@ -3,6 +3,8 @@ import { ReviewsService } from './reviews.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Reviews')
 @Controller('reviews')
@@ -14,6 +16,15 @@ export class ReviewsController {
   @ApiOperation({ summary: 'Get recent reviews' })
   async findRecent() {
     return this.reviewsService.findRecent();
+  }
+
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all reviews (admin only)' })
+  async findAll() {
+    return this.reviewsService.findAll();
   }
 
   @Get('product/:productId')
@@ -36,6 +47,7 @@ export class ReviewsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a review' })
   async remove(@Req() req: any, @Param('id') id: string) {
-    return this.reviewsService.remove(id, req.user.id);
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user.role);
+    return this.reviewsService.remove(id, req.user.id, isAdmin);
   }
 }

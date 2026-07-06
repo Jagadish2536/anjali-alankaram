@@ -213,6 +213,13 @@ function ImageLightbox({ images, initialIndex, onClose }: { images: string[]; in
 function SizeGuideModal({ sizeGuide, onClose }: { sizeGuide: any[]; onClose: () => void }) {
   const [unit, setUnit] = useState<'in' | 'cm'>('in');
 
+  // Lock background scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const convert = (val: string | undefined) => {
     if (!val || val === '—') return '—';
     const num = parseFloat(val);
@@ -297,6 +304,13 @@ function ShareModal({ productName, onClose }: { productName: string; onClose: ()
   const [copied, setCopied] = useState(false);
   const url = typeof window !== 'undefined' ? window.location.href : '';
   const text = `Check out this amazing product: ${productName}`;
+
+  // Lock background scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   const handleCopy = async () => {
     try {

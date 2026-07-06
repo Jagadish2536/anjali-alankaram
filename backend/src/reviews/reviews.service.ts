@@ -44,8 +44,10 @@ export class ReviewsService {
     return review;
   }
 
-  async remove(id: string, userId: string) {
-    const review = await this.prisma.review.findFirst({ where: { id, userId } });
+  async remove(id: string, userId: string, isAdmin = false) {
+    const review = await this.prisma.review.findFirst({
+      where: isAdmin ? { id } : { id, userId }
+    });
     if (!review) return;
 
     await this.prisma.review.delete({ where: { id } });
@@ -54,13 +56,26 @@ export class ReviewsService {
 
   async findRecent() {
     return this.prisma.review.findMany({
-      where: { isApproved: true },
+      where: {
+        isApproved: true,
+        rating: { gte: 4 }
+      },
       include: {
         user: { select: { name: true, avatar: true } },
-        product: { select: { name: true, slug: true } }
+        product: { select: { name: true, slug: true, images: true } }
       },
       orderBy: { createdAt: 'desc' },
       take: 10
+    });
+  }
+
+  async findAll() {
+    return this.prisma.review.findMany({
+      include: {
+        user: { select: { name: true, email: true, phone: true, avatar: true } },
+        product: { select: { name: true, slug: true, images: true } }
+      },
+      orderBy: { createdAt: 'desc' }
     });
   }
 
