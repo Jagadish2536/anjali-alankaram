@@ -1,0 +1,307 @@
+name: 🚀 Build, Test & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy even if no code changes'
+        required: false
+        default: 'false'
+
+env:
+  AWS_REGION: ap-south-2
+  ECR_REGISTRY: "${{ secrets.ECR_REGISTRY }}"
+  ECS_CLUSTER: anjali-alankaram-cluster
+  ECS_SERVICE_BACKEND: anjali-alankaram-backend-service
+  ECS_SERVICE_FRONTEND: anjali-alankaram-frontend-service
+  BACKEND_TASK_FAMILY: anjali-alankaram-backend-task
+  FRONTEND_TASK_FAMILY: anjali-alankaram-frontend-task
+
+permissions:
+  id-token: write   # For OIDC auth (recommended over static keys)
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: Build & scan Docker images
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-and-push:
+    name: 🏗️ Build & Push Docker Images
+    runs-on: ubuntu-latest
+    outputs:
+      backend-image: "${{ steps.build-backend.outputs.image }}"
+      frontend-image: "${{ steps.build-frontend.outputs.image }}"
+      git-sha: "${{ steps.vars.outputs.sha }}"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set build variables
+        id: vars
+        run: |
+          echo "sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build Backend (ARM64 for Graviton — matches Fargate ARM64 tasks)
+      - name: Build backend Docker image
+        id: build-backend
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/anjali-alankaram-backend"
+          TAG="${{ steps.vars.outputs.sha }}"
+          
+          docker buildx build \
+            --platform linux/arm64 \
+            --cache-from type=registry,ref=${IMAGE_URI}:cache \
+            --cache-to type=registry,ref=${IMAGE_URI}:cache,mode=max \
+            -t ${IMAGE_URI}:${TAG} \
+            -t ${IMAGE_URI}:latest \
+            ./backend \
+            --push
+          
+          echo "image=${IMAGE_URI}:${TAG}" >> $GITHUB_OUTPUT
+
+      # Scan backend image with Trivy
+      - name: Scan backend image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build-backend.outputs.image }}
+          format: 'table'
+          exit-code: '0'    # Don't fail on vulnerabilities — just report
+          severity: 'CRITICAL,HIGH'
+
+      # Build Frontend (ARM64)
+      - name: Build frontend Docker image
+        id: build-frontend
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/anjali-alankaram-frontend"
+          TAG="${{ steps.vars.outputs.sha }}"
+          
+          docker buildx build \
+            --platform linux/arm64 \
+            --cache-from type=registry,ref=${IMAGE_URI}:cache \
+            --cache-to type=registry,ref=${IMAGE_URI}:cache,mode=max \
+            -t ${IMAGE_URI}:${TAG} \
+            -t ${IMAGE_URI}:latest \
+            ./frontend \
+            --push
+          
+          echo "image=${IMAGE_URI}:${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Scan frontend image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build-frontend.outputs.image }}
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: Deploy Backend to ECS
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-backend:
+    name: 🔧 Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.BACKEND_TASK_FAMILY }} \
+            --query taskDefinition > /tmp/backend-task-def.json
+
+      - name: Update container image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/backend-task-def.json
+          container-name: backend
+          image: ${{ needs.build-and-push.outputs.backend-image }}
+
+      - name: Deploy to ECS (rolling update)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_BACKEND }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 15
+
+      - name: Backend health check
+        run: |
+          for i in {1..10}; do
+            STATUS=$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SERVICE_BACKEND }} \
+              --query 'services[0].deployments[0].rolloutState' \
+              --output text)
+            echo "Deployment status: $STATUS"
+            if [ "$STATUS" = "COMPLETED" ]; then
+              echo "✅ Backend deployment successful!"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "⚠️ Could not confirm deployment completion — check ECS console"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3: Run Database Migrations
+  # ─────────────────────────────────────────────────────────────────────────────
+  run-migrations:
+    name: 🗄️ Run DB Migrations
+    runs-on: ubuntu-latest
+    needs: [deploy-backend]
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Run prisma db push via ECS Run Task
+        run: |
+          # Get network config from backend service
+          SUBNETS=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE_BACKEND }} \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' \
+            --output json)
+          
+          SECURITY_GROUPS=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE_BACKEND }} \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups' \
+            --output json)
+          
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE_BACKEND }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          # Run a one-off task to execute prisma db push
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=$SUBNETS,securityGroups=$SECURITY_GROUPS,assignPublicIp=ENABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","db","push","--accept-data-loss=false"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+          
+          echo "Migration task ARN: $TASK_ARN"
+          
+          # Wait for migration task to complete
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN"
+          
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+          
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Database migration completed successfully!"
+          else
+            echo "❌ Database migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4: Deploy Frontend to ECS
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-frontend:
+    name: 🎨 Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: [run-migrations]
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "${{ env.AWS_REGION }}"
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.FRONTEND_TASK_FAMILY }} \
+            --query taskDefinition > /tmp/frontend-task-def.json
+
+      - name: Update container image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/frontend-task-def.json
+          container-name: frontend
+          image: ${{ needs.build-and-push.outputs.frontend-image }}
+
+      - name: Deploy to ECS (rolling update)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_FRONTEND }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 15
+
+      - name: Invalidate CloudFront cache
+        run: |
+          if [ -n "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
+              --paths "/*"
+            echo "✅ CloudFront cache invalidated"
+          else
+            echo "ℹ️ CLOUDFRONT_DISTRIBUTION_ID not set — skipping cache invalidation"
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 5: Notify deployment result
+  # ─────────────────────────────────────────────────────────────────────────────
+  notify:
+    name: 📣 Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend]
+    if: always()
+
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ needs.deploy-frontend.result }}" = "success" ]; then
+            echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ FAILED" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+

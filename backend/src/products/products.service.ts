@@ -8,6 +8,10 @@ import { ProductFilterDto } from './dto/product-filter.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductStatus } from '@prisma/client';
+import { S3CleanupService } from '../s3-cleanup/s3-cleanup.service';
+import { CacheService } from '../cache/cache.service';
+import { SearchService } from '../search/search.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class ProductsService {
@@ -16,6 +20,9 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     @Inject(REDIS_CLIENT) private redis: Redis,
+    private s3Cleanup: S3CleanupService,
+    private cache: CacheService,
+    private searchService: SearchService,
   ) {}
 
   async findAll(filters: ProductFilterDto) {
@@ -35,9 +42,9 @@ export class ProductsService {
       search,
       hasReel,
       isBestseller,
+      cursor,
     } = filters;
 
-    const skip = (page - 1) * limit;
     const where: any = {};
 
     if (status === 'ALL') {
@@ -109,81 +116,143 @@ export class ProductsService {
       });
     }
 
-    const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where,
-        skip,
-        take: Number(limit),
-        orderBy: { [sortBy]: sortOrder },
-        include: {
-          category: { select: { id: true, name: true, slug: true } },
-          variants: { where: { isActive: true }, orderBy: { size: 'asc' } },
-        },
-      }),
-      this.prisma.product.count({ where }),
-    ]);
+    // Generate MD5 cache key fingerprint from the input filters
+    const fingerprint = JSON.stringify({
+      categoryId,
+      categorySlug,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder,
+      status,
+      size,
+      color,
+      isNewArrival,
+      search,
+      hasReel,
+      isBestseller,
+      cursor,
+      limit,
+      page,
+    });
+    const hash = crypto.createHash('md5').update(fingerprint).digest('hex');
+    const cacheKey = CacheService.KEYS.productsList(hash);
 
-    return {
-      data: products,
-      meta: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / limit),
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const prismaCursor = cursor ? { id: cursor } : undefined;
+        const skip = cursor ? 1 : (page - 1) * limit;
+
+        const [products, total] = await Promise.all([
+          this.prisma.product.findMany({
+            where,
+            cursor: prismaCursor,
+            skip,
+            take: Number(limit),
+            orderBy: { [sortBy]: sortOrder },
+            include: {
+              category: { select: { id: true, name: true, slug: true } },
+              variants: { where: { isActive: true }, orderBy: { size: 'asc' } },
+            },
+          }),
+          this.prisma.product.count({ where }),
+        ]);
+
+        const nextCursor =
+          products.length === Number(limit)
+            ? products[products.length - 1].id
+            : null;
+        const hasMore = products.length === Number(limit);
+
+        return {
+          data: products,
+          meta: {
+            total,
+            page: Number(page),
+            limit: Number(limit),
+            totalPages: Math.ceil(total / limit),
+            nextCursor,
+            hasMore,
+          },
+        };
       },
-    };
+      CacheService.TTL.PRODUCTS_LIST,
+    );
   }
 
   async findBySlug(slug: string) {
-    const cacheKey = `product:${slug}`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    const cacheKey = CacheService.KEYS.product(slug);
 
-    const product = await this.prisma.product.findUnique({
-      where: { slug },
-      include: {
-        category: true,
-        variants: { where: { isActive: true }, orderBy: { size: 'asc' } },
-        reviews: {
-          where: { isApproved: true },
-          include: { user: { select: { name: true, avatar: true } } },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const product = await this.prisma.product.findUnique({
+          where: { slug },
+          include: {
+            category: true,
+            variants: { where: { isActive: true }, orderBy: { size: 'asc' } },
+            reviews: {
+              where: { isApproved: true },
+              include: { user: { select: { name: true, avatar: true } } },
+              orderBy: { createdAt: 'desc' },
+              take: 10,
+            },
+          },
+        });
+
+        if (!product || product.status === 'ARCHIVED') {
+          throw new NotFoundException('Product not found');
+        }
+        return product;
       },
-    });
-
-    if (!product || product.status === 'ARCHIVED') throw new NotFoundException('Product not found');
-
-    await this.redis.setex(cacheKey, 300, JSON.stringify(product)); // 5min cache
-    return product;
+      CacheService.TTL.PRODUCT,
+    );
   }
 
   async getFeatured() {
-    return this.prisma.product.findMany({
-      where: { isFeatured: true, status: 'ACTIVE' },
-      include: { variants: { where: { isActive: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 12,
-    });
+    return this.cache.getOrSet(
+      CacheService.KEYS.homepageFeatured(),
+      async () => {
+        return this.prisma.product.findMany({
+          where: { isFeatured: true, status: 'ACTIVE' },
+          include: { variants: { where: { isActive: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 12,
+        });
+      },
+      CacheService.TTL.HOMEPAGE,
+    );
   }
 
   async getNewArrivals() {
-    return this.prisma.product.findMany({
-      where: { isNewArrival: true, status: 'ACTIVE' },
-      include: { variants: { where: { isActive: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 12,
-    });
+    return this.cache.getOrSet(
+      CacheService.KEYS.homepageNewArrivals(),
+      async () => {
+        return this.prisma.product.findMany({
+          where: { isNewArrival: true, status: 'ACTIVE' },
+          include: { variants: { where: { isActive: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 12,
+        });
+      },
+      CacheService.TTL.HOMEPAGE,
+    );
   }
 
   async getBestsellers() {
-    return this.prisma.product.findMany({
-      where: { isBestseller: true, status: 'ACTIVE' },
-      include: { variants: { where: { isActive: true } } },
-      orderBy: { totalSold: 'desc' },
-      take: 12,
-    });
+    return this.cache.getOrSet(
+      CacheService.KEYS.homepageBestsellers(),
+      async () => {
+        return this.prisma.product.findMany({
+          where: { isBestseller: true, status: 'ACTIVE' },
+          include: { variants: { where: { isActive: true } } },
+          orderBy: { totalSold: 'desc' },
+          take: 12,
+        });
+      },
+      CacheService.TTL.HOMEPAGE,
+    );
   }
 
   async search(query: string, filters: ProductFilterDto) {
@@ -247,6 +316,13 @@ export class ProductsService {
       await this.ensureDefaultWarehouseAndSync(product.variants);
     }
 
+    // Invalidate caches
+    await this.cache.invalidateProductLists();
+    await this.cache.invalidateHomepage();
+
+    // Index product in Meilisearch
+    await this.searchService.indexProduct(product.id);
+
     return product;
   }
 
@@ -254,8 +330,8 @@ export class ProductsService {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
 
-    // Invalidate cache
-    await this.redis.del(`product:${product.slug}`);
+    // Invalidate old cache
+    await this.cache.invalidateOnProductWrite(product.slug);
 
     // Separate variants from the rest of the dto
     const { variants, ...productData } = dto as any;
@@ -267,7 +343,10 @@ export class ProductsService {
       include: { variants: true, category: true },
     });
 
-    // Upsert variants if provided
+    // Invalidate new cache (in case slug/featured status changed)
+    await this.cache.invalidateOnProductWrite(updated.slug);
+
+    // Detect removed image URLs and clean up from S3
     if (variants && Array.isArray(variants)) {
       const payloadIds = variants.map((v) => v.id).filter(Boolean);
 
@@ -335,17 +414,32 @@ export class ProductsService {
       }
     }
 
-    return this.prisma.product.findUnique({
+    const updatedProduct = await this.prisma.product.findUnique({
       where: { id },
       include: { variants: { where: { isActive: true }, orderBy: { size: 'asc' } }, category: true },
     });
+
+    if (updatedProduct) {
+      await this.searchService.indexProduct(updatedProduct.id);
+    }
+
+    return updatedProduct;
   }
 
-  async remove(id: string) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
+  async remove(id: string, adminId?: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { variants: { select: { id: true, images: true } } },
+    });
     if (!product) throw new NotFoundException('Product not found');
 
-    await this.redis.del(`product:${product.slug}`);
+    await this.cache.invalidateOnProductWrite(product.slug);
+
+    // Collect all image URLs to delete from S3
+    const allImageUrls: string[] = [
+      ...(product.images || []),
+      ...product.variants.flatMap((v) => v.images || []),
+    ];
 
     // Get all variant ids of this product
     const productVariants = await this.prisma.productVariant.findMany({
@@ -360,6 +454,9 @@ export class ProductsService {
       data: { status: 'ARCHIVED' },
     });
 
+    // Remove from Meilisearch
+    await this.searchService.removeProduct(id);
+
     // Deactivate variants
     await this.prisma.productVariant.updateMany({
       where: { productId: id },
@@ -372,6 +469,18 @@ export class ProductsService {
         where: {
           variantId: { in: variantIds },
         },
+      });
+    }
+
+    // Clean up S3 images asynchronously (don't block response)
+    if (allImageUrls.length > 0 && this.s3Cleanup) {
+      setImmediate(async () => {
+        try {
+          await this.s3Cleanup.deleteProductImages(id, allImageUrls, adminId || 'SYSTEM');
+          this.logger.log(`Cleaned up ${allImageUrls.length} S3 images for deleted product ${id}`);
+        } catch (err: any) {
+          this.logger.error(`S3 cleanup failed for product ${id}: ${err.message}`);
+        }
       });
     }
 

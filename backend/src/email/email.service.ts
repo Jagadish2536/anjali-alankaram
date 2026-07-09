@@ -1,41 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private ses: SESClient;
-  private fromEmail: string;
-  private fromName: string;
 
-  constructor(private config: ConfigService) {
-    this.ses = new SESClient({ region: this.config.get('AWS_REGION', 'ap-south-2') });
-    this.fromEmail = this.config.get('SES_FROM_EMAIL', 'noreply@anjalialankaram.com');
-    this.fromName = this.config.get('SES_FROM_NAME', 'Anjali Alankaram');
-  }
+  constructor(
+    private config: ConfigService,
+    @InjectQueue('email') private readonly emailQueue: Queue,
+  ) {}
 
-  // ── Core send ─────────────────────────────────────────────────────────
+  // ── Core send (delegates to Bull background queue) ─────────────────────
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (!to) return;
 
-    this.logger.log(`[SES] Attempting to send "${subject}" to ${to} from ${this.fromEmail}`);
+    this.logger.log(`[Queue: Email] Queueing email "${subject}" to ${to}`);
 
     try {
-      const result = await this.ses.send(new SendEmailCommand({
-        Source: `${this.fromName} <${this.fromEmail}>`,
-        Destination: { ToAddresses: [to] },
-        Message: {
-          Subject: { Data: subject, Charset: 'UTF-8' },
-          Body: { Html: { Data: html, Charset: 'UTF-8' } },
+      await this.emailQueue.add(
+        'sendMail',
+        { to, subject, html },
+        {
+          attempts: 3,
+          backoff: 5000, // Retry after 5 seconds on failure
+          removeOnComplete: true,
         },
-      }));
-      this.logger.log(`[SES] Email sent successfully to ${to}: "${subject}" | MessageId: ${result.MessageId}`);
-    } catch (err) {
-      this.logger.error(
-        `[SES] FAILED to send email to ${to}: "${subject}" | Code: ${err?.name || err?.code} | Message: ${err?.message} | Stack: ${err?.stack}`,
       );
-      // Non-blocking — never throw
+    } catch (err: any) {
+      this.logger.error(
+        `[Queue: Email] Failed to enqueue email for ${to}: ${err.message}`,
+      );
     }
   }
 

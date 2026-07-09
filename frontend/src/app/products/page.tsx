@@ -1,11 +1,11 @@
 'use client';
+
 import { useState, useEffect, Suspense, useRef, useCallback } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
-import { ChevronDown, ChevronRight, ShoppingBag, Heart, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { ProductCard } from '@/components/common/ProductCard';
 
 // ── Damask pattern ────────────────────────────────────────────────────────────
 const damaskBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='0.6' opacity='0.15'%3E%3Cellipse cx='40' cy='20' rx='6' ry='10'/%3E%3Cellipse cx='40' cy='60' rx='6' ry='10'/%3E%3Cellipse cx='20' cy='40' rx='10' ry='6'/%3E%3Cellipse cx='60' cy='40' rx='10' ry='6'/%3E%3Ccircle cx='40' cy='40' r='5'/%3E%3Cpath d='M40 10 C35 15 32 22 32 28 C32 34 35 38 40 40 C45 38 48 34 48 28 C48 22 45 15 40 10Z'/%3E%3Cpath d='M40 70 C35 65 32 58 32 52 C32 46 35 42 40 40 C45 42 48 46 48 52 C48 58 45 65 40 70Z'/%3E%3Cpath d='M10 40 C15 35 22 32 28 32 C34 32 38 35 40 40 C38 45 34 48 28 48 C22 48 15 45 10 40Z'/%3E%3Cpath d='M70 40 C65 35 58 32 52 32 C46 32 42 35 40 40 C42 45 46 48 52 48 C58 48 65 45 70 40Z'/%3E%3C/g%3E%3C/svg%3E")`;
@@ -83,165 +83,6 @@ function PriceSlider({ min, max, value, onChange }: {
   );
 }
 
-// ── Product card ──────────────────────────────────────────────────────────────
-function ProductCard({ product, activeColor }: { product: any; activeColor?: string }) {
-  const [localColor, setLocalColor] = useState(activeColor || '');
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const nX = (x / rect.width) - 0.5;
-    const nY = (y / rect.height) - 0.5;
-    setTilt({ x: -nY * 14, y: nX * 14 });
-  };
-
-  useEffect(() => {
-    setLocalColor(activeColor || '');
-  }, [activeColor]);
-
-  const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
-  const discountPct = hasDiscount ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100) : 0;
-
-  // When a color is active, compute stock only for that color's variants
-  const totalStock = (() => {
-    if (localColor) {
-      const colorVariants = product.variants?.filter((v: any) => v.color === localColor) || [];
-      if (colorVariants.length > 0)
-        return colorVariants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0);
-    }
-    return getTotalStock(product);
-  })();
-  const isOutOfStock = totalStock === 0;
-  const isLowStock = !isOutOfStock && totalStock > 0 && totalStock < 5;
-
-  // If a colour filter is active, use the first variant image that matches the colour
-  const displayImage = (() => {
-    if (localColor) {
-      const match = product.variants?.find((v: any) => v.color === localColor && v.images?.length > 0);
-      if (match?.images?.[0] && match.images[0].trim() !== '') return match.images[0];
-    }
-    const mainImg = product.images?.[0];
-    return (mainImg && mainImg.trim() !== '') ? mainImg : '/placeholder.png';
-  })();
-
-  const href = localColor
-    ? `/products/${product.slug}?color=${encodeURIComponent(localColor)}`
-    : `/products/${product.slug}`;
-
-  // Unique list of colors with their hex values
-  const productColors = (() => {
-    const map = new Map<string, string>();
-    product.variants?.forEach((v: any) => {
-      if (v.isActive !== false && v.color && v.color.trim() !== '' && !map.has(v.color)) {
-        map.set(v.color, v.colorHex || '');
-      }
-    });
-    return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
-  })();
-
-  return (
-    <div className="group flex flex-col animate-scale-in transition-all duration-300 ease-out p-1 rounded-2xl">
-      <Link href={href} className="flex flex-col">
-        <div
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-          className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-3 shadow-sm"
-          style={{
-            transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, ${tilt.x !== 0 || tilt.y !== 0 ? 1.03 : 1}, 1)`,
-            transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease' : 'transform 0.08s ease-out, box-shadow 0.08s ease-out',
-            boxShadow: tilt.x !== 0 || tilt.y !== 0 ? '0 15px 30px rgba(0,0,0,0.15)' : 'none',
-            zIndex: tilt.x !== 0 || tilt.y !== 0 ? 10 : 1
-          }}
-        >
-          <Image src={displayImage} alt={product.name} fill className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} />
-
-          {/* Top-left badge: Out of Stock OR Discount % */}
-          {isOutOfStock ? (
-            <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-              OUT OF STOCK
-            </span>
-          ) : hasDiscount ? (
-            <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-              {discountPct}% OFF
-            </span>
-          ) : null}
-
-          {/* Low stock badge — bottom-left */}
-          {isLowStock && (
-            <span className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow animate-pulse">
-              Only {totalStock} left! Hurry
-            </span>
-          )}
-
-          {/* Out of stock overlay */}
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-black/20 flex items-end justify-center pb-4 pointer-events-none" />
-          )}
-
-          {/* Heart */}
-          <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:scale-90 md:group-hover:scale-100 transition-all duration-200">
-            <Heart className="w-3.5 h-3.5 text-primary" />
-          </div>
-
-          {/* Cart — only show if in stock */}
-          {!isOutOfStock && (
-            <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0 transition-all duration-200">
-              <ShoppingBag className="w-3.5 h-3.5 text-primary" />
-            </div>
-          )}
-        </div>
-
-        <h3 className="font-medium text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">{product.name}</h3>
-        <div className="flex items-center gap-2 mt-1">
-          {isOutOfStock ? (
-            <span className="text-xs font-semibold text-muted-foreground">Out of Stock</span>
-          ) : (
-            <>
-              <span className="font-semibold text-sm">{formatPrice(product.salePrice || product.basePrice)}</span>
-              {hasDiscount && (
-                <span className="text-muted-foreground line-through text-xs">{formatPrice(product.basePrice)}</span>
-              )}
-            </>
-          )}
-        </div>
-      </Link>
-
-      {/* Render interactive color swatches */}
-      {productColors.length > 1 && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          {productColors.map(({ name, hex }) => {
-            const isSelected = localColor === name || (!localColor && productColors[0].name === name);
-            return (
-              <button
-                key={name}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setLocalColor(name);
-                }}
-                onMouseEnter={() => {
-                  setLocalColor(name);
-                }}
-                className={`w-4 h-4 rounded-full border transition-all duration-200 cursor-pointer ${
-                  isSelected
-                    ? 'ring-2 ring-primary ring-offset-1 border-transparent scale-110'
-                    : 'border-gray-300 hover:scale-105'
-                }`}
-                style={{ backgroundColor: hex || '#ccc' }}
-                title={name}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main content ──────────────────────────────────────────────────────────────
 function ProductsContent() {
   const router = useRouter();
@@ -251,9 +92,13 @@ function ProductsContent() {
   const filter = searchParams.get('filter');
   const searchQuery = searchParams.get('search') || '';
 
-  const [allProducts, setAllProducts] = useState<any[]>([]);   // raw from API
+  const [allProducts, setAllProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  
   const [sortBy, setSortBy] = useState('newest');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [maxPossible] = useState(10000);
@@ -264,6 +109,8 @@ function ProductsContent() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
 
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     api.get('/categories').then(({ data }) => {
       const list = Array.isArray(data) ? data : data?.data || [];
@@ -271,27 +118,87 @@ function ProductsContent() {
     }).catch(() => {});
   }, []);
 
+  // Fetch initial products on filter change
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchInitialProducts() {
       setIsLoading(true);
       try {
-        const params: any = { t: Date.now() };
+        const params: any = { limit: 12, t: Date.now() };
         let slug = categorySlug;
         if (slug === 'sarees') slug = 'saree';
         if (slug) params.categorySlug = slug;
         if (filter === 'new') params.isNewArrival = 'true';
+        if (filter === 'bestseller') params.isBestseller = 'true';
         if (searchQuery) params.search = searchQuery;
         if (priceRange[0] > 0) params.minPrice = priceRange[0];
         if (priceRange[1] < maxPossible) params.maxPrice = priceRange[1];
 
         const { data } = await api.get('/products', { params });
-        let list = Array.isArray(data) ? data : data?.data || [];
+        const list = data?.data || [];
         setAllProducts(list);
-      } catch { setAllProducts([]); }
-      finally { setIsLoading(false); }
+        setNextCursor(data?.meta?.nextCursor || null);
+        setHasMore(data?.meta?.hasMore || false);
+      } catch {
+        setAllProducts([]);
+        setNextCursor(null);
+        setHasMore(false);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    fetchProducts();
+    fetchInitialProducts();
   }, [categorySlug, filter, searchQuery, priceRange, maxPossible]);
+
+  // Fetch more products on scroll (Infinite Scroll)
+  const fetchMoreProducts = useCallback(async () => {
+    if (isFetchingMore || !nextCursor || !hasMore) return;
+    setIsFetchingMore(true);
+    try {
+      const params: any = { limit: 12, cursor: nextCursor };
+      let slug = categorySlug;
+      if (slug === 'sarees') slug = 'saree';
+      if (slug) params.categorySlug = slug;
+      if (filter === 'new') params.isNewArrival = 'true';
+      if (filter === 'bestseller') params.isBestseller = 'true';
+      if (searchQuery) params.search = searchQuery;
+      if (priceRange[0] > 0) params.minPrice = priceRange[0];
+      if (priceRange[1] < maxPossible) params.maxPrice = priceRange[1];
+
+      const { data } = await api.get('/products', { params });
+      const newList = data?.data || [];
+      
+      setAllProducts(prev => [...prev, ...newList]);
+      setNextCursor(data?.meta?.nextCursor || null);
+      setHasMore(data?.meta?.hasMore || false);
+    } catch (e) {
+      console.error('Failed to fetch more products', e);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [nextCursor, hasMore, isFetchingMore, categorySlug, filter, searchQuery, priceRange, maxPossible]);
+
+  // Setup intersection observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+          fetchMoreProducts();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [hasMore, isFetchingMore, fetchMoreProducts]);
 
   // ── Client-side filtering & sorting ──────────────────────────────────────
   const displayedProducts = (() => {
@@ -311,14 +218,14 @@ function ProductsContent() {
       });
     }
 
-    // Size filter — client-side (product has at least one variant matching)
+    // Size filter
     if (selectedSizes.length > 0) {
       list = list.filter(p =>
         p.variants?.some((v: any) => selectedSizes.includes(v.size))
       );
     }
 
-    // Color filter — client-side
+    // Color filter
     if (selectedColors.length > 0) {
       list = list.filter(p =>
         p.variants?.some((v: any) => selectedColors.includes(v.color))
@@ -332,12 +239,11 @@ function ProductsContent() {
     return list;
   })();
 
-  // ── Render Items Calculation (Flattening by Color on Shop All) ───────────
+  // ── Render Items Calculation ─────────────────────────────────────────────
   const renderItems: { key: string; product: any; activeColor: string | undefined }[] = (() => {
     const isShopAll = !categorySlug;
 
     if (isShopAll) {
-      // Shop All page: Expand each product by all its unique colors
       return displayedProducts.flatMap((p): { key: string; product: any; activeColor: string | undefined }[] => {
         const uniqueColors = Array.from(
           new Set(
@@ -351,7 +257,6 @@ function ProductsContent() {
           return [{ key: p.id, product: p, activeColor: undefined }];
         }
 
-        // If color filters are active, only show the variants matching selectedColors
         const colorsToShow = selectedColors.length > 0
           ? uniqueColors.filter(c => selectedColors.includes(c))
           : uniqueColors;
@@ -363,9 +268,7 @@ function ProductsContent() {
         }));
       });
     } else {
-      // Category page: Show one card per product
       return displayedProducts.map(p => {
-        // If color filters are active, set activeColor to the first matching color
         let activeColor: string | undefined = undefined;
         if (selectedColors.length > 0) {
           activeColor = p.variants?.find((v: any) => selectedColors.includes(v.color))?.color;
@@ -380,8 +283,6 @@ function ProductsContent() {
     }
   })();
 
-
-  // Derive available sizes and colors from ALL loaded products (before filter)
   const availableSizes = getUniqueSizes(allProducts);
   const availableColors = getUniqueColors(allProducts);
 
@@ -410,11 +311,11 @@ function ProductsContent() {
 
   const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedAvailability.length > 0 || priceRange[0] > 0 || priceRange[1] < maxPossible;
 
-  // Build page title
   let pageTitle = 'All Products';
   let breadcrumb = 'Shop';
   if (searchQuery) { pageTitle = `"${searchQuery}"`; breadcrumb = 'Search'; }
   else if (filter === 'new') { pageTitle = 'New Arrivals'; breadcrumb = 'New Arrivals'; }
+  else if (filter === 'bestseller') { pageTitle = 'Best Sellers'; breadcrumb = 'Best Sellers'; }
   else if (categorySlug) {
     pageTitle = categorySlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     breadcrumb = pageTitle;
@@ -461,7 +362,6 @@ function ProductsContent() {
         </div>
       </FilterGroup>
 
-      {/* ── Size Filter ── */}
       {availableSizes.length > 0 && (
         <FilterGroup title="Size">
           <div className="flex flex-wrap gap-2 pt-1">
@@ -482,7 +382,6 @@ function ProductsContent() {
         </FilterGroup>
       )}
 
-      {/* ── Color Filter ── */}
       {availableColors.length > 0 && (
         <FilterGroup title="Colour">
           <div className="space-y-2 pt-1">
@@ -513,7 +412,6 @@ function ProductsContent() {
         </FilterGroup>
       )}
 
-      {/* ── Availability Filter ── */}
       <FilterGroup title="Availability">
         <div className="space-y-2 pt-1">
           {['In Stock', 'Out of Stock'].map(opt => (
@@ -532,7 +430,6 @@ function ProductsContent() {
     </div>
   );
 
-  // Active filter chips
   const activeChips: { label: string; onRemove: () => void }[] = [
     ...selectedSizes.map(s => ({ label: `Size: ${s}`, onRemove: () => toggleSize(s) })),
     ...selectedColors.map(c => ({ label: `Colour: ${c}`, onRemove: () => toggleColor(c) })),
@@ -565,7 +462,6 @@ function ProductsContent() {
             {isLoading ? 'Loading…' : `${renderItems.length} product${renderItems.length !== 1 ? 's' : ''}`}
           </p>
           <div className="flex items-center gap-3">
-            {/* Mobile filter toggle */}
             <button
               onClick={() => setShowMobileFilters(o => !o)}
               className="md:hidden flex items-center gap-2 text-sm font-medium border px-4 py-2 rounded-lg hover:bg-muted transition-colors"
@@ -585,7 +481,6 @@ function ProductsContent() {
           </div>
         </div>
 
-        {/* Active filter chips */}
         {activeChips.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-5">
             {activeChips.map(chip => (
@@ -603,7 +498,6 @@ function ProductsContent() {
           </div>
         )}
 
-        {/* Mobile filters panel */}
         {showMobileFilters && (
           <div className="md:hidden mb-6 p-5 border rounded-2xl bg-card">
             <SidebarContent />
@@ -611,12 +505,10 @@ function ProductsContent() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Desktop sidebar */}
           <aside className="hidden md:block space-y-2">
             <SidebarContent />
           </aside>
 
-          {/* Product grid */}
           <div className="md:col-span-3">
             {isLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
@@ -641,15 +533,27 @@ function ProductsContent() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {renderItems.map(({ key, product, activeColor }) => (
-                  <ProductCard
-                    key={key}
-                    product={product}
-                    activeColor={activeColor}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  {renderItems.map(({ key, product, activeColor }) => (
+                    <ProductCard
+                      key={key}
+                      product={product}
+                      activeColor={activeColor}
+                    />
+                  ))}
+                </div>
+                
+                {/* Infinite Scroll target observer node */}
+                {hasMore && (
+                  <div 
+                    ref={loadMoreRef} 
+                    className="flex justify-center items-center py-10 mt-6"
+                  >
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -661,7 +565,7 @@ function ProductsContent() {
 export default function ProductsPage() {
   return (
     <Suspense fallback={
-      <div className="container py-20 text-center text-muted-foreground">Loading catalog…</div>
+      <div className="container py-20 text-center text-muted-foreground animate-pulse">Loading catalog…</div>
     }>
       <ProductsContent />
     </Suspense>

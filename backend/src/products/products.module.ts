@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { S3CleanupModule } from '../s3-cleanup/s3-cleanup.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, S3CleanupModule],
   controllers: [ProductsController],
   providers: [ProductsService],
   exports: [ProductsService],

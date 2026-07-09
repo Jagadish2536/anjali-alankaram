@@ -9,9 +9,15 @@ import { formatPrice } from '@/lib/utils';
 import {
   Plus, Edit2, Trash2, Search, AlertCircle, CheckCircle2,
   Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink, AlertTriangle,
-  BarChart3, Printer, FileDown, RefreshCw, PackageCheck, PackageX
+  BarChart3, Printer, FileDown, RefreshCw, PackageCheck, PackageX, Wand2, Sparkles
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import dynamic from 'next/dynamic';
+
+const AIImageGeneratorModal = dynamic(
+  () => import('@/components/admin/AIImageGeneratorModal'),
+  { ssr: false },
+);
 
 // ── Confirm Dialog ───────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }: {
@@ -160,6 +166,8 @@ export default function AdminProductsPage() {
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiProductTarget, setAiProductTarget] = useState<{ id: string; name: string } | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -522,8 +530,29 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto pt-10 pb-10">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
             <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-bold font-outfit">Edit Product</h2>
-              <button onClick={closeEdit} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <div>
+                <h2 className="text-xl font-bold font-outfit">Edit Product</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{editingProduct.name}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* ✨ AI Image Generator Button */}
+                <button
+                  type="button"
+                  id="ai-image-generator-btn"
+                  onClick={() => {
+                    setAiProductTarget({ id: editingProduct.id, name: editingProduct.name });
+                    setShowAIModal(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                  style={{ background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)' }}
+                  title="Generate professional product photos with AI"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="hidden sm:inline">Create Images with AI</span>
+                  <span className="sm:hidden">AI</span>
+                </button>
+                <button onClick={closeEdit} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              </div>
             </div>
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1265,6 +1294,31 @@ export default function AdminProductsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✨ AI Image Generator Modal */}
+      {showAIModal && aiProductTarget && (
+        <AIImageGeneratorModal
+          productId={aiProductTarget.id}
+          productName={aiProductTarget.name}
+          onImagesApproved={(urls) => {
+            setEditForm(prev => ({
+              ...prev,
+              images: [...prev.images.filter(img => img.trim() !== ''), ...urls],
+            }));
+            setProducts(prods => prods.map(p =>
+              p.id === aiProductTarget.id
+                ? { ...p, images: [...(p.images || []), ...urls] }
+                : p
+            ));
+            showFeedback('success', `✨ ${urls.length} AI image(s) added to product!`);
+          }}
+          onClose={() => {
+            setShowAIModal(false);
+            setAiProductTarget(null);
+            fetchProducts(true);
+          }}
+        />
       )}
     </div>
   );

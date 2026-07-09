@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bull';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { PrismaModule } from './prisma/prisma.module';
@@ -25,6 +26,11 @@ import { RedisModule } from './redis/redis.module';
 import { SettingsModule } from './settings/settings.module';
 import { WarehouseModule } from './warehouse/warehouse.module';
 import { EmailModule } from './email/email.module';
+import { AiImagesModule } from './ai-images/ai-images.module';
+import { S3CleanupModule } from './s3-cleanup/s3-cleanup.module';
+import { CacheModule } from './cache/cache.module';
+import { SearchModule } from './search/search.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -48,6 +54,19 @@ import { EmailModule } from './email/email.module';
 
     // Scheduling
     ScheduleModule.forRoot(),
+
+    // Background workers connection
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        redis: {
+          host: config.get<string>('REDIS_HOST', 'localhost'),
+          port: config.get<number>('REDIS_PORT', 6379),
+          password: config.get<string>('REDIS_PASSWORD') || undefined,
+        },
+      }),
+    }),
 
     // Logging
     WinstonModule.forRoot({
@@ -75,6 +94,9 @@ import { EmailModule } from './email/email.module';
 
     PrismaModule,
     RedisModule,
+    CacheModule,
+    SearchModule,
+    FeatureFlagsModule,
     AuthModule,
     UsersModule,
     ProductsModule,
@@ -94,6 +116,8 @@ import { EmailModule } from './email/email.module';
     SettingsModule,
     WarehouseModule,
     EmailModule,
+    AiImagesModule,
+    S3CleanupModule,
   ],
 })
 export class AppModule {}

@@ -92,4 +92,9 @@ export class ProductFilterDto {
   @IsOptional()
   @IsString()
   isBestseller?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }

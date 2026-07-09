@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as admin from 'firebase-admin';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import axios from 'axios';
 
 @Injectable()
@@ -13,6 +15,7 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    @InjectQueue('notifications') private readonly notificationsQueue: Queue,
   ) {
     const serviceAccountBase64 = this.config.get('FIREBASE_SERVICE_ACCOUNT_BASE64');
     if (serviceAccountBase64 && serviceAccountBase64 !== 'base64_encoded_service_account_json') {
@@ -97,13 +100,22 @@ export class NotificationsService {
       const userWithFcm = await this.prisma.user.findUnique({ where: { id: userId }, select: { fcmToken: true } });
       if (userWithFcm?.fcmToken) {
         try {
-          await admin.messaging().send({
-            token: userWithFcm.fcmToken,
-            notification: { title, body },
-            data: { orderId, type },
-          });
-        } catch (error) {
-          this.logger.error(`Failed to send push notification to user ${userId}`, error.message);
+          await this.notificationsQueue.add(
+            'sendPush',
+            {
+              token: userWithFcm.fcmToken,
+              title,
+              body,
+              data: { orderId, type },
+            },
+            {
+              attempts: 3,
+              backoff: 5000,
+              removeOnComplete: true,
+            },
+          );
+        } catch (error: any) {
+          this.logger.error(`Failed to enqueue push notification to user ${userId}: ${error.message}`);
         }
       }
     }
@@ -183,13 +195,22 @@ export class NotificationsService {
       for (const adminUser of admins) {
         if (adminUser.fcmToken) {
           try {
-            await admin.messaging().send({
-              token: adminUser.fcmToken,
-              notification: { title, body },
-              data: { type, eventData: JSON.stringify(data) },
-            });
-          } catch (error) {
-            this.logger.error(`Failed to send push notification to admin ${adminUser.id}`, error.message);
+            await this.notificationsQueue.add(
+              'sendPush',
+              {
+                token: adminUser.fcmToken,
+                title,
+                body,
+                data: { type, eventData: JSON.stringify(data) },
+              },
+              {
+                attempts: 3,
+                backoff: 5000,
+                removeOnComplete: true,
+              },
+            );
+          } catch (error: any) {
+            this.logger.error(`Failed to enqueue push notification to admin ${adminUser.id}: ${error.message}`);
           }
         }
       }

@@ -302,6 +302,11 @@ model Product {
   @@index([status])
   @@index([categoryId])
   @@index([slug])
+  @@index([status, isFeatured])
+  @@index([status, isNewArrival])
+  @@index([status, isBestseller])
+  @@index([categoryId, status])
+  @@index([createdAt, status])
   @@map("products")
 }
 
@@ -328,6 +333,8 @@ model ProductVariant {
 
   @@index([productId])
   @@index([sku])
+  @@index([productId, isActive])
+  @@index([stock])
   @@map("product_variants")
 }
 
@@ -451,6 +458,8 @@ model Order {
   @@index([status])
   @@index([orderNumber])
   @@index([createdAt])
+  @@index([userId, status])
+  @@index([paymentStatus])
   @@map("orders")
 }
 
@@ -762,5 +771,79 @@ model Offer {
   updatedAt       DateTime @updatedAt
 
   @@map("offers")
+}
+
+// ─────────────────────────────────────────────
+// AI IMAGE GENERATION
+// ─────────────────────────────────────────────
+
+enum AiImageStatus {
+  PENDING
+  QUEUED
+  GENERATING
+  READY
+  FAILED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model AiImageSession {
+  id              String        @id @default(uuid())
+  productId       String?
+  adminId         String
+  sessionKey      String        @unique  // S3 prefix key
+  status          AiImageStatus @default(PENDING)
+  faceRefKey      String        // S3 key of face reference image
+  productRefKey   String        // S3 key of product reference image
+  customPrompt    String?
+  generatedKeys   String[]      // S3 keys of 4 generated images (temp)
+  approvedKeys    String[]      // S3 keys of approved images (moved to products/)
+  background      String?       // randomly chosen background label
+  createdAt       DateTime      @default(now())
+  expiresAt       DateTime
+  updatedAt       DateTime      @updatedAt
+
+  @@index([productId])
+  @@index([adminId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("ai_image_sessions")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOGS
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminId     String
+  action      String   // UPLOAD | DELETE | REPLACE | AI_GENERATE | AI_APPROVE | AI_REJECT | CLEANUP
+  entityType  String   // PRODUCT | BANNER | CATALOGUE | AI_SESSION | CATEGORY
+  entityId    String?
+  s3Key       String?
+  metadata    Json?
+  success     Boolean  @default(true)
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  key         String   @unique  // e.g. "ai_image_generation"
+  enabled     Boolean  @default(false)
+  description String
+  rolloutPct  Int      @default(100) // 0 to 100 percentage
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("feature_flags")
 }
 

@@ -5,3 +5,7 @@ output "db_endpoint" {
 output "db_port" {
   value = aws_db_instance.postgres.port
 }
+
+output "db_instance_arn" {
+  value = aws_db_instance.postgres.arn
+}

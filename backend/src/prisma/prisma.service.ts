@@ -19,14 +19,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$connect();
     this.logger.log('Database connected');
 
-    // Log slow queries in development
-    if (process.env.NODE_ENV !== 'production') {
-      (this as any).$on('query', (e: any) => {
-        if (e.duration > 500) {
-          this.logger.warn(`Slow query (${e.duration}ms): ${e.query}`);
-        }
-      });
-    }
+    // Automatic slow query logging
+    const slowThreshold = process.env.NODE_ENV === 'production' ? 250 : 500;
+    (this as any).$on('query', (e: any) => {
+      if (e.duration >= slowThreshold) {
+        this.logger.warn(`🐌 Slow DB query (${e.duration}ms): ${e.query} | Params: ${e.params}`);
+      }
+    });
   }
 
   async onModuleDestroy() {

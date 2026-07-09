@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import * as express from 'express';
@@ -9,6 +9,8 @@ const compression = require('compression');
 import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
+const startTime = Date.now();
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
@@ -16,25 +18,41 @@ async function bootstrap() {
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
   app.useLogger(logger);
 
+  // ── Request ID & Tracing Middleware ──────────────────────────────
+  app.use((req: any, res: any, next: () => void) => {
+    const reqId = req.headers['x-request-id'] || req.headers['x-correlation-id'] || require('crypto').randomUUID();
+    req.id = reqId;
+    res.setHeader('x-request-id', reqId);
+    next();
+  });
+
+  // ── Trust ALB Proxy ───────────────────────────────────────────────
+  // Required when behind AWS ALB — allows correct IP forwarding, rate limiting,
+  // and HTTPS detection from X-Forwarded-* headers
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   // ── Security Headers ─────────────────────────────────────────────
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
-      // Content-Security-Policy — strict for production
       contentSecurityPolicy: configService.get('NODE_ENV') === 'production' ? {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"], // Razorpay etc needs unsafe-inline
+          scriptSrc: ["'self'", "'unsafe-inline'"], // Razorpay needs unsafe-inline
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', 'http:'],
           connectSrc: ["'self'", 'https:'],
           frameSrc: ["'self'", 'https://checkout.razorpay.com'],
           fontSrc: ["'self'", 'https:', 'data:'],
+          objectSrc: ["'none'"],
+          upgradeInsecureRequests: [],
         },
       } : false,
       hsts: configService.get('NODE_ENV') === 'production'
         ? { maxAge: 31536000, includeSubDomains: true, preload: true }
         : false,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     }),
   );
 
@@ -46,13 +64,13 @@ async function bootstrap() {
   // Razorpay signs the exact raw bytes — re-serializing parsed JSON breaks the HMAC.
   app.use(
     express.json({
-      limit: '10mb',
+      limit: '15mb', // Increased for AI image uploads
       verify: (req: any, _res, buf) => {
         req.rawBody = buf;
       },
     }),
   );
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
   // ── CORS ────────────────────────────────────────────────────────
   const allowedOrigins = configService
@@ -96,28 +114,26 @@ async function bootstrap() {
       .addTag('Orders', 'Order management endpoints')
       .addTag('Payments', 'Payment endpoints')
       .addTag('Admin', 'Admin management endpoints')
+      .addTag('AI Images', 'AI product image generation endpoints')
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
   }
 
   // ── Health check ─────────────────────────────────────────────────
+  // ECS container health check targets: /health (port-level) and /api/v1/health (ALB)
   app.use('/health', (_req: any, res: any) => {
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      env: configService.get('NODE_ENV', 'development'),
-    });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port, '0.0.0.0'); // bind to all interfaces (required in Docker)
   logger.log(`🚀 Anjali Alankaram API running on port ${port}`, 'Bootstrap');
   logger.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`, 'Bootstrap');
+  logger.log(`⚡ Startup time: ${Date.now() - startTime}ms`, 'Bootstrap');
   if (configService.get('NODE_ENV') !== 'production') {
     logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`, 'Bootstrap');
   }
 }
 
 bootstrap();
-

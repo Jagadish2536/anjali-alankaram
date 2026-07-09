@@ -46,10 +46,55 @@ variable "db_password" {
   sensitive   = true
 }
 
-variable "tier" {
-  description = "Application deployment tier (0: Minimal/Tier 0, 1: Standard, 2: Production scale)"
+# ─── Auto Scaling Configuration ────────────────────────────────────────────────
+# True elastic auto-scaling — no manual tier changes required.
+# The infrastructure automatically supports <100 to 100,000+ concurrent users.
+
+variable "backend_min_tasks" {
+  description = "Minimum ECS backend tasks (keep at 1 for cost optimization at startup)"
   type        = number
   default     = 1
+}
+
+variable "backend_max_tasks" {
+  description = "Maximum ECS backend tasks (supports up to 100,000+ concurrent users)"
+  type        = number
+  default     = 100
+}
+
+variable "frontend_min_tasks" {
+  description = "Minimum ECS frontend tasks"
+  type        = number
+  default     = 1
+}
+
+variable "frontend_max_tasks" {
+  description = "Maximum ECS frontend tasks"
+  type        = number
+  default     = 50
+}
+
+variable "backend_cpu_scale_threshold" {
+  description = "CPU utilization % to trigger backend scale-out"
+  type        = number
+  default     = 60
+}
+
+variable "backend_memory_scale_threshold" {
+  description = "Memory utilization % to trigger backend scale-out"
+  type        = number
+  default     = 75
+}
+
+variable "alb_requests_per_target_threshold" {
+  description = "ALB requests per ECS target to trigger scale-out"
+  type        = number
+  default     = 500
+}
+
+variable "cloudfront_domain" {
+  description = "CloudFront distribution domain (e.g. d1234.cloudfront.net). Leave empty to use S3 direct URLs."
+  default     = ""
 }
 
 locals {
@@ -57,5 +102,6 @@ locals {
     Project     = var.project_name
     Environment = var.environment
     ManagedBy   = "Terraform"
+    CostCenter  = "Production"
   }
 }

@@ -28,7 +28,7 @@ resource "aws_db_instance" "postgres" {
   skip_final_snapshot     = true
   deletion_protection     = false
   backup_retention_period = 7
-  multi_az                = false           # Enable for Tier 2 (failover replica)
+  multi_az                = var.multi_az           # Enable for Tier 2 (failover replica)
   apply_immediately       = true            # Apply instance resize now, not next maintenance window
 
   tags = var.tags
