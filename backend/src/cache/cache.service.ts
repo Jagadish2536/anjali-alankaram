@@ -54,31 +54,52 @@ export class CacheService {
     rateLimit:    (ip: string, ep: string) => `rl:${ip}:${ep}`,
   } as const;
 
+  private readonly memoryCache = new Map<string, { value: any; expiresAt: number }>();
+
   constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {}
 
   /**
    * Get a cached value. Returns null if not found or on error.
+   * Automatically falls back to local memory cache if Redis is offline/disconnected.
    */
   async get<T>(key: string): Promise<T | null> {
-    try {
-      const val = await this.redis.get(key);
-      if (val === null) return null;
-      return JSON.parse(val) as T;
-    } catch (err) {
-      this.logger.warn(`Cache GET error for key "${key}": ${err}`);
+    // 1. Try Redis if it is connected
+    if (this.redis && this.redis.status === 'ready') {
+      try {
+        const val = await this.redis.get(key);
+        if (val === null) return null;
+        return JSON.parse(val) as T;
+      } catch (err) {
+        this.logger.warn(`Redis GET error for key "${key}", falling back to memory: ${err}`);
+      }
+    }
+
+    // 2. Local Memory Fallback
+    const item = this.memoryCache.get(key);
+    if (!item) return null;
+    if (Date.now() > item.expiresAt) {
+      this.memoryCache.delete(key);
       return null;
     }
+    return item.value as T;
   }
 
   /**
    * Set a cached value with TTL (seconds).
+   * Always updates the local memory cache and attempts Redis write if connected.
    */
   async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
-    try {
-      await this.redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
-    } catch (err) {
-      this.logger.warn(`Cache SET error for key "${key}": ${err}`);
-      // Never throw — cache failure must never break the application
+    const expiresAt = Date.now() + ttlSeconds * 1000;
+    
+    // Always keep updated in local memory store
+    this.memoryCache.set(key, { value, expiresAt });
+
+    if (this.redis && this.redis.status === 'ready') {
+      try {
+        await this.redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+      } catch (err) {
+        this.logger.warn(`Redis SET error for key "${key}": ${err}`);
+      }
     }
   }
 
@@ -86,10 +107,14 @@ export class CacheService {
    * Delete a specific key.
    */
   async del(key: string): Promise<void> {
-    try {
-      await this.redis.del(key);
-    } catch (err) {
-      this.logger.warn(`Cache DEL error for key "${key}": ${err}`);
+    this.memoryCache.delete(key);
+
+    if (this.redis && this.redis.status === 'ready') {
+      try {
+        await this.redis.del(key);
+      } catch (err) {
+        this.logger.warn(`Redis DEL error for key "${key}": ${err}`);
+      }
     }
   }
 
@@ -97,43 +122,48 @@ export class CacheService {
    * Delete all keys matching a glob pattern.
    * Example: delPattern('products:list:*')
    *
-   * Uses SCAN to avoid blocking Redis with KEYS command.
+   * Automatically clears local memory patterns and SCAN/DEL in Redis if connected.
    */
   async delPattern(pattern: string): Promise<number> {
-    try {
-      let cursor = '0';
-      let deleted = 0;
-      do {
-        const [nextCursor, keys] = await this.redis.scan(
-          cursor,
-          'MATCH',
-          pattern,
-          'COUNT',
-          100,
-        );
-        cursor = nextCursor;
-        if (keys.length > 0) {
-          await this.redis.del(...keys);
-          deleted += keys.length;
-        }
-      } while (cursor !== '0');
-      return deleted;
-    } catch (err) {
-      this.logger.warn(`Cache SCAN/DEL error for pattern "${pattern}": ${err}`);
-      return 0;
+    let deletedCount = 0;
+
+    // Clear matching keys in local memory
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    for (const key of this.memoryCache.keys()) {
+      if (regex.test(key)) {
+        this.memoryCache.delete(key);
+        deletedCount++;
+      }
     }
+
+    if (this.redis && this.redis.status === 'ready') {
+      try {
+        let cursor = '0';
+        do {
+          const [nextCursor, keys] = await this.redis.scan(
+            cursor,
+            'MATCH',
+            pattern,
+            'COUNT',
+            100,
+          );
+          cursor = nextCursor;
+          if (keys.length > 0) {
+            await this.redis.del(...keys);
+            deletedCount += keys.length;
+          }
+        } while (cursor !== '0');
+      } catch (err) {
+        this.logger.warn(`Redis SCAN/DEL error for pattern "${pattern}": ${err}`);
+      }
+    }
+
+    return deletedCount;
   }
 
   /**
    * Cache-aside pattern: get from cache, or fetch + store.
    * Returns the fetched value even if caching fails.
-   *
-   * @example
-   * const product = await cache.getOrSet(
-   *   CacheService.KEYS.product(slug),
-   *   () => this.prisma.product.findUnique({ where: { slug } }),
-   *   CacheService.TTL.PRODUCT
-   * );
    */
   async getOrSet<T>(
     key: string,
@@ -194,11 +224,14 @@ export class CacheService {
    * Check if Redis is healthy. Used in health endpoints.
    */
   async ping(): Promise<boolean> {
-    try {
-      const res = await this.redis.ping();
-      return res === 'PONG';
-    } catch {
-      return false;
+    if (this.redis && this.redis.status === 'ready') {
+      try {
+        const res = await this.redis.ping();
+        return res === 'PONG';
+      } catch {
+        return false;
+      }
     }
+    return false;
   }
 }
