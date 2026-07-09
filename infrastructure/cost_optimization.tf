@@ -78,7 +78,7 @@ resource "aws_ecr_lifecycle_policy" "frontend" {
 
 # Scale DOWN — 11:00 PM IST = 17:30 UTC
 resource "aws_appautoscaling_scheduled_action" "backend_scale_down_night" {
-  name               = "anjali-backend-scale-down-night"
+  name               = "anjali-backend-scale-down-night-v2"
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-backend-service"
   scalable_dimension = "ecs:service:DesiredCount"
@@ -93,7 +93,7 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_down_night" {
 }
 
 resource "aws_appautoscaling_scheduled_action" "frontend_scale_down_night" {
-  name               = "anjali-frontend-scale-down-night"
+  name               = "anjali-frontend-scale-down-night-v2"
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-frontend-service"
   scalable_dimension = "ecs:service:DesiredCount"
@@ -109,7 +109,7 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_down_night" {
 
 # Scale UP — 10:00 AM IST = 04:30 UTC
 resource "aws_appautoscaling_scheduled_action" "backend_scale_up_morning" {
-  name               = "anjali-backend-scale-up-morning"
+  name               = "anjali-backend-scale-up-morning-v2"
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-backend-service"
   scalable_dimension = "ecs:service:DesiredCount"
@@ -124,7 +124,7 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_up_morning" {
 }
 
 resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
-  name               = "anjali-frontend-scale-up-morning"
+  name               = "anjali-frontend-scale-up-morning-v2"
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-frontend-service"
   scalable_dimension = "ecs:service:DesiredCount"

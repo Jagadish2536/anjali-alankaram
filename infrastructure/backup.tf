@@ -5,7 +5,6 @@
 # --- Backup Vault ---
 resource "aws_backup_vault" "main" {
   name        = "${var.project_name}-backup-vault"
-  kms_key_arn = "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alias/aws/backup"
   tags        = local.common_tags
 }
 
