@@ -263,14 +263,14 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
 # ── 6. ECS Backend Running Tasks < 2 ─────────────────────────────────────
 resource "aws_cloudwatch_metric_alarm" "ecs_tasks_low" {
   alarm_name          = "${var.project_name}-ecs-tasks-below-minimum"
-  alarm_description   = "Running backend tasks < 2. Site may be degraded. Check ECS for task failures."
+  alarm_description   = "Running backend tasks < 1. Backend service is completely offline! Check ECS for failures."
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
   metric_name         = "RunningTaskCount"
   namespace           = "ECS/ContainerInsights"
   period              = 60
   statistic           = "Average"
-  threshold           = 2
+  threshold           = 1
   treat_missing_data  = "breaching" # treat missing as bad — task may be completely down
 
   dimensions = {
