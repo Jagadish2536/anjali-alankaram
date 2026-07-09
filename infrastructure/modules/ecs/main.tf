@@ -132,7 +132,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   # ARM64 for ~20% cost savings
   runtime_platform {
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = "X86_64"
     operating_system_family = "LINUX"
   }
 
@@ -217,7 +217,7 @@ resource "aws_ecs_task_definition" "frontend" {
   task_role_arn            = var.ecs_task_role_arn
 
   runtime_platform {
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = "X86_64"
     operating_system_family = "LINUX"
   }
 
