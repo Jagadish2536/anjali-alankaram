@@ -28,9 +28,8 @@ function handler(event) {
     // Referrer Policy
     headers['referrer-policy'] = { value: 'strict-origin-when-cross-origin' };
 
-    // Content Security Policy (CSP)
     headers['content-security-policy'] = {
-        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.cloudfront.net https://*.amazonaws.com; connect-src 'self' https://api.openai.com https://checkout.razorpay.com https://www.google-analytics.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com;"
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.cloudfront.net https://*.amazonaws.com; connect-src 'self' https://api.openai.com https://checkout.razorpay.com https://www.google-analytics.com https://accounts.google.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://accounts.google.com; media-src 'self' https://*.amazonaws.com https://*.cloudfront.net;"
     };
 
     return response;
