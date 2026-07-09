@@ -39,7 +39,7 @@ module "rds" {
   db_name        = var.db_name
   db_username    = var.db_username
   db_password    = var.db_password
-  multi_az       = var.tier == 2 ? true : false
+  multi_az       = var.environment == "production" ? true : false
   tags           = local.common_tags
 }
 

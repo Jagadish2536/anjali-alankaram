@@ -116,8 +116,8 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_up_morning" {
   schedule           = "cron(30 4 * * ? *)"    # 04:30 UTC = 10:00 AM IST daily
 
   scalable_target_action {
-    min_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
-    max_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
+    min_capacity = var.backend_min_tasks
+    max_capacity = var.backend_max_tasks
   }
 
   depends_on = [module.ecs]
@@ -131,8 +131,8 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
   schedule           = "cron(30 4 * * ? *)"    # 04:30 UTC = 10:00 AM IST daily
 
   scalable_target_action {
-    min_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 3 : 2)
-    max_capacity = var.tier == 0 ? 1 : (var.tier == 2 ? 6 : 3)
+    min_capacity = var.frontend_min_tasks
+    max_capacity = var.frontend_max_tasks
   }
 
   depends_on = [module.ecs]

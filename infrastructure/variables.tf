@@ -97,11 +97,7 @@ variable "cloudfront_domain" {
   default     = ""
 }
 
-variable "tier" {
-  description = "Deployment tier (0: Startup/Spot, 1: Standard Multi-AZ, 2: High Availability Enterprise)"
-  type        = number
-  default     = 2
-}
+
 
 locals {
   common_tags = {
