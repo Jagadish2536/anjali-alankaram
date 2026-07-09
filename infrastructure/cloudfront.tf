@@ -40,6 +40,7 @@ EOF
 
 # --- AWS WAFv2 WebACL to Protect CDN Edge ---
 resource "aws_wafv2_web_acl" "cdn" {
+  count       = var.enable_waf ? 1 : 0
   name        = "${var.project_name}-cdn-waf"
   description = "Edge protection for CloudFront distribution"
   scope       = "CLOUDFRONT"
@@ -131,7 +132,7 @@ resource "aws_cloudfront_distribution" "cdn" {
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Anjali Alankaram Global E-commerce CDN"
-  web_acl_id          = aws_wafv2_web_acl.cdn.arn
+  web_acl_id          = var.enable_waf ? aws_wafv2_web_acl.cdn[0].arn : null
   price_class         = "PriceClass_100" # ap-south-2/ap-south-1 Edge Nodes only — optimized for cost
 
   # Origin 1: Application Load Balancer (for Web app and REST API)

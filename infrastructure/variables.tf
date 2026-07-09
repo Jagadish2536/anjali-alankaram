@@ -99,6 +99,18 @@ variable "cloudfront_domain" {
 
 
 
+variable "enable_multi_az" {
+  type        = bool
+  default     = false
+  description = "Enable Multi-AZ RDS deployment for HA database backup replicas"
+}
+
+variable "enable_waf" {
+  type        = bool
+  default     = false
+  description = "Enable AWS WAF edge protection for CloudFront distribution"
+}
+
 locals {
   common_tags = {
     Project     = var.project_name
