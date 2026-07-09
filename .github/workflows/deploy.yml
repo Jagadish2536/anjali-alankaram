@@ -12,7 +12,6 @@ on:
 
 env:
   AWS_REGION: ap-south-2
-  ECR_REGISTRY: "${{ secrets.ECR_REGISTRY }}"
   ECS_CLUSTER: anjali-alankaram-cluster
   ECS_SERVICE_BACKEND: anjali-alankaram-backend-service
   ECS_SERVICE_FRONTEND: anjali-alankaram-frontend-service
@@ -60,7 +59,7 @@ jobs:
       - name: Build backend Docker image
         id: build-backend
         run: |
-          IMAGE_URI="${ECR_REGISTRY}/anjali-alankaram-backend"
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/anjali-alankaram-backend"
           TAG="${{ steps.vars.outputs.sha }}"
           
           docker buildx build \
@@ -87,7 +86,7 @@ jobs:
       - name: Build frontend Docker image
         id: build-frontend
         run: |
-          IMAGE_URI="${ECR_REGISTRY}/anjali-alankaram-frontend"
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/anjali-alankaram-frontend"
           TAG="${{ steps.vars.outputs.sha }}"
           
           docker buildx build \
