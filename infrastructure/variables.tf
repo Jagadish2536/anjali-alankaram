@@ -111,6 +111,12 @@ variable "enable_waf" {
   description = "Enable AWS WAF edge protection for CloudFront distribution"
 }
 
+variable "enable_redis" {
+  type        = bool
+  default     = false
+  description = "Enable ElastiCache Redis cluster resource provisioning"
+}
+
 locals {
   common_tags = {
     Project     = var.project_name

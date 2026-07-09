@@ -44,6 +44,7 @@ module "rds" {
 }
 
 module "redis" {
+  count          = var.enable_redis ? 1 : 0
   source         = "./modules/redis"
   project_name   = var.project_name
   public_subnets = module.vpc.public_subnets

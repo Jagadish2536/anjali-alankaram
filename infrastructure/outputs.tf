@@ -8,7 +8,7 @@ output "rds_endpoint" {
   value = module.rds.db_endpoint
 }
 output "redis_endpoint" {
-  value = module.redis.redis_endpoint
+  value = var.enable_redis ? module.redis[0].redis_endpoint : ""
 }
 output "ecs_cluster_name" {
   value = module.ecs.cluster_name
