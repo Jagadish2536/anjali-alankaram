@@ -59,6 +59,9 @@ module "ecs" {
   ecs_tasks_sg_id                   = module.security.ecs_tasks_sg_id
   backend_target_group_arn          = module.alb.backend_target_group_arn
   frontend_target_group_arn         = module.alb.frontend_target_group_arn
+  alb_arn_suffix                    = module.alb.alb_arn_suffix
+  backend_target_group_arn_suffix   = module.alb.backend_target_group_arn_suffix
+  frontend_target_group_arn_suffix  = module.alb.frontend_target_group_arn_suffix
   ecs_execution_role_arn            = module.security.ecs_task_execution_role_arn
   ecs_task_role_arn                 = module.security.ecs_task_role_arn
   secrets_arn                       = aws_secretsmanager_secret.backend_secrets.arn

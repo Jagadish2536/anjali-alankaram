@@ -414,7 +414,7 @@ resource "aws_appautoscaling_policy" "backend_alb_requests" {
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label         = "${split("loadbalancer/", var.backend_target_group_arn)[1]}/targetgroup/${split("targetgroup/", var.backend_target_group_arn)[1]}"
+      resource_label         = "${var.alb_arn_suffix}/${var.backend_target_group_arn_suffix}"
     }
     target_value       = var.alb_requests_per_target_threshold
     scale_in_cooldown  = 300
@@ -458,7 +458,7 @@ resource "aws_appautoscaling_policy" "frontend_alb_requests" {
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label         = "${split("loadbalancer/", var.frontend_target_group_arn)[1]}/targetgroup/${split("targetgroup/", var.frontend_target_group_arn)[1]}"
+      resource_label         = "${var.alb_arn_suffix}/${var.frontend_target_group_arn_suffix}"
     }
     target_value       = 1000  # Frontend handles more requests per task than backend
     scale_in_cooldown  = 300

@@ -57,3 +57,18 @@ variable "cloudfront_domain" {
   description = "CloudFront domain for serving assets"
   default     = ""
 }
+
+variable "alb_arn_suffix" {
+  type        = string
+  description = "ARN suffix of the Application Load Balancer"
+}
+
+variable "backend_target_group_arn_suffix" {
+  type        = string
+  description = "ARN suffix of the backend Target Group"
+}
+
+variable "frontend_target_group_arn_suffix" {
+  type        = string
+  description = "ARN suffix of the frontend Target Group"
+}
