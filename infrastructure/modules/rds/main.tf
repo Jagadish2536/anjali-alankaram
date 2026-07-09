@@ -10,13 +10,13 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_instance" "postgres" {
-  identifier             = "anjali-alankaram-db-wiped"  # Match current production identifier — DO NOT change (would alter endpoint URL)
-  allocated_storage      = 30          # Tier 1: 30 GB (was 20 GB)
-  max_allocated_storage  = 100         # Auto-scale storage up to 100 GB if needed
+  identifier             = "anjali-alankaram-db-wiped" # Match current production identifier — DO NOT change (would alter endpoint URL)
+  allocated_storage      = 30                          # Tier 1: 30 GB (was 20 GB)
+  max_allocated_storage  = 100                         # Auto-scale storage up to 100 GB if needed
   storage_type           = "gp3"
   engine                 = "postgres"
   engine_version         = "15"
-  instance_class         = "db.t4g.micro"  # 1 GB RAM (Cost Optimization)
+  instance_class         = "db.t4g.micro" # 1 GB RAM (Cost Optimization)
   db_name                = var.db_name
   username               = var.db_username
   password               = var.db_password
@@ -28,8 +28,8 @@ resource "aws_db_instance" "postgres" {
   skip_final_snapshot     = true
   deletion_protection     = false
   backup_retention_period = 7
-  multi_az                = var.multi_az           # Enable for Tier 2 (failover replica)
-  apply_immediately       = true            # Apply instance resize now, not next maintenance window
+  multi_az                = var.multi_az # Enable for Tier 2 (failover replica)
+  apply_immediately       = true         # Apply instance resize now, not next maintenance window
 
   tags = var.tags
 }

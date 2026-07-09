@@ -129,11 +129,11 @@ resource "aws_wafv2_web_acl" "cdn" {
 
 # --- CloudFront Distribution ---
 resource "aws_cloudfront_distribution" "cdn" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "Anjali Alankaram Global E-commerce CDN"
-  web_acl_id          = var.enable_waf ? aws_wafv2_web_acl.cdn[0].arn : null
-  price_class         = "PriceClass_100" # ap-south-2/ap-south-1 Edge Nodes only — optimized for cost
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "Anjali Alankaram Global E-commerce CDN"
+  web_acl_id      = var.enable_waf ? aws_wafv2_web_acl.cdn[0].arn : null
+  price_class     = "PriceClass_100" # ap-south-2/ap-south-1 Edge Nodes only — optimized for cost
 
   # Origin 1: Application Load Balancer (for Web app and REST API)
   origin {
@@ -192,9 +192,9 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods  = ["GET", "HEAD"]
 
     # Cache aggressively at edge (1 Year TTL, Brotli/Gzip)
-    min_ttl                = 0
-    default_ttl            = 86400    # 1 day
-    max_ttl                = 31536000 # 1 year
+    min_ttl     = 0
+    default_ttl = 86400    # 1 day
+    max_ttl     = 31536000 # 1 year
 
     forwarded_values {
       query_string = false
@@ -217,9 +217,9 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods  = ["GET", "HEAD"]
 
     # Cache for 24 hours only (since they expire fast)
-    min_ttl                = 0
-    default_ttl            = 43200    # 12 hours
-    max_ttl                = 86400    # 24 hours
+    min_ttl     = 0
+    default_ttl = 43200 # 12 hours
+    max_ttl     = 86400 # 24 hours
 
     forwarded_values {
       query_string = false

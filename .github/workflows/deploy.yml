@@ -87,6 +87,7 @@ jobs:
           format: 'table'
           exit-code: '0'    # Don't fail on vulnerabilities — just report
           severity: 'CRITICAL,HIGH'
+          platform: 'linux/arm64'
 
       # Build Frontend (ARM64)
       - name: Build frontend Docker image
@@ -113,6 +114,7 @@ jobs:
           format: 'table'
           exit-code: '0'
           severity: 'CRITICAL,HIGH'
+          platform: 'linux/arm64'
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 2: Deploy Backend to ECS

@@ -51,7 +51,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "assets" {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
-    bucket_key_enabled = true  # Reduces encryption request costs by ~99%
+    bucket_key_enabled = true # Reduces encryption request costs by ~99%
   }
 }
 
@@ -69,7 +69,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "assets" {
     }
 
     expiration {
-      days = 2  # 48 hours
+      days = 2 # 48 hours
     }
 
     noncurrent_version_expiration {
@@ -93,7 +93,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "assets" {
 
     transition {
       days          = 365
-      storage_class = "GLACIER_IR"  # Very old images — archive for compliance
+      storage_class = "GLACIER_IR" # Very old images — archive for compliance
     }
 
     noncurrent_version_expiration {

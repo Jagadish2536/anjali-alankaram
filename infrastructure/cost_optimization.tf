@@ -21,13 +21,13 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   # Default strategy: prefer SPOT, fall back to FARGATE
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 3   # 75% SPOT
+    weight            = 3 # 75% SPOT
     base              = 0
   }
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE"
-    weight            = 1   # 25% regular (at least 1 guaranteed task)
-    base              = 1   # Always keep 1 regular task as baseline
+    weight            = 1 # 25% regular (at least 1 guaranteed task)
+    base              = 1 # Always keep 1 regular task as baseline
   }
 }
 
@@ -82,11 +82,11 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_down_night" {
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-backend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 17 * * ? *)"   # 17:30 UTC = 11:00 PM IST daily
+  schedule           = "cron(30 17 * * ? *)" # 17:30 UTC = 11:00 PM IST daily
 
   scalable_target_action {
     min_capacity = 1
-    max_capacity = 1   # Force down to exactly 1 task (single instance) at night
+    max_capacity = 1 # Force down to exactly 1 task (single instance) at night
   }
 
   depends_on = [module.ecs]
@@ -97,11 +97,11 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_down_night" {
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-frontend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 17 * * ? *)"   # 17:30 UTC = 11:00 PM IST daily
+  schedule           = "cron(30 17 * * ? *)" # 17:30 UTC = 11:00 PM IST daily
 
   scalable_target_action {
     min_capacity = 1
-    max_capacity = 1   # Force down to exactly 1 task (single instance) at night
+    max_capacity = 1 # Force down to exactly 1 task (single instance) at night
   }
 
   depends_on = [module.ecs]
@@ -113,7 +113,7 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_up_morning" {
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-backend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 4 * * ? *)"    # 04:30 UTC = 10:00 AM IST daily
+  schedule           = "cron(30 4 * * ? *)" # 04:30 UTC = 10:00 AM IST daily
 
   scalable_target_action {
     min_capacity = var.backend_min_tasks
@@ -128,7 +128,7 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
   service_namespace  = "ecs"
   resource_id        = "service/anjali-alankaram-cluster/anjali-alankaram-frontend-service"
   scalable_dimension = "ecs:service:DesiredCount"
-  schedule           = "cron(30 4 * * ? *)"    # 04:30 UTC = 10:00 AM IST daily
+  schedule           = "cron(30 4 * * ? *)" # 04:30 UTC = 10:00 AM IST daily
 
   scalable_target_action {
     min_capacity = var.frontend_min_tasks
@@ -143,10 +143,10 @@ resource "aws_appautoscaling_scheduled_action" "frontend_scale_up_morning" {
 # ECS logs already set to 30 days — keep for debugging
 resource "aws_cloudwatch_log_group" "lambda_alerts_optimized" {
   name              = "/aws/lambda/anjali-alankaram-whatsapp-alert"
-  retention_in_days = 7    # was 14 — save ~50% on this log group
+  retention_in_days = 7 # was 14 — save ~50% on this log group
   tags              = local.common_tags
 
   lifecycle {
-    ignore_changes = [name]   # don't recreate if already exists
+    ignore_changes = [name] # don't recreate if already exists
   }
 }

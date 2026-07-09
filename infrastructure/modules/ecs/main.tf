@@ -37,7 +37,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 # --- CloudWatch Logs ---
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
-  retention_in_days = 14  # Cost Optimization: 14 days is sufficient for debugging + compliance
+  retention_in_days = 14 # Cost Optimization: 14 days is sufficient for debugging + compliance
   tags              = var.tags
 }
 
@@ -46,16 +46,16 @@ resource "aws_ecr_repository" "frontend" {
   name                 = "${var.project_name}-frontend"
   image_tag_mutability = "MUTABLE"
   image_scanning_configuration { scan_on_push = true }
-  force_delete         = true
-  tags = var.tags
+  force_delete = true
+  tags         = var.tags
 }
 
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.project_name}-backend"
   image_tag_mutability = "MUTABLE"
   image_scanning_configuration { scan_on_push = true }
-  force_delete         = true
-  tags = var.tags
+  force_delete = true
+  tags         = var.tags
 }
 
 # ECR Lifecycle Policies — keep last 10 production images, delete untagged after 1 day
@@ -125,8 +125,8 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512   # 0.5 vCPU — good for NestJS + Prisma + AI processing
-  memory                   = 1024  # 1 GB — handles file uploads + OpenAI buffers
+  cpu                      = 512  # 0.5 vCPU — good for NestJS + Prisma + AI processing
+  memory                   = 1024 # 1 GB — handles file uploads + OpenAI buffers
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
@@ -164,42 +164,42 @@ resource "aws_ecs_task_definition" "backend" {
       }
 
       environment = [
-        { name = "PORT",           value = "3000" },
-        { name = "NODE_ENV",       value = "production" },
-        { name = "AWS_S3_BUCKET",  value = var.s3_bucket_name },
-        { name = "AWS_REGION",     value = var.aws_region },
-        { name = "UPLOAD_DRIVER",  value = "s3" },
+        { name = "PORT", value = "3000" },
+        { name = "NODE_ENV", value = "production" },
+        { name = "AWS_S3_BUCKET", value = var.s3_bucket_name },
+        { name = "AWS_REGION", value = var.aws_region },
+        { name = "UPLOAD_DRIVER", value = "s3" },
         { name = "CLOUDFRONT_DOMAIN", value = var.cloudfront_domain }
       ]
 
       secrets = [
-        { name = "JWT_SECRET",                                           valueFrom = "${var.secrets_arn}:JWT_SECRET::" },
-        { name = "DATABASE_URL",                                         valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
-        { name = "REDIS_HOST",                                           valueFrom = "${var.secrets_arn}:REDIS_HOST::" },
-        { name = "REDIS_PORT",                                           valueFrom = "${var.secrets_arn}:REDIS_PORT::" },
-        { name = "REDIS_PASSWORD",                                       valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
-        { name = "JWT_ACCESS_EXPIRES",                                   valueFrom = "${var.secrets_arn}:JWT_ACCESS_EXPIRES::" },
-        { name = "MSG91_AUTH_KEY",                                       valueFrom = "${var.secrets_arn}:MSG91_AUTH_KEY::" },
-        { name = "MSG91_TEMPLATE_ID",                                    valueFrom = "${var.secrets_arn}:MSG91_TEMPLATE_ID::" },
-        { name = "GOOGLE_CLIENT_ID",                                     valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" },
-        { name = "RAZORPAY_KEY_ID",                                      valueFrom = "${var.secrets_arn}:RAZORPAY_KEY_ID::" },
-        { name = "RAZORPAY_KEY_SECRET",                                  valueFrom = "${var.secrets_arn}:RAZORPAY_KEY_SECRET::" },
-        { name = "RAZORPAY_WEBHOOK_SECRET",                              valueFrom = "${var.secrets_arn}:RAZORPAY_WEBHOOK_SECRET::" },
-        { name = "SHIPROCKET_EMAIL",                                     valueFrom = "${var.secrets_arn}:SHIPROCKET_EMAIL::" },
-        { name = "SHIPROCKET_PASSWORD",                                  valueFrom = "${var.secrets_arn}:SHIPROCKET_PASSWORD::" },
-        { name = "FIREBASE_SERVICE_ACCOUNT_BASE64",                      valueFrom = "${var.secrets_arn}:FIREBASE_SERVICE_ACCOUNT_BASE64::" },
-        { name = "RATE_LIMIT_REQUESTS",                                  valueFrom = "${var.secrets_arn}:RATE_LIMIT_REQUESTS::" },
-        { name = "ALLOWED_ORIGINS",                                      valueFrom = "${var.secrets_arn}:ALLOWED_ORIGINS::" },
-        { name = "SES_FROM_EMAIL",                                       valueFrom = "${var.secrets_arn}:SES_FROM_EMAIL::" },
-        { name = "SES_FROM_NAME",                                        valueFrom = "${var.secrets_arn}:SES_FROM_NAME::" },
-        { name = "MSG91_WHATSAPP_SENDER",                                valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_SENDER::" },
-        { name = "MSG91_WHATSAPP_OTP_TEMPLATE_NAME",                     valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_OTP_TEMPLATE_NAME::" },
-        { name = "MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME",         valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME::" },
-        { name = "MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE",                 valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE::" },
-        { name = "MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE",                valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE::" },
-        { name = "MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE",              valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE::" },
-        { name = "MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE",              valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE::" },
-        { name = "OPENAI_API_KEY",                                       valueFrom = "${var.secrets_arn}:OPENAI_API_KEY::" }
+        { name = "JWT_SECRET", valueFrom = "${var.secrets_arn}:JWT_SECRET::" },
+        { name = "DATABASE_URL", valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
+        { name = "REDIS_HOST", valueFrom = "${var.secrets_arn}:REDIS_HOST::" },
+        { name = "REDIS_PORT", valueFrom = "${var.secrets_arn}:REDIS_PORT::" },
+        { name = "REDIS_PASSWORD", valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
+        { name = "JWT_ACCESS_EXPIRES", valueFrom = "${var.secrets_arn}:JWT_ACCESS_EXPIRES::" },
+        { name = "MSG91_AUTH_KEY", valueFrom = "${var.secrets_arn}:MSG91_AUTH_KEY::" },
+        { name = "MSG91_TEMPLATE_ID", valueFrom = "${var.secrets_arn}:MSG91_TEMPLATE_ID::" },
+        { name = "GOOGLE_CLIENT_ID", valueFrom = "${var.secrets_arn}:GOOGLE_CLIENT_ID::" },
+        { name = "RAZORPAY_KEY_ID", valueFrom = "${var.secrets_arn}:RAZORPAY_KEY_ID::" },
+        { name = "RAZORPAY_KEY_SECRET", valueFrom = "${var.secrets_arn}:RAZORPAY_KEY_SECRET::" },
+        { name = "RAZORPAY_WEBHOOK_SECRET", valueFrom = "${var.secrets_arn}:RAZORPAY_WEBHOOK_SECRET::" },
+        { name = "SHIPROCKET_EMAIL", valueFrom = "${var.secrets_arn}:SHIPROCKET_EMAIL::" },
+        { name = "SHIPROCKET_PASSWORD", valueFrom = "${var.secrets_arn}:SHIPROCKET_PASSWORD::" },
+        { name = "FIREBASE_SERVICE_ACCOUNT_BASE64", valueFrom = "${var.secrets_arn}:FIREBASE_SERVICE_ACCOUNT_BASE64::" },
+        { name = "RATE_LIMIT_REQUESTS", valueFrom = "${var.secrets_arn}:RATE_LIMIT_REQUESTS::" },
+        { name = "ALLOWED_ORIGINS", valueFrom = "${var.secrets_arn}:ALLOWED_ORIGINS::" },
+        { name = "SES_FROM_EMAIL", valueFrom = "${var.secrets_arn}:SES_FROM_EMAIL::" },
+        { name = "SES_FROM_NAME", valueFrom = "${var.secrets_arn}:SES_FROM_NAME::" },
+        { name = "MSG91_WHATSAPP_SENDER", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_SENDER::" },
+        { name = "MSG91_WHATSAPP_OTP_TEMPLATE_NAME", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_OTP_TEMPLATE_NAME::" },
+        { name = "MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME::" },
+        { name = "MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE::" },
+        { name = "MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE::" },
+        { name = "MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE::" },
+        { name = "MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE::" },
+        { name = "OPENAI_API_KEY", valueFrom = "${var.secrets_arn}:OPENAI_API_KEY::" }
       ]
     }
   ])
@@ -211,8 +211,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512   # 0.5 vCPU
-  memory                   = 1024  # 1 GB — Next.js SSR needs adequate memory
+  cpu                      = 512  # 0.5 vCPU
+  memory                   = 1024 # 1 GB — Next.js SSR needs adequate memory
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
@@ -247,8 +247,8 @@ resource "aws_ecs_task_definition" "frontend" {
       }
 
       environment = [
-        { name = "PORT",      value = "4000" },
-        { name = "NODE_ENV",  value = "production" }
+        { name = "PORT", value = "4000" },
+        { name = "NODE_ENV", value = "production" }
       ]
     }
   ])
@@ -268,11 +268,11 @@ resource "aws_ecs_service" "backend" {
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
     weight            = 1
-    base              = 1   # Always keep 1 on-demand task — never goes to 0
+    base              = 1 # Always keep 1 on-demand task — never goes to 0
   }
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 4   # 80% of additional tasks go to SPOT (~70% cheaper)
+    weight            = 4 # 80% of additional tasks go to SPOT (~70% cheaper)
     base              = 0
   }
 
@@ -290,7 +290,7 @@ resource "aws_ecs_service" "backend" {
 
   deployment_circuit_breaker {
     enable   = true
-    rollback = true   # Automatic rollback on deployment failure
+    rollback = true # Automatic rollback on deployment failure
   }
 
   deployment_controller { type = "ECS" }
@@ -380,8 +380,8 @@ resource "aws_appautoscaling_policy" "backend_cpu" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
     target_value       = var.backend_cpu_scale_threshold
-    scale_in_cooldown  = 300   # Wait 5 min before scaling in (avoids flapping)
-    scale_out_cooldown = 30    # Scale out fast when traffic spikes
+    scale_in_cooldown  = 300 # Wait 5 min before scaling in (avoids flapping)
+    scale_out_cooldown = 30  # Scale out fast when traffic spikes
   }
 }
 
@@ -460,7 +460,7 @@ resource "aws_appautoscaling_policy" "frontend_alb_requests" {
       predefined_metric_type = "ALBRequestCountPerTarget"
       resource_label         = "${var.alb_arn_suffix}/${var.frontend_target_group_arn_suffix}"
     }
-    target_value       = 1000  # Frontend handles more requests per task than backend
+    target_value       = 1000 # Frontend handles more requests per task than backend
     scale_in_cooldown  = 300
     scale_out_cooldown = 30
   }

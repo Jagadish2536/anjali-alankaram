@@ -84,7 +84,7 @@ resource "aws_lambda_function" "whatsapp_alert" {
   }
 
   depends_on = [aws_cloudwatch_log_group.lambda_alerts_optimized]
-  tags = local.common_tags
+  tags       = local.common_tags
 }
 
 resource "aws_lambda_permission" "allow_sns" {
@@ -153,7 +153,7 @@ resource "aws_cloudwatch_metric_alarm" "tier2_warning" {
   alarm_name          = "${var.project_name}-TIER2-WARNING-cpu-high"
   alarm_description   = "Backend CPU > 60% for 10 min. Consider upgrading to Tier 2 (Rs 26,000/mo, 2000 users)."
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 10    # 10 x 1-min periods = 10 consecutive minutes
+  evaluation_periods  = 10 # 10 x 1-min periods = 10 consecutive minutes
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
   period              = 60
@@ -168,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "tier2_warning" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── 2. Tier 2 Urgent: CPU > 80% for 5 min ────────────────────────────────
@@ -191,7 +191,7 @@ resource "aws_cloudwatch_metric_alarm" "tier2_urgent" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── 3. DB Connections > 150 ───────────────────────────────────────────────
@@ -213,7 +213,7 @@ resource "aws_cloudwatch_metric_alarm" "db_connections_high" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── 4. DB Storage > 24 GB (80% of 30 GB) ─────────────────────────────────
@@ -224,9 +224,9 @@ resource "aws_cloudwatch_metric_alarm" "db_storage_low" {
   evaluation_periods  = 1
   metric_name         = "FreeStorageSpace"
   namespace           = "AWS/RDS"
-  period              = 300   # check every 5 min
+  period              = 300 # check every 5 min
   statistic           = "Average"
-  threshold           = 6442450944   # 6 GB in bytes = 80% used of 30 GB
+  threshold           = 6442450944 # 6 GB in bytes = 80% used of 30 GB
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -235,7 +235,7 @@ resource "aws_cloudwatch_metric_alarm" "db_storage_low" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── 5. ALB 5XX Errors > 10 in 5 min ──────────────────────────────────────
@@ -257,7 +257,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── 6. ECS Backend Running Tasks < 2 ─────────────────────────────────────
@@ -271,7 +271,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_tasks_low" {
   period              = 60
   statistic           = "Average"
   threshold           = 2
-  treat_missing_data  = "breaching"   # treat missing as bad — task may be completely down
+  treat_missing_data  = "breaching" # treat missing as bad — task may be completely down
 
   dimensions = {
     ClusterName = "anjali-alankaram-cluster"
@@ -280,7 +280,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_tasks_low" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── 7. Memory > 80% ───────────────────────────────────────────────────────
@@ -303,7 +303,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
 
   alarm_actions = [aws_sns_topic.alerts.arn]
   ok_actions    = [aws_sns_topic.alerts.arn]
-  tags = local.common_tags
+  tags          = local.common_tags
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────

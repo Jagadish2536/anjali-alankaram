@@ -1,0 +1,4 @@
+# Force line endings to LF for shell scripts to prevent exec format error inside Docker containers on Windows checkouts
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+backend/entrypoint.sh text eol=lf

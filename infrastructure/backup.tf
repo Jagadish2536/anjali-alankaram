@@ -4,13 +4,13 @@
 
 # --- Backup Vault ---
 resource "aws_backup_vault" "main" {
-  name        = "${var.project_name}-backup-vault"
-  tags        = local.common_tags
+  name = "${var.project_name}-backup-vault"
+  tags = local.common_tags
 }
 
 # --- IAM Role for AWS Backup Service ---
 resource "aws_iam_role" "backup" {
-  name  = "${var.project_name}-backup-role"
+  name = "${var.project_name}-backup-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -33,7 +33,7 @@ resource "aws_iam_role_policy_attachment" "backup" {
 
 # --- AWS Backup Plan (Daily schedule with 7-day retention) ---
 resource "aws_backup_plan" "daily" {
-  name  = "${var.project_name}-daily-backup-plan"
+  name = "${var.project_name}-daily-backup-plan"
 
   rule {
     rule_name         = "daily-backup-rule"

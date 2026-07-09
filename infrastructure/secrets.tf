@@ -1,6 +1,6 @@
 resource "aws_secretsmanager_secret" "backend_secrets" {
   name                    = "${var.project_name}-backend-env"
-  recovery_window_in_days = 0  # Cost optimization: instant deletion (no 7-30 day recovery window)
+  recovery_window_in_days = 0 # Cost optimization: instant deletion (no 7-30 day recovery window)
   tags                    = local.common_tags
 
   # IMPORTANT: After Terraform apply, populate the following keys in AWS Console or via secrets:push script:
