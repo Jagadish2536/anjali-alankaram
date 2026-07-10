@@ -336,7 +336,7 @@ export default async function Home() {
           <p className="text-center text-muted-foreground text-sm py-6">No collections yet</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-8 justify-items-center">
-            {categories.map(cat => (
+            {categories.map((cat: any) => (
               <MobileCollectionCard key={cat.id} cat={cat} />
             ))}
           </div>

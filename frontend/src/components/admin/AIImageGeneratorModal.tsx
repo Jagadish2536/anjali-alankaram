@@ -336,7 +336,11 @@ export default function AIImageGeneratorModal({
         imageKey: image.key,
         ...(productId ? { productId } : {}),
       });
-      setApprovedImages((prev) => new Set([...prev, image.key]));
+      setApprovedImages((prev) => {
+        const next = new Set(prev);
+        next.add(image.key);
+        return next;
+      });
       setApprovedUrls((prev) => [...prev, data.newImageUrl]);
       showToast('success', '✅ Image approved and added to product!');
       onImagesApproved([data.newImageUrl]);
