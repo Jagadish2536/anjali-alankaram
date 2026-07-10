@@ -199,7 +199,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE::" },
         { name = "MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE::" },
         { name = "MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE::" },
-        { name = "OPENAI_API_KEY", valueFrom = "${var.secrets_arn}:OPENAI_API_KEY::" }
+        { name = "GEMINI_API_KEY", valueFrom = "${var.secrets_arn}:GEMINI_API_KEY::" }
       ]
     }
   ])

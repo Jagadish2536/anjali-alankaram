@@ -13,7 +13,7 @@ resource "aws_secretsmanager_secret" "backend_secrets" {
   # MSG91_WHATSAPP_FORGOT_PASSWORD_TEMPLATE_NAME, MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE,
   # MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE, MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE,
   # MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE,
-  # OPENAI_API_KEY  <-- Required for AI Product Image Generation
+  # GEMINI_API_KEY  <-- Required for AI Product Image Generation
 }
 
 resource "aws_secretsmanager_secret" "frontend_secrets" {

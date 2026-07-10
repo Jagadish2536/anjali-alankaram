@@ -28,7 +28,7 @@ function verifyEnvExample() {
     return false;
   }
   const content = fs.readFileSync(envPath, 'utf8');
-  const REQUIRED = ['DATABASE_URL', 'REDIS_HOST', 'AWS_SQS_QUEUE_URL', 'OPENAI_API_KEY'];
+  const REQUIRED = ['DATABASE_URL', 'REDIS_HOST', 'AWS_SQS_QUEUE_URL', 'GEMINI_API_KEY'];
   let pass = true;
   for (const variable of REQUIRED) {
     if (!content.includes(variable)) {
