@@ -36,19 +36,10 @@ async function bootstrap() {
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
-      contentSecurityPolicy: configService.get('NODE_ENV') === 'production' ? {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"], // Razorpay needs unsafe-inline
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:', 'http:'],
-          connectSrc: ["'self'", 'https:'],
-          frameSrc: ["'self'", 'https://checkout.razorpay.com'],
-          fontSrc: ["'self'", 'https:', 'data:'],
-          objectSrc: ["'none'"],
-          upgradeInsecureRequests: [],
-        },
-      } : false,
+      // Allow popups (required for Google Sign-In one-tap flow)
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+      // CSP is not needed on a REST API (JSON only, no HTML pages served)
+      contentSecurityPolicy: false,
       hsts: configService.get('NODE_ENV') === 'production'
         ? { maxAge: 31536000, includeSubDomains: true, preload: true }
         : false,
