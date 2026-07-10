@@ -39,7 +39,7 @@ graph TB
         end
 
         subgraph AI["AI Services"]
-            OpenAI["🤖 OpenAI API<br/>gpt-image-1<br/>Product Image Generation"]
+            Gemini["🤖 Google Gemini API<br/>gemini-3.1-flash-image<br/>Product Image Generation"]
         end
 
         subgraph Ops["Operations"]
@@ -57,7 +57,7 @@ graph TB
     BE --> RDS
     BE --> Redis
     BE --> S3
-    BE -->|Secure API Call| OpenAI
+    BE -->|Secure API Call| Gemini
     BE --> SM
     BE --> CW
     CW --> SNS
@@ -69,7 +69,7 @@ graph TB
 | **Frontend** | Next.js 14 (App Router) · TailwindCSS · Zustand |
 | **Mobile** | Flutter · Riverpod + Android APK |
 | **Cloud** | AWS VPC · ALB · ECS Fargate ARM64 (Spot) · RDS PostgreSQL · ElastiCache Redis · Route 53 · ACM |
-| **AI** | OpenAI gpt-image-1 (AI product images) |
+| **AI** | Google Gemini gemini-3.1-flash-image (AI product images) |
 | **CDN** | CloudFront (HTTP/3 + Brotli + security headers) |
 | **CI/CD** | GitHub Actions (build → scan → deploy → migrate → invalidate) |
 | **IaC** | Terraform (modular — vpc, alb, ecs, rds, redis, security) |
@@ -83,7 +83,7 @@ graph TB
 │   ├── /src
 │   │   ├── /ai-images       # ✨ AI Product Image Generation
 │   │   │   ├── ai-images.module.ts
-│   │   │   ├── ai-images.service.ts    # OpenAI API + S3 session management
+│   │   │   ├── ai-images.service.ts    # Google Gemini API + S3 session management
 │   │   │   ├── ai-images.controller.ts # Secure admin endpoints
 │   │   │   └── /dto                    # TypeScript DTOs
 │   │   ├── /s3-cleanup      # 🧹 Automatic S3 Orphan Cleanup
@@ -107,7 +107,7 @@ graph TB
 │   ├── main.tf
 │   ├── variables.tf         # Auto-scaling vars (no tier system)
 │   ├── s3.tf                # Lifecycle rules (AI temp 48h, products 90d→IA)
-│   ├── secrets.tf           # Secrets Manager (incl. OPENAI_API_KEY)
+│   ├── secrets.tf           # Secrets Manager (incl. GEMINI_API_KEY)
 │   └── /modules
 │       ├── /ecs             # ARM64 Fargate + true elastic auto-scaling
 │       ├── /vpc             # VPC + subnets
@@ -155,16 +155,17 @@ graph TB
 - **Settings** — full store configurator
 - **Audit Logs** — all S3 actions, AI generations, deletions logged
 
-### 🤖 AI Product Image Generation (NEW)
+### 🤖 AI Product Image Generation (Google Gemini)
 1. Open any product in admin → click **✨ Create Images with AI**
 2. Upload a model face image (JPG/PNG/WEBP, max 10MB)
 3. Upload the product's shopping image
 4. Optionally add custom instructions
-5. AI generates **4 professional fashion photographs** in 4 poses:
+5. Backend downloads S3 reference images and uploads them as inline multimodal visual data to Google Gemini (`gemini-3.1-flash-image` "Nano Banana" model).
+6. AI generates **4 highly accurate professional fashion photographs** preserving the exact face and garment patterns in 4 poses:
    - Front Standing · 45° Left · 45° Right · Walking Pose
-6. Review gallery — **Approve**, **Download**, or **Delete** each image
-7. Approved images instantly appear in product's image gallery
-8. Temp images auto-expire in 24 hours; S3 lifecycle deletes after 48 hours
+7. Review gallery — **Approve**, **Download**, or **Delete** each image
+8. Approved images instantly appear in product's image gallery
+9. Temp images auto-expire in 24 hours; S3 lifecycle deletes after 48 hours
 
 ### 🧹 Automatic S3 Cleanup (NEW)
 - **On product delete**: All product images deleted from S3 asynchronously
@@ -231,7 +232,7 @@ The platform automatically scales from 1 task to 100+ tasks based on real-time d
    cd backend
    cp .env.example .env
    # Fill in DB credentials, JWT_SECRET, and API keys
-   # Add OPENAI_API_KEY for AI image generation
+   # Add GEMINI_API_KEY for AI image generation
    npm install
    npx prisma db push
    npm run start:dev
@@ -278,7 +279,7 @@ terraform apply   # Provisions everything: VPC, ALB, ECS, RDS, Redis, S3
 cd backend
 npm run secrets:push   # Reads backend/.env and pushes to Secrets Manager
 ```
-> 🔑 **Required**: Also add `OPENAI_API_KEY` to the secret for AI image generation.
+> 🔑 **Required**: Also add `GEMINI_API_KEY` to the secret for AI image generation.
 
 ### Step 4: Push Code to main Branch
 ```bash
@@ -342,11 +343,11 @@ The platform is designed around an **Active-Passive Multi-Region DR** architectu
   - **Recovery Point Objective (RPO):** < 1 minute (committed database state replication lag).
 
 ### 2. AI Image Cost Protection & Budget Safeguards
-To prevent excessive OpenAI API billing and DALL-E token drainage, a multi-tier budget firewall is implemented:
+To prevent excessive Gemini API billing and token drainage, a multi-tier budget firewall is implemented:
 - **Daily & Monthly Budgets:** Hard limits stored in PostgreSQL/Redis (e.g. ₹5,000 daily maximum, ₹50,000 monthly maximum). When reached, further calls to `generateImages` are blocked with a `403 Request Denied` exception.
 - **Per-Admin Quotas:** Daily token generation caps mapped to specific administrator accounts (e.g. max 50 images per admin per day).
 - **Queue Limits:** SQS max concurrent worker run limits to avoid concurrent generation bursts exceeding API rate limits.
-- **Usage Analytics:** Cost tracking dashboard showing monthly OpenAI credits spent and budget projection models.
+- **Usage Analytics:** Cost tracking dashboard showing monthly Gemini credits spent and budget projection models.
 
 ### 3. Customer Experience (CX) Personalization
 Real-time personalized navigation features optimized for fast retrieval:
@@ -403,7 +404,7 @@ $$\text{Health Score} = 0.25 \times \text{Availability} + 0.20 \times \text{Secu
   - **Availability:** Ping and health status checks of ECS services.
   - **Security:** Vulnerability count and SSL certificate expiry.
   - **Performance:** CloudFront cache-hit ratio (>90%) and average API response time (<100ms).
-  - **Budget Compliance:** AWS cost thresholds and OpenAI token usage.
+  - **Budget Compliance:** AWS cost thresholds and Gemini token usage.
 
 ---
 
@@ -445,9 +446,10 @@ The backend uses **Prisma DB Push** in production — applied automatically on e
 
 ## ── Alerts & Monitoring
 
-- **CloudWatch**: ECS CPU/Memory, RDS connections, ALB 5xx error rates
-- **SNS + Lambda**: Branded HTML emails (SES) + WhatsApp messages (MSG91) on threshold breach
-- **Deployment Alerts**: WhatsApp notification on every deployment (success or failure)
+- **CloudWatch**: ECS CPU/Memory, RDS connections, ALB 5xx error rates, running task counts, database free storage space
+- **SNS + Lambda (SES HTML Email)**: Alerts trigger an email Lambda that translates CloudWatch metrics into branded HTML emails sent to `jagadishvarma99@gmail.com` via Amazon SES
+- **SNS + Lambda (WhatsApp Alerts)**: Alerts trigger a WhatsApp Lambda that sends immediate push notifications (using CallMeBot API) to `+91 7032492775`
+- **Deployment Alerts**: WhatsApp notification on every deployment (success or failure) via MSG91 template outbound messaging
 
 ---
 
@@ -455,7 +457,11 @@ The backend uses **Prisma DB Push** in production — applied automatically on e
 
 | Date | Change |
 |:-----|:-------|
-| Jul 2026 | ✨ AI Product Image Generation — 4-pose fashion photography with OpenAI |
+| Jul 2026 | 🤖 AI Image Generation — Migrated from OpenAI to Google Gemini (`gemini-3.1-flash-image` "Nano Banana" model) with multimodal inline references |
+| Jul 2026 | 🔐 AWS Secrets Manager — Synced Gemini API credentials |
+| Jul 2026 | 📋 Login & OTP Errors — Fixed interceptor page-reload bug and added Resend OTP button |
+| Jul 2026 | 👑 Admin Dashboard Greeting — Dynamically displays current logged-in user name |
+| Jul 2026 | 🚨 AWS Alerts & Monitoring — Configured CloudWatch Alarms with Lambdas for HTML SES emails and CallMeBot WhatsApp alerts |
 | Jul 2026 | 🧹 Automatic S3 orphan cleanup — daily cron + on-delete lifecycle hooks |
 | Jul 2026 | 🚀 CI/CD Pipeline — GitHub Actions build → scan → deploy → migrate → notify |
 | Jul 2026 | ⚡ True elastic auto-scaling — 1 to 100 tasks, no manual tier changes |
