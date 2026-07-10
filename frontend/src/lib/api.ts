@@ -18,7 +18,18 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    
+    // Bypass token refresh logic for authentication endpoints
+    const isAuthEndpoint = originalRequest?.url && (
+      originalRequest.url.includes('/auth/login') ||
+      originalRequest.url.includes('/auth/register') ||
+      originalRequest.url.includes('/auth/otp/') ||
+      originalRequest.url.includes('/auth/forgot-password/') ||
+      originalRequest.url.includes('/auth/google') ||
+      originalRequest.url.includes('/auth/refresh')
+    );
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
       try {
         const refreshToken = useAuthStore.getState().refreshToken;

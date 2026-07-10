@@ -6,8 +6,15 @@ const AWS = require('aws-sdk');
 const REGION = 'ap-south-2'; 
 const PROJECT_NAME = 'anjali-alankaram'; 
 
-// Initialize AWS Secrets Manager
-const secretsManager = new AWS.SecretsManager({ region: REGION });
+// Initialize AWS Secrets Manager dynamically
+let secretsManager;
+
+function initSecretsManager() {
+  if (!secretsManager) {
+    secretsManager = new AWS.SecretsManager({ region: REGION });
+  }
+  return secretsManager;
+}
 
 // Helper to parse .env file
 function parseEnv(filePath) {
@@ -40,11 +47,12 @@ function parseEnv(filePath) {
 }
 
 async function updateSecret(secretName, localEnvVars) {
+  const client = initSecretsManager();
   try {
     // First, fetch the existing secrets from AWS to preserve infrastructure variables
     let existingEnv = {};
     try {
-      const data = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+      const data = await client.getSecretValue({ SecretId: secretName }).promise();
       if ('SecretString' in data) {
         existingEnv = JSON.parse(data.SecretString);
       }
@@ -60,7 +68,7 @@ async function updateSecret(secretName, localEnvVars) {
       SecretString: JSON.stringify(finalEnv)
     };
     
-    await secretsManager.putSecretValue(params).promise();
+    await client.putSecretValue(params).promise();
     console.log(`✅ Successfully synced local changes to secret: ${secretName}`);
   } catch (error) {
     console.error(`❌ Failed to update secret ${secretName}:`, error.message);

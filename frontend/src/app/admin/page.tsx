@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/useAuthStore';
 import {
   TrendingUp, Users, ShoppingBag, Clock, ArrowUpRight,
   Package, CheckCircle2, RefreshCw, Download, Eye,
@@ -62,6 +63,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export default function AdminDashboard() {
+  const { user } = useAuthStore();
   const [stats, setStats] = useState({
     totalSales: 0, totalOrders: 0, totalCustomers: 0, pendingOrders: 0,
     deliveredOrders: 0, cancelledOrders: 0, returnRequested: 0, lowStock: 0,
@@ -72,7 +74,8 @@ export default function AdminDashboard() {
   const [orderStatusBreakdown, setOrderStatusBreakdown] = useState<{ status: string; count: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [adminName, setAdminName] = useState('Admin');
+
+  const adminName = user?.name || 'Admin';
 
   // Live visitor state
   const [liveCount, setLiveCount] = useState<number | null>(null);
@@ -151,10 +154,6 @@ export default function AdminDashboard() {
       // Top products
       const sorted = [...allProducts].sort((a: any, b: any) => (b.totalSold || 0) - (a.totalSold || 0));
       setTopProducts(sorted.slice(0, 5));
-
-      // Admin name from users list
-      const admin = allUsers.find((u: any) => ['ADMIN', 'SUPER_ADMIN'].includes(u.role));
-      setAdminName(admin?.name || 'Admin');
 
     } catch (e) {
       console.error('Dashboard load failed', e);

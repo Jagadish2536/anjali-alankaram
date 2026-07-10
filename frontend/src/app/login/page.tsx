@@ -61,8 +61,8 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   };
 
   // Submit Forgot Password Request (OTP request)
-  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleForgotPasswordRequest = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!forgotEmailOrPhone.trim()) {
       setError('Please enter your email or phone number');
       return;
@@ -118,7 +118,13 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       setForgotNewPassword('');
       setForgotConfirmPassword('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to reset password. Please check your OTP and try again.');
+      const status = err.response?.status;
+      const msg = err.response?.data?.message;
+      if (status === 400 || status === 401 || (msg && (msg.toLowerCase().includes('code') || msg.toLowerCase().includes('otp')))) {
+        setError('OTP was incorrect. Please try again or resend OTP.');
+      } else {
+        setError(msg || 'Failed to reset password. Please check your OTP and try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -187,8 +193,9 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   };
 
   // Submit Send OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Submit Send OTP
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!otpEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail.trim())) {
       setError('Please enter a valid email address');
       return;
@@ -200,6 +207,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     try {
       await api.post('/auth/otp/send', { email: otpEmail.trim() });
       setStep('OTP');
+      setSuccessMessage('OTP sent successfully');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
     } finally {
@@ -228,7 +236,13 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       setUser(data.user);
       redirectAfterLogin(data.user, returnUrl);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+      const status = err.response?.status;
+      const msg = err.response?.data?.message;
+      if (status === 400 || status === 401 || (msg && (msg.toLowerCase().includes('otp') || msg.toLowerCase().includes('code')))) {
+        setError('OTP was incorrect. Please try again or resend OTP.');
+      } else {
+        setError(msg || 'Invalid OTP. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -531,13 +545,23 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                     <label htmlFor="otp-code" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-outfit">
                       Enter OTP Code
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setStep('EMAIL')}
-                      className="text-xs text-primary hover:underline font-semibold"
-                    >
-                      Change Email
-                    </button>
+                    <div className="flex gap-2.5 items-center">
+                      <button
+                        type="button"
+                        onClick={() => handleSendOtp()}
+                        className="text-xs text-primary hover:underline font-semibold"
+                      >
+                        Resend OTP
+                      </button>
+                      <span className="text-muted-foreground/30 text-xs">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setStep('EMAIL')}
+                        className="text-xs text-primary hover:underline font-semibold"
+                      >
+                        Change Email
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -634,9 +658,18 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 </div>
 
                 <div>
-                  <label htmlFor="forgot-otp" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    Enter OTP Code
-                  </label>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label htmlFor="forgot-otp" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Enter OTP Code
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleForgotPasswordRequest()}
+                      className="text-xs text-primary hover:underline font-semibold"
+                    >
+                      Resend OTP
+                    </button>
+                  </div>
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-muted-foreground">
                       <ShieldCheck className="w-5 h-5" />

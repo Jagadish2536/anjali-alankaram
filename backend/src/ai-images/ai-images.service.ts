@@ -82,11 +82,11 @@ export class AiImagesService {
     status: string;
   }> {
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
-    const openaiKey = this.config.get<string>('OPENAI_API_KEY');
+    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
 
-    if (!openaiKey) {
+    if (!geminiKey) {
       throw new InternalServerErrorException(
-        'OpenAI API key is not configured. Please set OPENAI_API_KEY in environment variables.',
+        'Gemini API key is not configured. Please set GEMINI_API_KEY in environment variables.',
       );
     }
 
@@ -178,8 +178,7 @@ export class AiImagesService {
     customPrompt?: string,
   ): Promise<void> {
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
-    const openaiKey = this.config.get<string>('OPENAI_API_KEY');
-    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
+    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
 
     this.logger.log(`Starting AI Image Generation for session: ${sessionId}`);
 
@@ -195,43 +194,52 @@ export class AiImagesService {
       });
       if (!session) throw new Error('Session record not found');
 
-      // Construct public URLs for the reference images using CloudFront
-      const baseUrl = `https://${cfDomain}`;
-      const faceUrl = `${baseUrl}/${session.faceRefKey}`;
-      const productUrl = `${baseUrl}/${session.productRefKey}`;
+      // Download reference images from S3 to get base64 data
+      const [faceObj, productObj] = await Promise.all([
+        this.s3.getObject({ Bucket: bucket, Key: session.faceRefKey }).promise(),
+        this.s3.getObject({ Bucket: bucket, Key: session.productRefKey }).promise(),
+      ]);
 
-      // Build Prompt Template with explicit reference URLs
-      const buildPrompt = (pose: (typeof POSES)[0]) => {
-        return `Create an ultra-realistic Indian fashion ecommerce photograph of the exact same person from the reference face image: ${faceUrl} wearing the exact same clothing from the reference product image: ${productUrl}.
+      const faceBody = faceObj.Body;
+      const productBody = productObj.Body;
+      if (!faceBody || !productBody) {
+        throw new Error('Reference images empty or not found in S3');
+      }
 
-FACE PRESERVATION (critical):
-- Use the face from the reference face image: ${faceUrl} as the exact reference for face shape, eyes, hairline, nose, skin tone, hair style and color.
-- Preserve the exact face, skin tone, hair color and style, eye shape, facial features, nose, lips, and natural expression.
-- The person must look identical to the face reference: ${faceUrl}.
+      const faceBase64 = Buffer.isBuffer(faceBody) 
+        ? faceBody.toString('base64') 
+        : Buffer.from(faceBody as any).toString('base64');
+      const productBase64 = Buffer.isBuffer(productBody)
+        ? productBody.toString('base64')
+        : Buffer.from(productBody as any).toString('base64');
 
-CLOTHING PRESERVATION (critical — do not change anything):
-- The clothing must be recreated 100% identical to the product reference image: ${productUrl}.
-- Use the garment pattern, Kalamkari/traditional design, figures, print, neckline, fit, sleeves, borders and fabric from ${productUrl}.
-- Never change: color, embroidery, pattern, fabric texture, neckline, sleeves, borders, fit, length, print, drape.
-- Show natural fabric folds and drape exactly as the original garment would fall.
-
-POSE: ${pose.prompt}
-
-BACKGROUND: ${session.background}
-
-PHOTOGRAPHY STYLE:
-- Professional DSLR quality, 85mm lens, 8K ultra HD resolution
-- Soft natural lighting with warm ambient fill light
-- Luxury fashion catalogue / Instagram premium quality
-- Realistic hands with correct finger count and proportions
-- Natural body proportions, correct anatomy
-
-STRICT REQUIREMENTS:
-- Entire body must be visible from head to toe (no cropping)
-- No AI artifacts, no blur, no watermarks, no text overlay
-- No extra limbs, no duplicate jewelry, no hallucinated clothing details
-- Natural depth of field with sharp focus on subject
-${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
+      // Build Prompt and multimodal parts
+      const buildParts = (pose: (typeof POSES)[0]) => {
+        return [
+          {
+            inlineData: {
+              mimeType: session.faceRefKey.endsWith('png') ? 'image/png' : 'image/jpeg',
+              data: faceBase64,
+            },
+          },
+          {
+            inlineData: {
+              mimeType: session.productRefKey.endsWith('png') ? 'image/png' : 'image/jpeg',
+              data: productBase64,
+            },
+          },
+          {
+            text: `Create an ultra-realistic fashion ecommerce photograph combining the provided model face reference and the product/dress reference.
+            
+Requirements:
+1. Wear the exact same clothing from the product/dress reference image. Preserve all details: color, patterns, design, print, texture, necklines, sleeves, borders, fit, and style. Do not change or hallucinate any garment details.
+2. Put this dress on the exact same model from the face reference image. Keep the face, skin tone, features, eyes, lips, nose, hairline, and hair style identical to the face reference image.
+3. Pose: ${pose.prompt}.
+4. Background: ${session.background}.
+5. Style: Professional DSLR fashion photography, sharp focus, soft lighting. No blurs, no watermarks, no duplicate body parts. Full body from head to toe must be visible.
+${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
+          },
+        ];
       };
 
       const generatedKeys: string[] = [];
@@ -242,43 +250,46 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
         this.logger.log(`Session ${sessionId}: generating pose ${i + 1}/${POSES.length} (${pose.label})`);
 
         try {
-          const prompt = buildPrompt(pose);
-
-          // Call OpenAI API
+          // Call Google Gemini API
           const response = await axios.post(
-            'https://api.openai.com/v1/images/generations',
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${geminiKey}`,
             {
-              model: 'gpt-image-1',
-              prompt,
-              n: 1,
-              size: '1024x1536',
-              quality: 'high',
-              output_format: 'webp',
+              contents: [
+                {
+                  parts: buildParts(pose),
+                },
+              ],
+              generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+                imageConfig: {
+                  aspectRatio: '2:3',
+                  imageSize: '1K',
+                },
+              },
             },
             {
               headers: {
-                Authorization: `Bearer ${openaiKey}`,
                 'Content-Type': 'application/json',
               },
-              timeout: 120000, // 2 min timeout per call
+              timeout: 180000, // 3 min timeout per call
             },
           );
 
-          let imageBuffer: Buffer;
-          const imageData = response.data?.data?.[0];
+          const parts = response.data?.candidates?.[0]?.content?.parts || [];
+          const imagePart = parts.find(
+            (p: any) => p.inlineData?.data && p.inlineData.mimeType?.startsWith('image/'),
+          );
 
-          if (imageData?.b64_json) {
-            imageBuffer = Buffer.from(imageData.b64_json, 'base64');
-          } else if (imageData?.url) {
-            const imgRes = await axios.get(imageData.url, {
-              responseType: 'arraybuffer',
-            });
-            imageBuffer = Buffer.from(imgRes.data);
-          } else {
-            throw new Error('No image data returned from OpenAI');
+          if (!imagePart) {
+            const textPart = parts.find((p: any) => p.text);
+            throw new Error(
+              textPart?.text || 'No image data returned from Gemini API. Response: ' + JSON.stringify(response.data),
+            );
           }
 
+          const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
           const imageKey = `${session.sessionKey}/generated/pose-${i + 1}.webp`;
+
           await this.s3
             .putObject({
               Bucket: bucket,
@@ -298,7 +309,8 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
           });
 
         } catch (err: any) {
-          this.logger.error(`Session ${sessionId}: Pose ${i + 1} failed: ${err.message}`);
+          const errMsg = err.response?.data?.error?.message || err.message;
+          this.logger.error(`Session ${sessionId}: Pose ${i + 1} failed: ${errMsg}`);
           // Continue generating other poses even if one fails
         }
       }
