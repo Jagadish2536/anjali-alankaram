@@ -53,4 +53,4 @@ EXPOSE 4000
 ENV PORT=4000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["node", "-e", "process.env.HOSTNAME='0.0.0.0'; require('./server.js')"]
