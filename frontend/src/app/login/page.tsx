@@ -245,7 +245,11 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
-      redirectAfterLogin(data.user, returnUrl);
+      if (data.requireSetup) {
+        router.push(`/complete-setup?returnUrl=${encodeURIComponent(returnUrl || '/')}`);
+      } else {
+        redirectAfterLogin(data.user, returnUrl);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Google Login failed. Please try again.');
     } finally {

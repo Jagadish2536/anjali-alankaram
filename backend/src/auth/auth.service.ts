@@ -150,7 +150,12 @@ export class AuthService {
       });
     }
 
-    return this.generateTokens(user);
+    const requireSetup = !user.phone || !user.password;
+    const tokens = await this.generateTokens(user);
+    return {
+      requireSetup,
+      ...tokens,
+    };
   }
 
   // ── Token Management ──────────────────────────────────

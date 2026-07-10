@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -281,6 +281,19 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
   const { settings, fetchSettings, isFetched } = useSettingsStore();
   const { user } = useAuthStore();
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Redirect to complete-setup if a logged-in user doesn't have a phone or password set
+  useEffect(() => {
+    if (
+      user &&
+      (!user.phone || user.hasPassword === false) &&
+      pathname !== '/complete-setup' &&
+      pathname !== '/login'
+    ) {
+      router.push('/complete-setup');
+    }
+  }, [user, pathname, router]);
 
   // Setup 5-second polling interval to enter maintenance mode quickly without manual refresh
   useEffect(() => {
