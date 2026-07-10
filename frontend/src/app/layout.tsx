@@ -29,7 +29,6 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     title: 'Anjali Alankaram',
-    capable: true,
     statusBarStyle: 'black-translucent',
     startupImage: '/favicon.png',
   },
@@ -40,6 +39,10 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Anjali Alankaram',
   },
+  // Modern PWA capability meta — replaces deprecated apple-mobile-web-app-capable
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 }
 
 export const viewport: Viewport = {
@@ -48,6 +51,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  // Use modern PWA capability meta (replaces deprecated apple-mobile-web-app-capable)
+  themeColor: '#8B0030',
 }
 
 export default function RootLayout({
