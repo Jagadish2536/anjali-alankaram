@@ -52,7 +52,7 @@ const nextConfig = {
               "img-src 'self' data: blob: https: http://localhost:3000 https://*.googleusercontent.com",
               "connect-src 'self' https: wss: https://accounts.google.com https://*.googleapis.com",
               "frame-src 'self' https://checkout.razorpay.com https://accounts.google.com",
-              "media-src 'self' https://*.amazonaws.com https://*.cloudfront.net",
+              "media-src 'self' https://*.s3.ap-south-2.amazonaws.com https://*.s3.amazonaws.com https://*.amazonaws.com https://*.cloudfront.net",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
