@@ -26,7 +26,7 @@ interface AISession {
 }
 
 interface Props {
-  productId: string;
+  productId?: string;
   productName: string;
   onImagesApproved: (urls: string[]) => void;
   onClose: () => void;
@@ -309,7 +309,7 @@ export default function AIImageGeneratorModal({
       const formData = new FormData();
       formData.append('faceImage', faceFile);
       formData.append('productImage', productFile);
-      formData.append('productId', productId);
+      if (productId) formData.append('productId', productId);
       if (customPrompt.trim()) formData.append('customPrompt', customPrompt.trim());
 
       // SQS Queue triggers instantly
@@ -334,7 +334,7 @@ export default function AIImageGeneratorModal({
       const { data } = await api.post('/ai-images/approve', {
         sessionId: session.id,
         imageKey: image.key,
-        productId,
+        ...(productId ? { productId } : {}),
       });
       setApprovedImages((prev) => new Set([...prev, image.key]));
       setApprovedUrls((prev) => [...prev, data.newImageUrl]);

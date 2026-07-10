@@ -354,7 +354,7 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
   async approveImage(
     sessionId: string,
     imageKey: string,
-    productId: string,
+    productId: string | undefined,
     adminId: string,
   ): Promise<{ newImageUrl: string; newImageKey: string }> {
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
@@ -368,8 +368,9 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
       throw new BadRequestException('Image key does not belong to this session');
     }
 
-    // Move image from temp to product folder
-    const newKey = `products/${productId}/ai-${uuidv4()}.webp`;
+    // Move image from temp to product folder (use products/draft for new products)
+    const targetFolder = productId ? `products/${productId}` : 'products/draft';
+    const newKey = `${targetFolder}/ai-${uuidv4()}.webp`;
 
     await this.s3
       .copyObject({
@@ -389,22 +390,22 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
       .catch(() => {});
 
     // Build new URL
-    const baseUrl = cfDomain
-      ? `https://${cfDomain}`
-      : `https://${bucket}.s3.${this.config.get('AWS_REGION')}.amazonaws.com`;
+    const baseUrl = `https://${cfDomain}`;
     const newImageUrl = `${baseUrl}/${newKey}`;
 
-    // Append image URL to product.images[]
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-    });
-    if (!product) throw new NotFoundException('Product not found');
-
-    const updatedImages = [...(product.images || []), newImageUrl];
-    await this.prisma.product.update({
-      where: { id: productId },
-      data: { images: updatedImages },
-    });
+    // Append image URL to product.images[] if product exists
+    if (productId) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+      });
+      if (product) {
+        const updatedImages = [...(product.images || []), newImageUrl];
+        await this.prisma.product.update({
+          where: { id: productId },
+          data: { images: updatedImages },
+        });
+      }
+    }
 
     // Update session record
     await this.prisma.aiImageSession.update({
@@ -419,8 +420,8 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
     await this.writeAuditLog({
       adminId,
       action: 'AI_APPROVE',
-      entityType: 'PRODUCT',
-      entityId: productId,
+      entityType: productId ? 'PRODUCT' : 'DRAFT_PRODUCT',
+      entityId: productId || sessionId,
       s3Key: newKey,
       metadata: { sessionId, originalKey: imageKey },
     });

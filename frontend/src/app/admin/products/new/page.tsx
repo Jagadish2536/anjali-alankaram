@@ -3,9 +3,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, Trash2, Image as ImageIcon, Save, Loader2,
-  X, PlusCircle, Instagram, ExternalLink, Truck, Ruler, CheckCircle2, AlertCircle
+  X, PlusCircle, Instagram, ExternalLink, Truck, Ruler, CheckCircle2, AlertCircle, Sparkles
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import dynamic from 'next/dynamic';
+
+const AIImageGeneratorModal = dynamic(
+  () => import('@/components/admin/AIImageGeneratorModal'),
+  { ssr: false },
+);
 
 const COLOR_NAME_TO_HEX: Record<string, string> = {
   red: '#ff0000', crimson: '#dc143c', maroon: '#800000', rose: '#ff007f',
@@ -32,6 +38,7 @@ export default function NewProductPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isUploading, setIsUploading] = useState<number | null>(null);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -305,9 +312,18 @@ export default function NewProductPage() {
         <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
           <div className="flex justify-between items-center border-b pb-4">
             <h2 className="text-xl font-bold font-outfit">Product Images</h2>
-            <button type="button" onClick={handleAddImage} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-              <PlusCircle className="w-4 h-4" /> Add More
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAIModal(true)}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-sm text-xs font-black flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              >
+                <Sparkles className="w-4 h-4" /> AI Creator
+              </button>
+              <button type="button" onClick={handleAddImage} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
+                <PlusCircle className="w-4 h-4" /> Add More
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4">
             {formData.images.map((url, i) => (
@@ -689,6 +705,23 @@ export default function NewProductPage() {
         </div>
 
       </form>
+
+      {/* ✨ AI Image Generator Modal */}
+      {showAIModal && (
+        <AIImageGeneratorModal
+          productName={formData.name || 'New Product'}
+          onImagesApproved={(urls) => {
+            setFormData(prev => ({
+              ...prev,
+              images: [...prev.images.filter(img => img.trim() !== ''), ...urls],
+            }));
+            showFeedback('success', `✨ ${urls.length} AI image(s) added to product!`);
+          }}
+          onClose={() => {
+            setShowAIModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

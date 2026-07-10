@@ -17,8 +17,9 @@ export class ApproveImageDto {
   @IsString()
   imageKey: string;
 
+  @IsOptional()
   @IsString()
-  productId: string;
+  productId?: string;
 }
 
 export class RejectImageDto {
