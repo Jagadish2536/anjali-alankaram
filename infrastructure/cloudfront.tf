@@ -29,7 +29,7 @@ function handler(event) {
     headers['referrer-policy'] = { value: 'strict-origin-when-cross-origin' };
 
     headers['content-security-policy'] = {
-        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.cloudfront.net https://*.amazonaws.com; connect-src 'self' https://api.openai.com https://checkout.razorpay.com https://www.google-analytics.com https://accounts.google.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://accounts.google.com; media-src 'self' https://*.amazonaws.com https://*.cloudfront.net;"
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; img-src 'self' data: https://*.cloudfront.net https://*.amazonaws.com https://*.googleusercontent.com; connect-src 'self' https://api.openai.com https://checkout.razorpay.com https://www.google-analytics.com https://accounts.google.com https://*.googleapis.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://accounts.google.com; media-src 'self' https://*.amazonaws.com https://*.cloudfront.net;"
     };
 
     return response;
@@ -219,6 +219,30 @@ resource "aws_cloudfront_distribution" "cdn" {
     min_ttl     = 0
     default_ttl = 43200 # 12 hours
     max_ttl     = 86400 # 24 hours
+
+    forwarded_values {
+      query_string = false
+      headers      = ["Origin"]
+
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  # Cache Behavior: S3 Videos (/videos/*)
+  ordered_cache_behavior {
+    path_pattern           = "/videos/*"
+    target_origin_id       = "S3-Assets-Origin"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    cached_methods  = ["GET", "HEAD"]
+
+    min_ttl     = 0
+    default_ttl = 86400    # 1 day
+    max_ttl     = 31536000 # 1 year
 
     forwarded_values {
       query_string = false

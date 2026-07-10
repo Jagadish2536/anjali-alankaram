@@ -121,8 +121,11 @@ async function bootstrap() {
   }
 
   // ── Health check ─────────────────────────────────────────────────
-  // ECS container health check targets: /health (port-level) and /api/v1/health (ALB)
+  // ECS container health check targets: /health (port-level/ALB) and /api/v1/health (container level)
   app.use('/health', (_req: any, res: any) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+  app.use('/api/v1/health', (_req: any, res: any) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 

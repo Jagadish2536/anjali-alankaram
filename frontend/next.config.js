@@ -47,10 +47,10 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://apis.google.com https://accounts.google.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https: http://localhost:3000",
-              "connect-src 'self' https: wss: https://accounts.google.com",
+              "img-src 'self' data: blob: https: http://localhost:3000 https://*.googleusercontent.com",
+              "connect-src 'self' https: wss: https://accounts.google.com https://*.googleapis.com",
               "frame-src 'self' https://checkout.razorpay.com https://accounts.google.com",
               "media-src 'self' https://*.amazonaws.com https://*.cloudfront.net",
               "object-src 'none'",

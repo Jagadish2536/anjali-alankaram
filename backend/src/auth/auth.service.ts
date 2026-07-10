@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -15,6 +15,8 @@ import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -42,6 +44,7 @@ export class AuthService {
 
     // Send via Email AWS SES
     await this.emailService.sendOtpEmail(formattedEmail, code, 'login');
+    this.logger.log(`🔑 [DEV/OTP] Generated login OTP for ${formattedEmail}: ${code}`);
 
     return { message: 'OTP sent successfully' };
   }
@@ -332,6 +335,7 @@ export class AuthService {
     } else {
       // Send via AWS SES
       await this.emailService.sendOtpEmail(formattedEmail, code, 'reset');
+      this.logger.log(`🔑 [DEV/OTP] Generated password reset OTP for ${formattedEmail}: ${code}`);
     }
 
     return { message: 'Reset code sent successfully' };
