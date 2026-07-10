@@ -113,7 +113,7 @@ variable "enable_waf" {
 
 variable "enable_redis" {
   type        = bool
-  default     = false
+  default     = true
   description = "Enable ElastiCache Redis cluster resource provisioning"
 }
 
