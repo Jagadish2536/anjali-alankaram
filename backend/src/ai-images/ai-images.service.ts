@@ -179,7 +179,7 @@ export class AiImagesService {
   ): Promise<void> {
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
     const openaiKey = this.config.get<string>('OPENAI_API_KEY');
-    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN');
+    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
 
     this.logger.log(`Starting AI Image Generation for session: ${sessionId}`);
 
@@ -195,19 +195,25 @@ export class AiImagesService {
       });
       if (!session) throw new Error('Session record not found');
 
-      // Build Prompt Template
+      // Construct public URLs for the reference images using CloudFront
+      const baseUrl = `https://${cfDomain}`;
+      const faceUrl = `${baseUrl}/${session.faceRefKey}`;
+      const productUrl = `${baseUrl}/${session.productRefKey}`;
+
+      // Build Prompt Template with explicit reference URLs
       const buildPrompt = (pose: (typeof POSES)[0]) => {
-        return `Create an ultra-realistic Indian fashion ecommerce photograph of the exact same person from the reference face image wearing the exact same clothing from the reference product image.
+        return `Create an ultra-realistic Indian fashion ecommerce photograph of the exact same person from the reference face image: ${faceUrl} wearing the exact same clothing from the reference product image: ${productUrl}.
 
 FACE PRESERVATION (critical):
-- Preserve the exact face, skin tone, hair color and style, eye shape, facial features, nose, lips, and natural expression
-- Maintain realistic skin texture and natural appearance
-- The person must look identical to the face reference
+- Use the face from the reference face image: ${faceUrl} as the exact reference for face shape, eyes, hairline, nose, skin tone, hair style and color.
+- Preserve the exact face, skin tone, hair color and style, eye shape, facial features, nose, lips, and natural expression.
+- The person must look identical to the face reference: ${faceUrl}.
 
 CLOTHING PRESERVATION (critical — do not change anything):
-- The clothing must be recreated 100% identical to the product reference image
-- Never change: color, embroidery, pattern, fabric texture, neckline, sleeves, borders, fit, length, print, drape
-- Show natural fabric folds and drape exactly as the original garment would fall
+- The clothing must be recreated 100% identical to the product reference image: ${productUrl}.
+- Use the garment pattern, Kalamkari/traditional design, figures, print, neckline, fit, sleeves, borders and fabric from ${productUrl}.
+- Never change: color, embroidery, pattern, fabric texture, neckline, sleeves, borders, fit, length, print, drape.
+- Show natural fabric folds and drape exactly as the original garment would fall.
 
 POSE: ${pose.prompt}
 
@@ -352,7 +358,7 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
     adminId: string,
   ): Promise<{ newImageUrl: string; newImageKey: string }> {
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
-    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN');
+    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
 
     const session = await this.prisma.aiImageSession.findUnique({
       where: { id: sessionId },
@@ -514,10 +520,8 @@ ${customPrompt ? `\nADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}`;
     if (!session) throw new NotFoundException('Session not found');
 
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
-    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN');
-    const baseUrl = cfDomain
-      ? `https://${cfDomain}`
-      : `https://${bucket}.s3.${this.config.get('AWS_REGION')}.amazonaws.com`;
+    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
+    const baseUrl = `https://${cfDomain}`;
 
     return {
       ...session,
