@@ -170,6 +170,7 @@ export default function AdminProductsPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [isMulticolour, setIsMulticolour] = useState(false);
+  const [aiProductTarget, setAiProductTarget] = useState<{ id: string; name: string } | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
