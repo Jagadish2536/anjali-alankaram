@@ -66,13 +66,32 @@ function printOrderLabel(order: any, storeAddress?: string) {
   .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
   @media print{button{display:none;}}
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        if (window.html2canvas) {
+          resolve();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load html2canvas library'));
+        document.head.appendChild(script);
+      });
+    }
+
     async function downloadLabelAsJpg() {
-      const element = document.getElementById('label-content');
-      if (!element) return;
+      const btn = document.activeElement;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⌛ Downloading...';
+      }
       try {
-        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+        const element = document.getElementById('label-content');
+        if (!element) return;
+        const canvas = await window.html2canvas(element, { scale: 2, useCORS: true });
         const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
         const link = document.createElement('a');
         link.download = 'Order-Label-${order.orderNumber}.jpg';
@@ -80,6 +99,11 @@ function printOrderLabel(order: any, storeAddress?: string) {
         link.click();
       } catch (err) {
         alert('Download failed: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '📥 Download JPG';
+        }
       }
     }
   </script>

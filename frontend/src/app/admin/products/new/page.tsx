@@ -13,10 +13,7 @@ const AIImageGeneratorModal = dynamic(
   { ssr: false },
 );
 
-const AIVideoGeneratorModal = dynamic(
-  () => import('@/components/admin/AIVideoGeneratorModal'),
-  { ssr: false },
-);
+
 
 const COLOR_NAME_TO_HEX: Record<string, string> = {
   red: '#ff0000', crimson: '#dc143c', maroon: '#800000', rose: '#ff007f',
@@ -44,7 +41,6 @@ export default function NewProductPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
-  const [showAIVideoModal, setShowAIVideoModal] = useState(false);
   const [isMulticolour, setIsMulticolour] = useState(false);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
@@ -86,15 +82,11 @@ export default function NewProductPage() {
       setCategories(list);
       if (list.length > 0) {
         const defaultCat = list[0];
-        setFormData(prev => {
-          const isGuideEmpty = prev.sizeGuide.length === 0 || 
-            prev.sizeGuide.every(row => !row.size && !row.bust && !row.waist && !row.hips && !row.length);
-          return {
-            ...prev,
-            categoryId: defaultCat.id,
-            ...(isGuideEmpty && defaultCat.sizeGuide ? { sizeGuide: defaultCat.sizeGuide } : {})
-          };
-        });
+        setFormData(prev => ({
+          ...prev,
+          categoryId: defaultCat.id,
+          sizeGuide: defaultCat.sizeGuide || []
+        }));
       }
     } catch {
       console.error('Failed to fetch categories');
@@ -103,15 +95,11 @@ export default function NewProductPage() {
 
   const handleCategoryChange = (catId: string) => {
     const selectedCat = categories.find(cat => cat.id === catId);
-    setFormData(prev => {
-      const isGuideEmpty = prev.sizeGuide.length === 0 || 
-        prev.sizeGuide.every(row => !row.size && !row.bust && !row.waist && !row.hips && !row.length);
-      return {
-        ...prev,
-        categoryId: catId,
-        ...(isGuideEmpty && selectedCat?.sizeGuide ? { sizeGuide: selectedCat.sizeGuide } : {})
-      };
-    });
+    setFormData(prev => ({
+      ...prev,
+      categoryId: catId,
+      sizeGuide: selectedCat?.sizeGuide || []
+    }));
   };
 
   const handleAddImage = () => setFormData({ ...formData, images: [...formData.images, ''] });
@@ -450,13 +438,6 @@ export default function NewProductPage() {
                 <p className="text-white/80 text-xs">Optional — upload or generate an MP4 video to loop on the product details page.</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowAIVideoModal(true)}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-md text-xs font-black flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-            >
-              <Sparkles className="w-4 h-4" /> AI Video Creator
-            </button>
           </div>
           <div className="p-8 space-y-5">
             <div>
@@ -813,23 +794,7 @@ export default function NewProductPage() {
         />
       )}
 
-      {/* ✨ AI Video Generator Modal */}
-      {showAIVideoModal && (
-        <AIVideoGeneratorModal
-          productName={formData.name || 'New Product'}
-          existingImages={formData.images}
-          onVideoApproved={(url) => {
-            setFormData(prev => ({
-              ...prev,
-              videoUrl: url,
-            }));
-            showFeedback('success', '✨ AI Video added to product!');
-          }}
-          onClose={() => {
-            setShowAIVideoModal(false);
-          }}
-        />
-      )}
+
     </div>
   );
 }

@@ -392,34 +392,29 @@ export class EmailService {
     color?: string;
   }): Promise<void> {
     const contact = await this.getContactInfo();
+    const subject = `Your requested item is back in stock: ${data.productName}`;
     const content = `
-      <h2 style="color:#8B0030;margin:0 0 8px;">✨ Back in Stock!</h2>
-      <p style="color:#555;margin:0 0 20px;font-size:15px;">
-        Good news! The item you wanted has been restocked and is available now.
+      <p style="font-size:14px;color:#111;line-height:1.5;">Dear Customer,</p>
+      <p style="font-size:14px;color:#111;line-height:1.5;">
+        You asked to be notified when <strong>${data.productName}</strong> ${data.size ? `(Size: ${data.size})` : ''} is back in stock.
       </p>
+      <p style="font-size:14px;color:#111;line-height:1.5;">
+        Good news! It is now restocked and available for order.
+      </p>
+      <p style="font-size:14px;color:#111;line-height:1.5;">
+        You can view the product page here:<br>
+        <a href="${data.productUrl}" style="color:#8B0030;text-decoration:underline;font-weight:bold;">${data.productUrl}</a>
+      </p>
+      <p style="font-size:14px;color:#111;line-height:1.5;margin-top:20px;">
+        If you have any questions, you can WhatsApp us directly at ${contact.whatsappNumber}.
+      </p>
+      <hr style="border:none;border-top:1px solid #eee;margin:20px 0;" />
+      <p style="font-size:12px;color:#777;line-height:1.4;">
+        Best regards,<br>
+        <strong>Anjali Alankaram</strong>
+      </p>
+    `;
 
-      <div style="background:#FDF5EC;border-radius:12px;padding:20px;margin:0 0 24px;display:flex;align-items:center;gap:15px;">
-        ${data.productImage ? `<img src="${data.productImage}" alt="${data.productName}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #f0e8e0;margin-right:15px;" />` : ''}
-        <div>
-          <h3 style="color:#8B0030;margin:0 0 6px;font-size:16px;">${data.productName}</h3>
-          <p style="margin:0;color:#666;font-size:13px;line-height:1.5;">
-            ${data.size ? `Size: <strong>${data.size}</strong><br>` : ''}
-            ${data.color ? `Colour: <strong>${data.color}</strong>` : ''}
-          </p>
-        </div>
-      </div>
-
-      <div style="text-align:center;margin:0 0 24px;">
-        <a href="${data.productUrl}" style="background:#8B0030;color:#FDF5EC;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:bold;display:inline-block;">
-          Shop Now →
-        </a>
-      </div>
-
-      <p style="color:#888;font-size:13px;margin:0;">
-        Hurry, stock is limited!<br>
-        Questions? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
-      </p>`;
-
-    await this.send(to, `Back in Stock: ${data.productName} 🎉`, this.wrap(content, contact));
+    await this.send(to, subject, `<html><body>${content}</body></html>`);
   }
 }

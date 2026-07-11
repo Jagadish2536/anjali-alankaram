@@ -19,10 +19,7 @@ const AIImageGeneratorModal = dynamic(
   { ssr: false },
 );
 
-const AIVideoGeneratorModal = dynamic(
-  () => import('@/components/admin/AIVideoGeneratorModal'),
-  { ssr: false },
-);
+
 
 // ── Confirm Dialog ───────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }: {
@@ -172,9 +169,7 @@ export default function AdminProductsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
-  const [showAIVideoModal, setShowAIVideoModal] = useState(false);
   const [isMulticolour, setIsMulticolour] = useState(false);
-  const [aiProductTarget, setAiProductTarget] = useState<{ id: string; name: string } | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -372,15 +367,11 @@ export default function AdminProductsPage() {
 
   const handleEditCategoryChange = (catId: string) => {
     const selectedCat = categories.find(cat => cat.id === catId);
-    setEditForm(prev => {
-      const isGuideEmpty = !prev.sizeGuide || prev.sizeGuide.length === 0 || 
-        prev.sizeGuide.every((row: any) => !row.size && !row.bust && !row.waist && !row.hips && !row.length);
-      return {
-        ...prev,
-        categoryId: catId,
-        ...(isGuideEmpty && selectedCat?.sizeGuide ? { sizeGuide: selectedCat.sizeGuide } : {})
-      };
-    });
+    setEditForm(prev => ({
+      ...prev,
+      categoryId: catId,
+      sizeGuide: selectedCat?.sizeGuide || []
+    }));
   };
 
   const handleAddEditVariantGroup = () => {
@@ -742,16 +733,6 @@ export default function AdminProductsPage() {
                     <span className="text-sm font-bold text-white">Product Video (Local Upload)</span>
                     <span className="text-white/70 text-xs ml-1">(optional)</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAiProductTarget({ id: editingProduct.id, name: editingProduct.name });
-                      setShowAIVideoModal(true);
-                    }}
-                    className="px-3 py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg shadow-sm text-xs font-bold flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" /> AI Video Creator
-                  </button>
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
@@ -1397,31 +1378,7 @@ export default function AdminProductsPage() {
         />
       )}
 
-      {/* ✨ AI Video Generator Modal */}
-      {showAIVideoModal && aiProductTarget && (
-        <AIVideoGeneratorModal
-          productId={aiProductTarget.id}
-          productName={aiProductTarget.name}
-          existingImages={editForm.images}
-          onVideoApproved={(url) => {
-            setEditForm(prev => ({
-              ...prev,
-              videoUrl: url,
-            }));
-            setProducts(prods => prods.map(p =>
-              p.id === aiProductTarget.id
-                ? { ...p, videoUrl: url }
-                : p
-            ));
-            showFeedback('success', '✨ AI Video added to product!');
-          }}
-          onClose={() => {
-            setShowAIVideoModal(false);
-            setAiProductTarget(null);
-            fetchProducts(true);
-          }}
-        />
-      )}
+
     </div>
   );
 }

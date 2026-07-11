@@ -108,7 +108,37 @@ function ProductsContent() {
   // Filter selections
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedDiscountRange, setSelectedDiscountRange] = useState<number | null>(null);
+
+  // Sync category param from URL into state
+  const categoryParam = searchParams.get('category') || '';
+  useEffect(() => {
+    if (categoryParam) {
+      const canonical = categoryParam === 'sarees' ? 'saree' : categoryParam;
+      setSelectedCategories(prev => prev.includes(canonical) ? prev : [canonical]);
+    } else {
+      setSelectedCategories([]);
+    }
+  }, [categoryParam]);
+
+  const toggleCategory = (slug: string) => {
+    setSelectedCategories(prev => {
+      const canonical = slug === 'sarees' ? 'saree' : slug;
+      const next = prev.includes(canonical) 
+        ? prev.filter(x => x !== canonical) 
+        : [...prev, canonical];
+      
+      const sp = new URLSearchParams(window.location.search);
+      if (next.length === 1) {
+        sp.set('category', next[0]);
+      } else {
+        sp.delete('category');
+      }
+      router.push(`${pathname}?${sp.toString()}`, { scroll: false });
+      return next;
+    });
+  };
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -216,6 +246,15 @@ function ProductsContent() {
   // ── Client-side filtering & sorting ──────────────────────────────────────
   const displayedProducts = (() => {
     let list = [...allProducts];
+
+    // Category filter
+    if (selectedCategories.length > 0) {
+      list = list.filter(p => 
+        p.category?.slug && selectedCategories.some(catSlug => 
+          catSlug === p.category.slug || (catSlug === 'saree' && p.category.slug === 'sarees') || (catSlug === 'sarees' && p.category.slug === 'saree')
+        )
+      );
+    }
 
     // Discount range filter
     if (selectedDiscountRange !== null) {
@@ -336,11 +375,12 @@ function ProductsContent() {
   const clearAllFilters = () => {
     setSelectedSizes([]);
     setSelectedColors([]);
+    setSelectedCategories([]);
     setSelectedDiscountRange(null);
     setPriceRange([0, maxPossible]);
   };
 
-  const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedDiscountRange !== null || priceRange[0] > 0 || priceRange[1] < maxPossible;
+  const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedCategories.length > 0 || selectedDiscountRange !== null || priceRange[0] > 0 || priceRange[1] < maxPossible;
 
   let pageTitle = 'All Products';
   let breadcrumb = 'Shop';
@@ -379,15 +419,17 @@ function ProductsContent() {
       <FilterGroup title="Category">
         <div className="space-y-2 pt-1">
           {displayedCategories.map(cat => {
-            const isActive = categorySlug === cat.slug || (cat.slug === 'saree' && categorySlug === 'sarees');
+            const isChecked = selectedCategories.includes(cat.slug) || (cat.slug === 'saree' && selectedCategories.includes('sarees')) || (cat.slug === 'sarees' && selectedCategories.includes('saree'));
             return (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryClick(cat.slug)}
-                className={`w-full text-left text-sm px-2 py-1.5 rounded-lg transition-colors ${isActive ? 'text-primary font-semibold bg-primary/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}`}
-              >
-                {cat.name}
-              </button>
+              <label key={cat.id} className="flex items-center gap-2.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggleCategory(cat.slug)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                />
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{cat.name}</span>
+              </label>
             );
           })}
         </div>
@@ -466,6 +508,10 @@ function ProductsContent() {
   const activeChips: { label: string; onRemove: () => void }[] = [
     ...selectedSizes.map(s => ({ label: `Size: ${s}`, onRemove: () => toggleSize(s) })),
     ...selectedColors.map(c => ({ label: `Colour: ${c}`, onRemove: () => toggleColor(c) })),
+    ...selectedCategories.map(c => {
+      const catObj = displayedCategories.find(dc => dc.slug === c);
+      return { label: `Category: ${catObj?.name || c}`, onRemove: () => toggleCategory(c) };
+    }),
     ...(selectedDiscountRange !== null ? [{ label: `Discount: ${selectedDiscountRange}%+`, onRemove: () => setSelectedDiscountRange(null) }] : []),
   ];
 
