@@ -193,7 +193,7 @@ export default function AdminCustomersPage() {
               <tr>
                 <th className="px-6 py-4">Customer</th>
                 <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4">Joined</th>
+                <th className="px-6 py-4 hidden md:table-cell">Joined</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -234,7 +234,7 @@ export default function AdminCustomersPage() {
                         <Phone className="w-3.5 h-3.5" /> {user.phone || 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-muted-foreground">
+                    <td className="px-6 py-4 text-muted-foreground hidden md:table-cell">
                       <div className="flex items-center gap-1.5 text-xs">
                         <Calendar className="w-3.5 h-3.5" /> {new Date(user.createdAt).toLocaleDateString()}
                       </div>

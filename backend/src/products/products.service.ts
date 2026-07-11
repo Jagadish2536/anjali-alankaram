@@ -58,7 +58,12 @@ export class ProductsService {
     if (categoryId) {
       where.categoryId = categoryId;
     } else if (categorySlug) {
-      where.category = { slug: categorySlug };
+      if (categorySlug.includes(',')) {
+        const slugs = categorySlug.split(',').map((s: string) => s.trim()).filter(Boolean);
+        where.category = { slug: { in: slugs } };
+      } else {
+        where.category = { slug: categorySlug };
+      }
     }
 
     if (isNewArrival === 'true') {

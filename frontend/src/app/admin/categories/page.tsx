@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 
 // ── Confirm Dialog ───────────────────────────────────────────────
@@ -56,6 +56,13 @@ export default function AdminCategoriesPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedFullImage, setSelectedFullImage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCategories = categories.filter(c =>
+    (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.slug || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -363,64 +370,93 @@ export default function AdminCategoriesPage() {
         </div>
       )}
 
-      <div className="bg-white border rounded-2xl shadow-sm overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-muted/5 text-muted-foreground font-medium border-b">
-            <tr>
-              <th className="px-6 py-4">Image</th>
-              <th className="px-6 py-4">Name</th>
-              <th className="px-6 py-4">Slug</th>
-              <th className="px-6 py-4">Description</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {isLoading ? (
-              <tr><td colSpan={5} className="p-10 text-center animate-pulse">Loading categories...</td></tr>
-            ) : categories.length === 0 ? (
-              <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No categories created yet.</td></tr>
-            ) : (
-              categories.map((cat) => (
-                <tr key={cat.id} className="hover:bg-muted/5 transition-colors">
-                  <td className="px-6 py-4">
-                    <div 
-                      className={`w-12 h-12 rounded-lg overflow-hidden bg-muted/30 border flex items-center justify-center ${cat.image ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                      onClick={() => cat.image && setSelectedFullImage(cat.image)}
-                      title={cat.image ? 'Click to view full image' : undefined}
-                    >
-                      {cat.image ? (
-                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b bg-muted/10 flex items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search categories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-primary outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-muted/5 text-muted-foreground font-medium border-b">
+              <tr>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Slug</th>
+                <th className="px-6 py-4">Default Sizes</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {isLoading ? (
+                <tr><td colSpan={4} className="p-10 text-center animate-pulse">Loading categories...</td></tr>
+              ) : filteredCategories.length === 0 ? (
+                <tr><td colSpan={4} className="p-10 text-center text-muted-foreground">No categories found.</td></tr>
+              ) : (
+                filteredCategories.map((cat) => (
+                  <tr key={cat.id} className="hover:bg-muted/5 transition-colors">
+                    <td className="px-6 py-4 flex items-center gap-4">
+                      <div 
+                        className={`w-12 h-16 rounded overflow-hidden bg-accent/20 border shrink-0 flex items-center justify-center ${cat.image ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                        onClick={() => cat.image && setSelectedFullImage(cat.image)}
+                        title={cat.image ? 'Click to view full image' : undefined}
+                      >
+                        {cat.image ? (
+                          <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium max-w-[200px] truncate" title={cat.name}>{cat.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 max-w-[250px]">{cat.description || 'No description'}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground font-mono text-xs">
+                      /{cat.slug}
+                    </td>
+                    <td className="px-6 py-4">
+                      {cat.sizeGuide && Array.isArray(cat.sizeGuide) && cat.sizeGuide.length > 0 ? (
+                        <span className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded-full w-fit border border-green-100">
+                          {cat.sizeGuide.length} sizes
+                        </span>
                       ) : (
-                        <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-full w-fit">
+                          None
+                        </span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-bold capitalize">{cat.name}</td>
-                  <td className="px-6 py-4 text-muted-foreground">/{cat.slug}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{cat.description || '-'}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => openEdit(cat)}
-                        className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete({ id: cat.id, name: cat.name })}
-                        className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => openEdit(cat)}
+                          className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({ id: cat.id, name: cat.name })}
+                          className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Full Image Preview Modal */}

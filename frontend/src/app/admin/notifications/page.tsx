@@ -9,7 +9,9 @@ import {
   Check, 
   CheckSquare, 
   Loader2,
-  Trash2
+  Trash2,
+  Search,
+  RefreshCw
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -27,15 +29,19 @@ export default function AdminNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (showRefreshIndicator = false) => {
+    if (showRefreshIndicator) setIsRefreshing(true);
     try {
-      const res = await api.get('/notifications');
+      const res = await api.get(`/notifications?t=${Date.now()}`);
       setNotifications(res.data || []);
     } catch (err) {
       console.error('Failed to fetch notifications', err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -115,26 +121,20 @@ export default function AdminNotificationsPage() {
   };
 
   const unreadNotifications = notifications.filter(n => !n.isRead);
-  const displayedNotifications = activeTab === 'all' ? notifications : unreadNotifications;
+  const tabNotifications = activeTab === 'all' ? notifications : unreadNotifications;
+  const displayedNotifications = tabNotifications.filter(n =>
+    (n.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (n.body || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-outfit font-bold text-foreground">Notifications</h1>
           <p className="text-muted-foreground mt-1">Manage system alerts and administrative logs.</p>
         </div>
-        
-        {unreadNotifications.length > 0 && (
-          <button
-            onClick={handleMarkAllAsRead}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-primary/20 text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 active:scale-95 transition-all shadow-sm"
-          >
-            <CheckSquare className="w-4 h-4" />
-            Mark all as read
-          </button>
-        )}
       </div>
 
       {/* Tabs / Filters */}
@@ -171,78 +171,114 @@ export default function AdminNotificationsPage() {
         </button>
       </div>
 
-      {/* Notifications List */}
-      <div className="space-y-4">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading notifications...</p>
+      {/* List Container with Search and Refresh Header */}
+      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b bg-muted/10 flex items-center justify-between gap-4 flex-wrap">
+          <div className="relative flex-1 max-w-md w-full">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search notifications..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm"
+            />
           </div>
-        ) : displayedNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white border border-dashed rounded-2xl p-8 text-center">
-            <div className="p-4 bg-muted/30 rounded-full text-muted-foreground mb-4">
-              <BellOff className="w-8 h-8" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchNotifications(true)}
+              disabled={isRefreshing}
+              className="px-4 py-2 rounded-lg border font-medium bg-white hover:bg-muted text-sm flex items-center gap-2 transition-colors active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            {unreadNotifications.length > 0 && (
+              <button
+                onClick={handleMarkAllAsRead}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+              >
+                <CheckSquare className="w-4 h-4" />
+                Mark all read
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3 animate-pulse">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading notifications...</p>
             </div>
-            <h3 className="font-outfit font-bold text-lg text-foreground">All caught up!</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              {activeTab === 'all' 
-                ? "You don't have any notifications right now." 
-                : "You don't have any unread notifications."}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {displayedNotifications.map((n) => {
-              const iconConfig = getNotificationIcon(n);
-              const Icon = iconConfig.icon;
-              
-              return (
-                <div 
-                  key={n.id} 
-                  className={`flex items-start gap-4 p-5 bg-white border rounded-2xl transition-all shadow-sm hover:shadow-md group relative overflow-hidden ${
-                    !n.isRead ? 'border-primary/20 bg-primary/[0.01]' : 'border-muted'
-                  }`}
-                >
-                  {/* Left Icon */}
-                  <div className={`p-3 rounded-xl border shrink-0 ${iconConfig.bg}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-
-                  {/* Body Content */}
-                  <div className="flex-1 min-w-0 pr-10">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                      <h4 className="font-bold text-foreground text-sm sm:text-base leading-tight truncate">
-                        {n.title}
-                      </h4>
-                      <span 
-                        className="text-xs text-muted-foreground shrink-0"
-                        title={new Date(n.createdAt).toLocaleString()}
-                      >
-                        {formatTimeAgo(n.createdAt)}
-                      </span>
+          ) : displayedNotifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="p-4 bg-muted/30 rounded-full text-muted-foreground mb-4">
+                <BellOff className="w-8 h-8" />
+              </div>
+              <h3 className="font-outfit font-bold text-lg text-foreground">No alerts found</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                {searchQuery 
+                  ? "We couldn't find any notifications matching your search." 
+                  : activeTab === 'all' 
+                  ? "You don't have any notifications right now." 
+                  : "You don't have any unread notifications."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {displayedNotifications.map((n) => {
+                const iconConfig = getNotificationIcon(n);
+                const Icon = iconConfig.icon;
+                
+                return (
+                  <div 
+                    key={n.id} 
+                    className={`flex items-start gap-4 p-5 bg-white border rounded-2xl transition-all shadow-sm hover:shadow-md group relative overflow-hidden ${
+                      !n.isRead ? 'border-primary/20 bg-primary/[0.01]' : 'border-muted'
+                    }`}
+                  >
+                    {/* Left Icon */}
+                    <div className={`p-3 rounded-xl border shrink-0 ${iconConfig.bg}`}>
+                      <Icon className="w-5 h-5" />
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed break-words">
-                      {n.body}
-                    </p>
-                  </div>
 
-                  {/* Action Button */}
-                  {!n.isRead && (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button
-                        onClick={() => handleMarkAsRead(n.id)}
-                        className="p-2 bg-primary text-white rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
-                        title="Mark as Read"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
+                    {/* Body Content */}
+                    <div className="flex-1 min-w-0 pr-10">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                        <h4 className="font-bold text-foreground text-sm sm:text-base leading-tight truncate">
+                          {n.title}
+                        </h4>
+                        <span 
+                          className="text-xs text-muted-foreground shrink-0"
+                          title={new Date(n.createdAt).toLocaleString()}
+                        >
+                          {formatTimeAgo(n.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed break-words">
+                        {n.body}
+                      </p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+
+                    {/* Action Button */}
+                    {!n.isRead && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button
+                          onClick={() => handleMarkAsRead(n.id)}
+                          className="p-2 bg-primary text-white rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
+                          title="Mark as Read"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

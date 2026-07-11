@@ -844,7 +844,7 @@ export default function AdminSettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sidebar */}
-        <div className="space-y-2">
+        <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-3 lg:pb-0 lg:space-y-2">
           {sections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.name;
@@ -853,18 +853,18 @@ export default function AdminSettingsPage() {
                 key={section.name}
                 id={`settings-tab-${section.name.toLowerCase()}`}
                 onClick={() => setActiveSection(section.name)}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
-                  isActive ? 'bg-white border-primary shadow-md ring-1 ring-primary' : 'bg-white hover:border-primary/50 hover:shadow-sm'
+                className={`flex-shrink-0 flex items-center gap-2 lg:gap-4 p-3 lg:p-4 rounded-xl lg:rounded-2xl border transition-all text-left group ${
+                  isActive ? 'bg-white border-primary shadow-sm lg:shadow-md ring-1 ring-primary' : 'bg-white hover:border-primary/50'
                 }`}
               >
-                <div className={`p-2.5 rounded-xl transition-colors ${
+                <div className={`p-2 rounded-lg lg:p-2.5 lg:rounded-xl transition-colors ${
                   isActive ? 'bg-primary text-primary-foreground' : 'bg-muted/20 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                 }`}>
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 lg:w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm">{section.name}</p>
-                  <p className="text-[10px] text-muted-foreground line-clamp-1">{section.desc}</p>
+                  <p className="font-bold text-xs lg:text-sm">{section.name}</p>
+                  <p className="hidden lg:block text-[10px] text-muted-foreground line-clamp-1">{section.desc}</p>
                 </div>
               </button>
             );

@@ -115,8 +115,9 @@ function ProductsContent() {
   const categoryParam = searchParams.get('category') || '';
   useEffect(() => {
     if (categoryParam) {
-      const canonical = categoryParam === 'sarees' ? 'saree' : categoryParam;
-      setSelectedCategories(prev => prev.includes(canonical) ? prev : [canonical]);
+      const slugs = categoryParam.split(',').map(s => s.trim()).filter(Boolean);
+      const canonicals = slugs.map(slug => slug === 'sarees' ? 'saree' : slug);
+      setSelectedCategories(canonicals);
     } else {
       setSelectedCategories([]);
     }
@@ -130,8 +131,8 @@ function ProductsContent() {
         : [...prev, canonical];
       
       const sp = new URLSearchParams(window.location.search);
-      if (next.length === 1) {
-        sp.set('category', next[0]);
+      if (next.length > 0) {
+        sp.set('category', next.join(','));
       } else {
         sp.delete('category');
       }
@@ -156,8 +157,14 @@ function ProductsContent() {
       try {
         const params: any = { limit: 12, t: Date.now() };
         let slug = categorySlug;
-        if (slug === 'sarees') slug = 'saree';
-        if (slug) params.categorySlug = slug;
+        if (slug) {
+          slug = slug
+            .split(',')
+            .map(s => s.trim() === 'sarees' ? 'saree' : s.trim())
+            .filter(Boolean)
+            .join(',');
+          params.categorySlug = slug;
+        }
         if (filter === 'new') params.isNewArrival = 'true';
         if (filter === 'bestseller') params.isBestseller = 'true';
         if (searchQuery) params.search = searchQuery;
@@ -187,8 +194,14 @@ function ProductsContent() {
     try {
       const params: any = { limit: 12, cursor: nextCursor };
       let slug = categorySlug;
-      if (slug === 'sarees') slug = 'saree';
-      if (slug) params.categorySlug = slug;
+      if (slug) {
+        slug = slug
+          .split(',')
+          .map(s => s.trim() === 'sarees' ? 'saree' : s.trim())
+          .filter(Boolean)
+          .join(',');
+        params.categorySlug = slug;
+      }
       if (filter === 'new') params.isNewArrival = 'true';
       if (filter === 'bestseller') params.isBestseller = 'true';
       if (searchQuery) params.search = searchQuery;
@@ -388,7 +401,14 @@ function ProductsContent() {
   else if (filter === 'new') { pageTitle = 'New Arrivals'; breadcrumb = 'New Arrivals'; }
   else if (filter === 'bestseller') { pageTitle = 'Best Sellers'; breadcrumb = 'Best Sellers'; }
   else if (categorySlug) {
-    pageTitle = categorySlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    if (categorySlug.includes(',')) {
+      pageTitle = categorySlug
+        .split(',')
+        .map(slug => slug.trim().split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))
+        .join(', ');
+    } else {
+      pageTitle = categorySlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
     breadcrumb = pageTitle;
   }
 
