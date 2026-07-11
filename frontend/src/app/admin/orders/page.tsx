@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import html2canvas from 'html2canvas';
 import {
   Search, X, Package, Loader2, RefreshCw, Eye, Printer
 } from 'lucide-react';
@@ -47,6 +48,34 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Print Label ────────────────────────────────────────────────────
 function printOrderLabel(order: any, storeAddress?: string) {
+  // Expose download handler globally on parent window so child popup can trigger it
+  (window as any).downloadLabelFromPopup = async (popupWin: Window, orderNum: string, btnElement?: HTMLButtonElement) => {
+    const element = popupWin.document.getElementById('label-content');
+    if (!element) {
+      popupWin.alert('Label content element not found!');
+      return;
+    }
+    if (btnElement) {
+      btnElement.disabled = true;
+      btnElement.innerText = '⌛ Downloading...';
+    }
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const link = popupWin.document.createElement('a');
+      link.download = `Order-Label-${orderNum}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err: any) {
+      popupWin.alert('Download failed: ' + err.message);
+    } finally {
+      if (btnElement) {
+        btnElement.disabled = false;
+        btnElement.innerText = '📥 Download JPG';
+      }
+    }
+  };
+
   const w = window.open('', '_blank', 'width=600,height=800');
   if (!w) return;
   const items = (order.items || []).map((it: any) =>
@@ -66,51 +95,10 @@ function printOrderLabel(order: any, storeAddress?: string) {
   .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
   @media print{button{display:none;}}
   </style>
-  <script>
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        if (window.html2canvas) {
-          resolve();
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load html2canvas library'));
-        document.head.appendChild(script);
-      });
-    }
-
-    async function downloadLabelAsJpg() {
-      const btn = document.activeElement;
-      if (btn) {
-        btn.disabled = true;
-        btn.innerText = '⌛ Downloading...';
-      }
-      try {
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-        const element = document.getElementById('label-content');
-        if (!element) return;
-        const canvas = await window.html2canvas(element, { scale: 2, useCORS: true });
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-        const link = document.createElement('a');
-        link.download = 'Order-Label-${order.orderNumber}.jpg';
-        link.href = dataUrl;
-        link.click();
-      } catch (err) {
-        alert('Download failed: ' + err.message);
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = '📥 Download JPG';
-        }
-      }
-    }
-  </script>
   </head><body>
   <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
     <button onclick="window.print()" style="padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
-    <button onclick="downloadLabelAsJpg()" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
+    <button onclick="if (window.opener && window.opener.downloadLabelFromPopup) { window.opener.downloadLabelFromPopup(window, '${order.orderNumber}', this); } else { alert('Parent window reference lost. Please keep the main window open.'); }" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
     <button onclick="window.close()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">❌ Close</button>
   </div>
   <div id="label-content" style="border:2px solid #111;border-radius:8px;padding:20px;background:white;">
