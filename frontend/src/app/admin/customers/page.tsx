@@ -159,7 +159,7 @@ export default function AdminCustomersPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="container py-6 sm:py-10 space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-outfit font-bold text-foreground">Customer Directory</h1>

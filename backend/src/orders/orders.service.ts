@@ -398,38 +398,100 @@ export class OrdersService {
     // Fetch tracking details from shipping service
     const events = await this.shippingService.trackShipment(order.awbCode);
 
-    // If the latest event status is "Delivered" (or contains "deliver" case-insensitively),
-    // and the order status is not already DELIVERED, update it!
+    // Parse latest tracking status and automatically transition intermediate states!
     if (events && events.length > 0) {
       // Find latest event (sort by timestamp descending)
       const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       const latest = sortedEvents[0];
-      
-      const isDeliveredEvent = latest.status.toLowerCase().includes('deliver');
-      if (isDeliveredEvent && order.status !== 'DELIVERED') {
+      const statusText = latest.status.toLowerCase();
+
+      let targetStatus: any = null;
+      if (statusText.includes('deliver')) {
+        targetStatus = 'DELIVERED';
+      } else if (statusText.includes('out for delivery')) {
+        targetStatus = 'OUT_FOR_DELIVERY';
+      } else if (statusText.includes('transit') || statusText.includes('dispatched') || statusText.includes('hub') || statusText.includes('route') || statusText.includes('received')) {
+        targetStatus = 'IN_TRANSIT';
+      }
+
+      if (targetStatus && order.status !== targetStatus) {
+        // Enforce status flow priority
+        const statusPriority: Record<string, number> = {
+          'SHIPPED': 1,
+          'IN_TRANSIT': 2,
+          'OUT_FOR_DELIVERY': 3,
+          'DELIVERED': 4
+        };
+        const currentPri = statusPriority[order.status] || 0;
+        const targetPri = statusPriority[targetStatus] || 0;
+
+        if (targetPri > currentPri) {
+          const oldStatus = order.status;
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: {
+              status: targetStatus,
+              ...(targetStatus === 'DELIVERED' && { deliveredAt: new Date() }),
+            },
+          });
+          order.status = targetStatus;
+          
+          await this.statusHistory.append({
+            orderId: order.id,
+            toStatus: targetStatus,
+            fromStatus: oldStatus,
+            actorRole: 'SYSTEM',
+            notes: `Auto-updated to ${targetStatus} via courier delivery tracking`,
+          });
+          
+          // Trigger customer notification
+          const notifType = targetStatus === 'IN_TRANSIT' ? 'ORDER_UPDATE' : `ORDER_${targetStatus}`;
+          await this.notificationsService
+            .sendOrderNotification(order.userId, notifType as any, order.id, order.orderNumber)
+            .catch(() => {});
+          
+          // Trigger customer email if DELIVERED
+          if (targetStatus === 'DELIVERED') {
+            const user = await this.prisma.user.findUnique({
+              where: { id: order.userId },
+              select: { email: true, name: true },
+            });
+            if (user?.email) {
+              this.emailService.sendOrderDelivered(user.email, {
+                customerName: user.name || 'Customer',
+                orderNumber: order.orderNumber,
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback: if automatic tracking is not working/available, auto-deliver after 10 days of being Shipped
+      const shippedTime = order.shippedAt ? new Date(order.shippedAt).getTime() : new Date(order.createdAt).getTime();
+      const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+      if (Date.now() - shippedTime >= tenDaysMs && order.status !== 'DELIVERED' && !['CANCELLED', 'REFUNDED', 'RETURNED'].includes(order.status)) {
+        const oldStatus = order.status;
         await this.prisma.order.update({
           where: { id: order.id },
           data: {
             status: 'DELIVERED',
-            deliveredAt: new Date(),
+            deliveredAt: new Date(shippedTime + tenDaysMs),
           },
         });
         order.status = 'DELIVERED';
-        
+
         await this.statusHistory.append({
           orderId: order.id,
           toStatus: 'DELIVERED',
-          fromStatus: order.status,
+          fromStatus: oldStatus,
           actorRole: 'SYSTEM',
-          notes: 'Auto-updated to DELIVERED via courier delivery tracking',
+          notes: 'Auto-updated to DELIVERED (10-day shipping fallback - tracking unavailable)',
         });
-        
-        // Trigger customer notification
+
         await this.notificationsService
           .sendOrderNotification(order.userId, 'ORDER_DELIVERED', order.id, order.orderNumber)
           .catch(() => {});
 
-        // Trigger customer email
         const user = await this.prisma.user.findUnique({
           where: { id: order.userId },
           select: { email: true, name: true },

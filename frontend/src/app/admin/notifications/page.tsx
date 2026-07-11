@@ -128,7 +128,7 @@ export default function AdminNotificationsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="container py-6 sm:py-10 space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

@@ -70,6 +70,10 @@ export class NotificationsService {
         title = 'Refund Status Update 💰';
         body = `There is an update on your refund status for order #${orderNumber}.`;
         break;
+      case 'ORDER_UPDATE':
+        title = 'Order In Transit 🚚';
+        body = `Your order #${orderNumber} is now in transit.`;
+        break;
       case 'PAYMENT_SUCCESS':
         title = 'Payment Successful! 💳';
         body = `Your payment for order #${orderNumber} was successful.`;

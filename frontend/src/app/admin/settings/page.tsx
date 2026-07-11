@@ -824,7 +824,7 @@ export default function AdminSettingsPage() {
   const set = (key: string) => (val: any) => setFormData(prev => ({ ...prev, [key]: val }));
 
   return (
-    <div className="space-y-10">
+    <div className="container py-6 sm:py-10 space-y-10">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-outfit font-bold">Settings</h1>

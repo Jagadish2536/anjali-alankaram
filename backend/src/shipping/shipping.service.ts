@@ -270,6 +270,67 @@ export class ShippingService {
         },
       ];
     }
+
+    // Try to find the order by AWB code to fetch shippedAt/createdAt timestamps
+    let order: any = null;
+    try {
+      order = await this.prisma.order.findFirst({
+        where: { awbCode: awb },
+      });
+    } catch (e) {
+      this.logger.error(`Failed to find order for AWB ${awb}: ${e.message}`);
+    }
+
+    // If using the Mock provider and order exists, simulate a real-time tracking progression!
+    if (order && this.provider instanceof MockShippingProvider) {
+      const startTime = order.shippedAt ? new Date(order.shippedAt).getTime() : new Date(order.updatedAt || order.createdAt).getTime();
+      const elapsedMs = Date.now() - startTime;
+
+      // Phase-based tracking event generation:
+      // - 0s: Shipment Picked Up
+      // - 30s: In Transit
+      // - 60s: Out for Delivery
+      // - 90s: Delivered
+      const events: TrackingEvent[] = [
+        {
+          status: 'Shipment Picked Up',
+          location: 'Main Warehouse',
+          timestamp: new Date(startTime),
+          description: 'Package picked up from warehouse',
+        }
+      ];
+
+      if (elapsedMs >= 30000) {
+        events.push({
+          status: 'In Transit',
+          location: 'Regional Sorting Hub',
+          timestamp: new Date(startTime + 30000),
+          description: 'Package in transit to destination hub',
+        });
+      }
+
+      if (elapsedMs >= 60000) {
+        events.push({
+          status: 'Out for Delivery',
+          location: 'Local Delivery Office',
+          timestamp: new Date(startTime + 60000),
+          description: 'Package out for delivery with postman',
+        });
+      }
+
+      if (elapsedMs >= 90000) {
+        events.push({
+          status: 'Delivered',
+          location: 'Customer Address',
+          timestamp: new Date(startTime + 90000),
+          description: 'Package successfully delivered and signed by customer',
+        });
+      }
+
+      // Sort by timestamp desc to return the latest status first
+      return events.reverse();
+    }
+
     try {
       return await this.provider.trackShipment(awb);
     } catch (e) {

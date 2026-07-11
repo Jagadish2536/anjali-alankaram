@@ -11,7 +11,7 @@ import {
   Package, Truck, CheckCircle2, ChevronLeft, AlertCircle,
   XCircle, Clock, RotateCcw, RefreshCw, MapPin, CreditCard,
   Loader2, Check, ExternalLink, ShieldCheck,
-  PackageCheck, Zap, Bell, Warehouse, AlertTriangle, X
+  PackageCheck, Zap, Bell, Warehouse, AlertTriangle, X, Copy
 } from 'lucide-react';
 
 // ─── Status definitions ────────────────────────────────────────────
@@ -453,6 +453,7 @@ export default function OrderDetailPage() {
   const [showHistory, setShowHistory] = useState(false);
   const pollRef = useRef<any>(null);
   const [transitEvents, setTransitEvents] = useState<any[]>([]);
+  const [copied, setCopied] = useState(false);
 
   // ── Retry payment state ────────────────────────────────────────────
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
@@ -460,6 +461,13 @@ export default function OrderDetailPage() {
   const countdownRef = useRef<any>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
+
+  const handleCopyAwb = (awb: string) => {
+    if (!awb) return;
+    navigator.clipboard.writeText(awb);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -567,7 +575,7 @@ export default function OrderDetailPage() {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
-    pollRef.current = setInterval(fetchOrder, 30000); // poll every 30s
+    pollRef.current = setInterval(fetchOrder, 10000); // poll every 10s for fast live updates
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [order?.status, fetchOrder]);
 
@@ -861,7 +869,25 @@ export default function OrderDetailPage() {
               <div className="mt-5 pt-4 border-t flex items-center gap-3 text-sm flex-wrap">
                 <Truck className="w-4 h-4 text-primary shrink-0" />
                 {order.courierName && <span className="font-medium">{order.courierName}</span>}
-                <span className="text-muted-foreground">AWB: <strong className="font-mono text-foreground">{order.awbCode}</strong></span>
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  AWB: <strong className="font-mono text-foreground">{order.awbCode}</strong>
+                  <button
+                    onClick={() => handleCopyAwb(order.awbCode)}
+                    className="p-1 hover:bg-slate-100 rounded text-muted-foreground hover:text-foreground transition-colors relative flex items-center justify-center"
+                    title="Copy AWB Code"
+                  >
+                    {copied ? (
+                      <Check className="w-3.5 h-3.5 text-green-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    {copied && (
+                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[9px] bg-slate-800 text-white rounded shadow-md font-sans font-medium whitespace-nowrap animate-in fade-in zoom-in-90 duration-150">
+                        Copied!
+                      </span>
+                    )}
+                  </button>
+                </span>
                 {order.trackingUrl && (
                   <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer"
                     className="text-primary font-bold hover:underline flex items-center gap-1 ml-auto">
@@ -873,28 +899,56 @@ export default function OrderDetailPage() {
 
             {/* Live transit details */}
             {order.awbCode && transitEvents.length > 0 && (
-              <div className="mt-6 pt-6 border-t">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
-                  <Truck className="w-3.5 h-3.5 text-primary" /> Live Shipment Transit Logs
+              <div className="mt-8 pt-6 border-t">
+                <h3 className="text-base font-bold text-red-900 font-outfit uppercase tracking-wider mb-6">
+                  Routing Steps
                 </h3>
-                <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                  {transitEvents.map((ev, i) => (
-                    <div key={i} className="flex gap-3 relative pb-4 last:pb-0 border-l border-gray-150 pl-4 ml-1.5">
-                      <div className={`absolute left-[-4.5px] top-1.5 w-2 h-2 rounded-full ${i === 0 ? 'bg-primary animate-pulse' : 'bg-gray-300'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-foreground leading-snug">{ev.status}</p>
-                          <p className="text-[10px] text-muted-foreground font-semibold">
-                            {new Date(ev.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {new Date(ev.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                <div className="bg-white border rounded-2xl p-4 sm:p-6 shadow-sm divide-y divide-gray-100">
+                  {transitEvents.map((ev, i) => {
+                    const dateObj = new Date(ev.timestamp);
+                    const formattedDate = dateObj.toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    });
+                    const formattedTime = dateObj.toLocaleTimeString('en-GB', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: false
+                    });
+
+                    return (
+                      <div key={i} className="flex items-stretch gap-4 py-4 first:pt-0 last:pb-0">
+                        {/* Date & Time */}
+                        <div className="w-20 sm:w-24 shrink-0 flex flex-col justify-center text-slate-800">
+                          <span className="text-xs sm:text-sm font-bold tracking-tight">{formattedDate}</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-mono font-medium">{formattedTime}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ev.description}</p>
-                        {ev.location && (
-                          <p className="text-[10px] text-primary/80 font-bold mt-1">📍 {ev.location}</p>
-                        )}
+
+                        {/* Thick vertical green separator */}
+                        <div className="w-[3px] bg-green-500 rounded-full shrink-0 self-stretch my-1" />
+
+                        {/* Check Circle Icon */}
+                        <div className="flex items-center justify-center shrink-0 pl-1">
+                          <div className="w-6 h-6 rounded-full bg-green-50 border border-green-500 flex items-center justify-center text-green-500 shadow-sm shrink-0">
+                            <Check className="w-3.5 h-3.5 stroke-[3px]" />
+                          </div>
+                        </div>
+
+                        {/* Event details */}
+                        <div className="flex-1 min-w-0 pl-1 flex flex-col justify-center">
+                          <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">{ev.status}</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 font-medium leading-relaxed">
+                            {ev.description || ev.location}
+                          </p>
+                          {ev.location && (
+                            <p className="text-[10px] text-primary/80 font-bold mt-1">📍 {ev.location}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

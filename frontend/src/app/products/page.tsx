@@ -384,13 +384,17 @@ function ProductsContent() {
 
   const toggleColor = (color: string) =>
     setSelectedColors(prev => prev.includes(color) ? prev.filter(x => x !== color) : [...prev, color]);
-
   const clearAllFilters = () => {
     setSelectedSizes([]);
     setSelectedColors([]);
     setSelectedCategories([]);
     setSelectedDiscountRange(null);
     setPriceRange([0, maxPossible]);
+
+    const sp = new URLSearchParams(window.location.search);
+    sp.delete('category');
+    sp.delete('search');
+    router.push(`${pathname}?${sp.toString()}`, { scroll: false });
   };
 
   const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedCategories.length > 0 || selectedDiscountRange !== null || priceRange[0] > 0 || priceRange[1] < maxPossible;

@@ -566,6 +566,7 @@ export default function OrderDetailPage() {
 
   // Transit Logs State
   const [transitEvents, setTransitEvents] = useState<any[]>([]);
+  const pollRef = useRef<any>(null);
 
   // Image lightbox state
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -609,6 +610,18 @@ export default function OrderDetailPage() {
     }
     fetchSettings();
   }, [id, fetchSettings]);
+
+  // Polling for live shipping status updates until order reaches terminal state
+  useEffect(() => {
+    if (!order) return;
+    const terminalStatuses = ['DELIVERED', 'CANCELLED', 'REFUNDED'];
+    if (terminalStatuses.includes(order.status)) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    pollRef.current = setInterval(fetchOrder, 10000); // poll every 10s for fast live updates
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [order?.status, id]);
 
   const showToast = (msg: string) => {
     setToast(msg);

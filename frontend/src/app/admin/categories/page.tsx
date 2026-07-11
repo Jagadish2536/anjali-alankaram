@@ -165,7 +165,7 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="container py-6 sm:py-10 space-y-6 sm:space-y-8">
       {feedback && (
         <div className={`fixed top-6 right-6 z-[100] shadow-lg flex items-center gap-2.5 px-4 py-3 rounded-2xl border font-semibold text-sm animate-in fade-in slide-in-from-top-3 ${
           feedback.type === 'success'
