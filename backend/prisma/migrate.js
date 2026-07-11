@@ -268,6 +268,21 @@ async function main() {
     `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "offerDiscount" DECIMAL(10,2) NOT NULL DEFAULT 0`,
     `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "offerId" TEXT`,
     `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "offerTitle" TEXT`,
+    `ALTER TABLE "offers" ADD COLUMN IF NOT EXISTS "offerType" TEXT NOT NULL DEFAULT 'BUY_X_GET_Y'`,
+    `ALTER TABLE "offers" ADD COLUMN IF NOT EXISTS "offerPrice" DECIMAL(10,2)`,
+    `ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "sizeGuide" JSONB`,
+    `CREATE TABLE IF NOT EXISTS "restock_notifications" (
+      "id" TEXT NOT NULL,
+      "email" TEXT NOT NULL,
+      "productId" TEXT NOT NULL,
+      "variantId" TEXT NOT NULL,
+      "isSent" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "restock_notifications_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "restock_notifications_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "restock_notifications_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
   ];
 
   for (const sql of alterations) {

@@ -511,6 +511,52 @@ const BACKGROUND_COLORS = [
   { label: 'Warm Cream', value: '#FAF4E8' }
 ];
 
+interface SettingsFormData {
+  storeName: string;
+  supportEmail: string;
+  supportPhone: string;
+  whatsappNumber: string;
+  instagramUrl: string;
+  maintenanceMode: boolean;
+  require2FA: boolean;
+  notifyNewOrder: boolean;
+  notifyLowStock: boolean;
+  notifyCustomerSignup: boolean;
+  currency: string;
+  currencySymbol: string;
+  gstEnabled: boolean;
+  gstRate: number | string;
+  freeShippingThreshold: number | string;
+  shippingEnabled: boolean;
+  shippingCharge: number | string;
+  codEnabled: boolean;
+  codCharges: number | string;
+  platformFeeEnabled: boolean;
+  platformFeeAmount: number | string;
+  couponsEnabled: boolean;
+  giftEnabled: boolean;
+  giftAmount: number | string;
+  storeDescription: string;
+  storeAddress: string;
+  businessHours: string;
+  contactEmail: string;
+  contactPhone: string;
+  returnPolicyDays: number;
+  footerCategories: string;
+  marqueeText: string;
+  heroImageUrl: string;
+  heroLeftImageUrl: string;
+  heroImage3Url: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroTitleEnabled: boolean;
+  heroSubtitleEnabled: boolean;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  [key: string]: any;
+}
+
 export default function AdminSettingsPage() {
   const { updateSettings } = useSettingsStore();
   const { user, setUser } = useAuthStore();
@@ -520,7 +566,7 @@ export default function AdminSettingsPage() {
   const [isHydrated, setIsHydrated] = useState(false);
 
   // ── General / Security / Notifications / Regional form state ──────────────
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SettingsFormData>({
     storeName: 'Anjali Alankaram',
     supportEmail: 'support@anjalialankaram.com',
     supportPhone: '+91 9876543210',
@@ -686,6 +732,22 @@ export default function AdminSettingsPage() {
       try {
         payload.footerCategories = JSON.parse(formData.footerCategories || '[]');
       } catch { payload.footerCategories = []; }
+
+      const numericFields = [
+        'gstRate',
+        'freeShippingThreshold',
+        'shippingCharge',
+        'codCharges',
+        'platformFeeAmount',
+        'giftAmount',
+      ];
+      numericFields.forEach(f => {
+        if (payload[f] === '' || payload[f] === undefined || payload[f] === null) {
+          payload[f] = 0;
+        } else {
+          payload[f] = parseFloat(String(payload[f])) || 0;
+        }
+      });
 
       await api.post('/settings', payload);
       updateSettings(payload);
@@ -1378,7 +1440,7 @@ export default function AdminSettingsPage() {
                           step={0.5}
                           className="w-full px-4 py-2.5 pr-10 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                           value={formData.gstRate}
-                          onChange={e => setFormData(prev => ({ ...prev, gstRate: parseFloat(e.target.value) || 0 }))}
+                          onChange={e => setFormData(prev => ({ ...prev, gstRate: e.target.value }))}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">%</span>
                       </div>
@@ -1410,7 +1472,7 @@ export default function AdminSettingsPage() {
                               min={0}
                               className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                               value={formData.freeShippingThreshold}
-                              onChange={e => setFormData(prev => ({ ...prev, freeShippingThreshold: parseFloat(e.target.value) || 0 }))}
+                              onChange={e => setFormData(prev => ({ ...prev, freeShippingThreshold: e.target.value }))}
                             />
                           </div>
                         </Field>
@@ -1422,7 +1484,7 @@ export default function AdminSettingsPage() {
                               min={0}
                               className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                               value={formData.shippingCharge}
-                              onChange={e => setFormData(prev => ({ ...prev, shippingCharge: parseFloat(e.target.value) || 0 }))}
+                              onChange={e => setFormData(prev => ({ ...prev, shippingCharge: e.target.value }))}
                             />
                           </div>
                         </Field>
@@ -1462,7 +1524,7 @@ export default function AdminSettingsPage() {
                           min={0}
                           className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                           value={formData.codCharges}
-                          onChange={e => setFormData(prev => ({ ...prev, codCharges: parseFloat(e.target.value) || 0 }))}
+                          onChange={e => setFormData(prev => ({ ...prev, codCharges: e.target.value }))}
                         />
                       </div>
                     </Field>
@@ -1491,13 +1553,13 @@ export default function AdminSettingsPage() {
                           step={1}
                           className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                           value={formData.platformFeeAmount}
-                          onChange={e => setFormData(prev => ({ ...prev, platformFeeAmount: parseFloat(e.target.value) || 0 }))}
+                          onChange={e => setFormData(prev => ({ ...prev, platformFeeAmount: e.target.value }))}
                           placeholder="e.g. 29"
                         />
                       </div>
                     </Field>
                   )}
-                  {formData.platformFeeEnabled && formData.platformFeeAmount > 0 && (
+                  {formData.platformFeeEnabled && Number(formData.platformFeeAmount) > 0 && (
                     <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                       <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <p className="text-xs text-amber-800">
@@ -1536,7 +1598,7 @@ export default function AdminSettingsPage() {
                         type="number" min={0} step={1}
                         className="w-full pl-8 pr-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
                         value={formData.giftAmount}
-                        onChange={e => setFormData(prev => ({ ...prev, giftAmount: parseFloat(e.target.value) || 0 }))}
+                        onChange={e => setFormData(prev => ({ ...prev, giftAmount: e.target.value }))}
                         placeholder="e.g. 35"
                       />
                     </div>

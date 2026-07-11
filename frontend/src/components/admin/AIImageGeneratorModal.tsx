@@ -274,7 +274,7 @@ export default function AIImageGeneratorModal({
           setIsGenerating(false);
           setStep(4);
           setGenerationProgress(100);
-          showToast('success', `✨ AI images generated successfully!`);
+          showToast('success', `✨ AI image generated successfully!`);
         } else if (data.status === 'FAILED') {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           setError('Generation job failed. Check backend logs for OpenAI issues.');
@@ -282,8 +282,8 @@ export default function AIImageGeneratorModal({
           setSession(null);
         } else if (data.status === 'GENERATING') {
           const posesDone = data.generatedKeys?.length || 0;
-          setStatusMessage(`Generating pose ${posesDone + 1}/4...`);
-          setGenerationProgress(20 + (posesDone * 20)); // Incremental progress bar
+          setStatusMessage(`Generating pose ${posesDone + 1}/1...`);
+          setGenerationProgress(20 + (posesDone * 80)); // Incremental progress bar
         } else if (data.status === 'QUEUED') {
           setStatusMessage('Waiting in SQS queue for worker...');
           setGenerationProgress(10);
@@ -515,7 +515,7 @@ export default function AIImageGeneratorModal({
                     Additional Instructions <span className="text-slate-400 font-normal">(optional)</span>
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Add any specific requirements. The AI will generate 4 poses with a randomly selected background.
+                    Add any specific requirements. The AI will generate a pose with a randomly selected background.
                   </p>
                 </div>
                 <textarea
@@ -605,18 +605,19 @@ export default function AIImageGeneratorModal({
                         <p>No images remaining in this session</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className={session.generatedUrls.length === 1 ? "flex justify-center" : "grid grid-cols-2 gap-3"}>
                         {session.generatedUrls.map((img) => (
-                          <ImageCard
-                            key={img.key}
-                            image={img}
-                            isApproved={approvedImages.has(img.key)}
-                            onApprove={() => handleApprove(img)}
-                            onReject={() => handleReject(img)}
-                            onDownload={() => handleDownload(img)}
-                            onZoom={() => setZoomedImage(img.url)}
-                            isLoading={loadingKey === img.key}
-                          />
+                          <div key={img.key} className={session.generatedUrls.length === 1 ? "w-full max-w-sm" : ""}>
+                            <ImageCard
+                              image={img}
+                              isApproved={approvedImages.has(img.key)}
+                              onApprove={() => handleApprove(img)}
+                              onReject={() => handleReject(img)}
+                              onDownload={() => handleDownload(img)}
+                              onZoom={() => setZoomedImage(img.url)}
+                              isLoading={loadingKey === img.key}
+                            />
+                          </div>
                         ))}
                       </div>
                     )}
@@ -657,7 +658,7 @@ export default function AIImageGeneratorModal({
                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-white transition-all"
                     style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}
                   >
-                    <Sparkles className="w-4 h-4" /> Generate 4 Poses
+                    <Sparkles className="w-4 h-4" /> Generate Image
                   </button>
                 )}
               </div>

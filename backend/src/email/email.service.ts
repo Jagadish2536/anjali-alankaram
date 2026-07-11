@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class EmailService {
@@ -9,6 +10,7 @@ export class EmailService {
 
   constructor(
     private config: ConfigService,
+    private prisma: PrismaService,
     @InjectQueue('email') private readonly emailQueue: Queue,
   ) {}
 
@@ -35,8 +37,30 @@ export class EmailService {
     }
   }
 
+  private async getContactInfo() {
+    try {
+      const settings = await this.prisma.storeSettings.findFirst();
+      if (settings) {
+        return {
+          whatsappNumber: settings.whatsappNumber || '+91 9876543210',
+          whatsappFormatted: settings.whatsappNumber?.replace(/\+/g, '').replace(/\s+/g, '') || '919876543210',
+          instagramUrl: settings.instagramUrl || 'https://instagram.com/anjalialankaram',
+          instagramHandle: '@anjalialankaram',
+        };
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to fetch store settings for email template: ${err.message}`);
+    }
+    return {
+      whatsappNumber: '+91 9876543210',
+      whatsappFormatted: '919876543210',
+      instagramUrl: 'https://instagram.com/anjalialankaram',
+      instagramHandle: '@anjalialankaram',
+    };
+  }
+
   // ── Shared HTML wrapper ───────────────────────────────────────────────
-  private wrap(content: string): string {
+  private wrap(content: string, contact: any): string {
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -74,7 +98,7 @@ export class EmailService {
               &copy; 2025 Anjali Alankaram · All rights reserved<br>
               <a href="https://anjalialankaram.com" style="color:#c06080;text-decoration:none;">anjalialankaram.com</a>
               &nbsp;|&nbsp;
-              <a href="https://wa.me/917032492775" style="color:#c06080;text-decoration:none;">WhatsApp Support</a>
+              <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#c06080;text-decoration:none;">WhatsApp Support</a>
             </p>
           </td>
         </tr>
@@ -88,6 +112,7 @@ export class EmailService {
 
   // ── 1. OTP Email ──────────────────────────────────────────────────────
   async sendOtpEmail(to: string, otp: string, purpose: 'login' | 'reset' = 'reset'): Promise<void> {
+    const contact = await this.getContactInfo();
     const isReset = purpose === 'reset';
     const subject = isReset
       ? 'Reset Your Password — Anjali Alankaram'
@@ -113,7 +138,7 @@ export class EmailService {
         If you did not request this, please ignore this email.
       </p>`;
 
-    await this.send(to, subject, this.wrap(content));
+    await this.send(to, subject, this.wrap(content, contact));
   }
 
   // ── 2. Order Confirmation ─────────────────────────────────────────────
@@ -128,6 +153,7 @@ export class EmailService {
     paymentMethod: string;
     address: string;
   }): Promise<void> {
+    const contact = await this.getContactInfo();
     const itemRows = data.items.map(i => `
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #f0e8e0;color:#333;font-size:14px;">
@@ -214,7 +240,7 @@ export class EmailService {
         </a>
       </div>`;
 
-    await this.send(to, `Order Confirmed ✅ — #${data.orderNumber}`, this.wrap(content));
+    await this.send(to, `Order Confirmed ✅ — #${data.orderNumber}`, this.wrap(content, contact));
   }
 
   // ── 3. Order Shipped ──────────────────────────────────────────────────
@@ -225,6 +251,7 @@ export class EmailService {
     awbCode: string;
     trackingUrl?: string;
   }): Promise<void> {
+    const contact = await this.getContactInfo();
     const content = `
       <h2 style="color:#8B0030;margin:0 0 8px;">🚚 Your Order is Shipped!</h2>
       <p style="color:#555;margin:0 0 24px;font-size:15px;">
@@ -254,10 +281,10 @@ export class EmailService {
 
       <p style="color:#888;font-size:13px;margin:0;">
         Expected delivery in 3-7 business days.<br>
-        Questions? WhatsApp us at <a href="https://wa.me/917032492775" style="color:#8B0030;">+91 70324 92775</a>
+        Questions? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
       </p>`;
 
-    await this.send(to, `Your Order is On the Way! 🚚 — #${data.orderNumber}`, this.wrap(content));
+    await this.send(to, `Your Order is On the Way! 🚚 — #${data.orderNumber}`, this.wrap(content, contact));
   }
 
   // ── 4. Order Delivered ────────────────────────────────────────────────
@@ -265,6 +292,7 @@ export class EmailService {
     customerName: string;
     orderNumber: string;
   }): Promise<void> {
+    const contact = await this.getContactInfo();
     const content = `
       <h2 style="color:#8B0030;margin:0 0 8px;">🎉 Order Delivered!</h2>
       <p style="color:#555;margin:0 0 24px;font-size:15px;">
@@ -279,11 +307,11 @@ export class EmailService {
       </div>
 
       <p style="color:#888;font-size:13px;margin:0;">
-        Love your saree? Share it on Instagram <a href="https://instagram.com/jagadishvarma99" style="color:#8B0030;">@jagadishvarma99</a><br>
-        Any issues? WhatsApp us at <a href="https://wa.me/917032492775" style="color:#8B0030;">+91 70324 92775</a>
+        Love your saree? Share it on Instagram <a href="${contact.instagramUrl}" style="color:#8B0030;">${contact.instagramHandle}</a><br>
+        Any issues? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
       </p>`;
 
-    await this.send(to, `Delivered! 🎉 Your Order #${data.orderNumber}`, this.wrap(content));
+    await this.send(to, `Delivered! 🎉 Your Order #${data.orderNumber}`, this.wrap(content, contact));
   }
 
   // ── 5. Order Cancelled ────────────────────────────────────────────────
@@ -292,6 +320,7 @@ export class EmailService {
     orderNumber: string;
     reason?: string;
   }): Promise<void> {
+    const contact = await this.getContactInfo();
     const content = `
       <h2 style="color:#8B0030;margin:0 0 8px;">❌ Order Cancelled</h2>
       <p style="color:#555;margin:0 0 24px;font-size:15px;">
@@ -301,10 +330,10 @@ export class EmailService {
       </p>
       <p style="color:#888;font-size:13px;margin:0;">
         If a payment was made, refund will be processed within 5-7 business days.<br>
-        Questions? WhatsApp us at <a href="https://wa.me/917032492775" style="color:#8B0030;">+91 70324 92775</a>
+        Questions? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
       </p>`;
 
-    await this.send(to, `Order Cancelled — #${data.orderNumber}`, this.wrap(content));
+    await this.send(to, `Order Cancelled — #${data.orderNumber}`, this.wrap(content, contact));
   }
 
   // ── 6. Order Refunded ──────────────────────────────────────────────────
@@ -314,6 +343,7 @@ export class EmailService {
     amount: number;
     status: 'REFUND_INITIATED' | 'REFUNDED';
   }): Promise<void> {
+    const contact = await this.getContactInfo();
     const isInitiated = data.status === 'REFUND_INITIATED';
     const subject = isInitiated
       ? `Refund Initiated — #${data.orderNumber}`
@@ -347,9 +377,49 @@ export class EmailService {
       </div>
       <p style="color:#888;font-size:13px;margin:0;">
         It usually takes 5-7 business days for the refund to reflect in your original payment method.<br>
-        Questions? WhatsApp us at <a href="https://wa.me/917032492775" style="color:#8B0030;">+91 70324 92775</a>
+        Questions? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
       </p>`;
 
-    await this.send(to, subject, this.wrap(content));
+    await this.send(to, subject, this.wrap(content, contact));
+  }
+
+  // ── 7. Restock Notification ───────────────────────────────────────────
+  async sendRestockNotification(to: string, data: {
+    productName: string;
+    productUrl: string;
+    productImage?: string;
+    size?: string;
+    color?: string;
+  }): Promise<void> {
+    const contact = await this.getContactInfo();
+    const content = `
+      <h2 style="color:#8B0030;margin:0 0 8px;">✨ Back in Stock!</h2>
+      <p style="color:#555;margin:0 0 20px;font-size:15px;">
+        Good news! The item you wanted has been restocked and is available now.
+      </p>
+
+      <div style="background:#FDF5EC;border-radius:12px;padding:20px;margin:0 0 24px;display:flex;align-items:center;gap:15px;">
+        ${data.productImage ? `<img src="${data.productImage}" alt="${data.productName}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #f0e8e0;margin-right:15px;" />` : ''}
+        <div>
+          <h3 style="color:#8B0030;margin:0 0 6px;font-size:16px;">${data.productName}</h3>
+          <p style="margin:0;color:#666;font-size:13px;line-height:1.5;">
+            ${data.size ? `Size: <strong>${data.size}</strong><br>` : ''}
+            ${data.color ? `Colour: <strong>${data.color}</strong>` : ''}
+          </p>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin:0 0 24px;">
+        <a href="${data.productUrl}" style="background:#8B0030;color:#FDF5EC;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:bold;display:inline-block;">
+          Shop Now →
+        </a>
+      </div>
+
+      <p style="color:#888;font-size:13px;margin:0;">
+        Hurry, stock is limited!<br>
+        Questions? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
+      </p>`;
+
+    await this.send(to, `Back in Stock: ${data.productName} 🎉`, this.wrap(content, contact));
   }
 }

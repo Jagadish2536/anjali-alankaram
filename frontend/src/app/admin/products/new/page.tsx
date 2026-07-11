@@ -13,6 +13,11 @@ const AIImageGeneratorModal = dynamic(
   { ssr: false },
 );
 
+const AIVideoGeneratorModal = dynamic(
+  () => import('@/components/admin/AIVideoGeneratorModal'),
+  { ssr: false },
+);
+
 const COLOR_NAME_TO_HEX: Record<string, string> = {
   red: '#ff0000', crimson: '#dc143c', maroon: '#800000', rose: '#ff007f',
   pink: '#ff69b4', 'hot pink': '#ff69b4', salmon: '#fa8072', coral: '#ff6b6b',
@@ -39,6 +44,8 @@ export default function NewProductPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showAIVideoModal, setShowAIVideoModal] = useState(false);
+  const [isMulticolour, setIsMulticolour] = useState(false);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -77,10 +84,34 @@ export default function NewProductPage() {
       const { data } = await api.get('/categories');
       const list = Array.isArray(data) ? data : data.data || [];
       setCategories(list);
-      if (list.length > 0) setFormData(prev => ({ ...prev, categoryId: list[0].id }));
+      if (list.length > 0) {
+        const defaultCat = list[0];
+        setFormData(prev => {
+          const isGuideEmpty = prev.sizeGuide.length === 0 || 
+            prev.sizeGuide.every(row => !row.size && !row.bust && !row.waist && !row.hips && !row.length);
+          return {
+            ...prev,
+            categoryId: defaultCat.id,
+            ...(isGuideEmpty && defaultCat.sizeGuide ? { sizeGuide: defaultCat.sizeGuide } : {})
+          };
+        });
+      }
     } catch {
       console.error('Failed to fetch categories');
     }
+  };
+
+  const handleCategoryChange = (catId: string) => {
+    const selectedCat = categories.find(cat => cat.id === catId);
+    setFormData(prev => {
+      const isGuideEmpty = prev.sizeGuide.length === 0 || 
+        prev.sizeGuide.every(row => !row.size && !row.bust && !row.waist && !row.hips && !row.length);
+      return {
+        ...prev,
+        categoryId: catId,
+        ...(isGuideEmpty && selectedCat?.sizeGuide ? { sizeGuide: selectedCat.sizeGuide } : {})
+      };
+    });
   };
 
   const handleAddImage = () => setFormData({ ...formData, images: [...formData.images, ''] });
@@ -277,7 +308,7 @@ export default function NewProductPage() {
               <select
                 required
                 className="w-full px-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                value={formData.categoryId} onChange={e => setFormData({ ...formData, categoryId: e.target.value })}
+                value={formData.categoryId} onChange={e => handleCategoryChange(e.target.value)}
               >
                 {categories.length === 0
                   ? <option value="">No categories found. Create one first!</option>
@@ -411,12 +442,21 @@ export default function NewProductPage() {
 
         {/* ── Product Video Upload ── */}
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-          <div className="px-8 py-5 border-b flex items-center gap-3 bg-primary text-primary-foreground">
-            <PlusCircle className="w-5 h-5" />
-            <div>
-              <h2 className="text-lg font-bold font-outfit text-white">Product Video (Local Upload)</h2>
-              <p className="text-white/80 text-xs">Optional — upload an MP4 video from your device to play and loop automatically on the product details page.</p>
+          <div className="px-8 py-5 border-b flex items-center justify-between bg-primary text-primary-foreground">
+            <div className="flex items-center gap-3">
+              <PlusCircle className="w-5 h-5 text-white" />
+              <div>
+                <h2 className="text-lg font-bold font-outfit text-white">Product Video (Local Upload)</h2>
+                <p className="text-white/80 text-xs">Optional — upload or generate an MP4 video to loop on the product details page.</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowAIVideoModal(true)}
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-md text-xs font-black flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+            >
+              <Sparkles className="w-4 h-4" /> AI Video Creator
+            </button>
           </div>
           <div className="p-8 space-y-5">
             <div>
@@ -536,92 +576,142 @@ export default function NewProductPage() {
         <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
           <div className="flex justify-between items-center border-b pb-4">
             <h2 className="text-xl font-bold font-outfit">Inventory, Sizes &amp; Colours</h2>
-            <button type="button" onClick={handleAddVariant} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-              <PlusCircle className="w-4 h-4" /> Add Variant Color
-            </button>
+            {isMulticolour && (
+              <button type="button" onClick={handleAddVariant} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
+                <PlusCircle className="w-4 h-4" /> Add Variant Color
+              </button>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground -mt-3">Add a colour + images per variant. Inside each variant, you can specify different sizes and stock.</p>
+
+          {/* Single vs Multicolour Product Type Radio Toggle */}
+          <div className="flex gap-6 pb-4 border-b">
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <input
+                type="radio"
+                name="productType"
+                checked={!isMulticolour}
+                onChange={() => {
+                  setIsMulticolour(false);
+                  setFormData(prev => ({
+                    ...prev,
+                    variants: [
+                      {
+                        ...prev.variants[0],
+                        color: '',
+                        colorHex: '#000000',
+                        images: []
+                      }
+                    ]
+                  }));
+                }}
+                className="accent-primary"
+              />
+              Single Product (One color, multiple sizes)
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <input
+                type="radio"
+                name="productType"
+                checked={isMulticolour}
+                onChange={() => setIsMulticolour(true)}
+                className="accent-primary"
+              />
+              Multicolour Product (Multiple colors/variants)
+            </label>
+          </div>
+
+          <p className="text-xs text-muted-foreground -mt-3">
+            {isMulticolour 
+              ? 'Add a colour + images per variant. Inside each variant, you can specify different sizes and stock.'
+              : 'Specify different sizes and stock for this product.'}
+          </p>
           <div className="space-y-6">
             {(formData.variants as any[]).map((v, i) => (
               <div key={i} className="border rounded-2xl p-4 space-y-4 bg-muted/5">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Variant {i + 1}</span>
-                  {formData.variants.length > 1 && (
-                    <button type="button" onClick={() => handleRemoveVariant(i)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Colour Name</label>
-                    <input
-                      type="text" placeholder="e.g. Crimson Red"
-                      className="w-full px-3 py-2 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
-                      value={v.color || ''}
-                      onChange={e => {
-                        const name = e.target.value;
-                        const knownHex = COLOR_NAME_TO_HEX[name.toLowerCase().trim()];
-                        const vs = [...formData.variants] as any[];
-                        vs[i] = { ...vs[i], color: name, ...(knownHex ? { colorHex: knownHex } : {}) };
-                        setFormData({ ...formData, variants: vs } as any);
-                      }}
-                    />
+                {isMulticolour && (
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Variant {i + 1}</span>
+                    {formData.variants.length > 1 && (
+                      <button type="button" onClick={() => handleRemoveVariant(i)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Colour Swatch</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        className="w-10 h-10 rounded-lg border cursor-pointer"
-                        value={v.colorHex || '#000000'}
-                        onChange={e => {
-                          const hex = e.target.value;
-                          const knownName = HEX_TO_COLOR_NAME[hex.toLowerCase()];
-                          const vs = [...formData.variants] as any[];
-                          vs[i] = { ...vs[i], colorHex: hex, ...(knownName ? { color: knownName } : {}) };
-                          setFormData({ ...formData, variants: vs } as any);
-                        }}
-                      />
-                      <span className="text-xs text-muted-foreground">{v.colorHex || '#000000'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Per-colour image upload */}
-                <div className="border-b pb-4">
-                  <label className="block text-xs font-medium mb-2">Colour Images <span className="text-muted-foreground font-normal">(shown when this colour is selected)</span></label>
-                  <div className="flex flex-wrap gap-2">
-                    {(v.images || []).map((imgUrl: string, imgIdx: number) => (
-                      <div key={imgIdx} className="relative w-16 h-16 rounded-lg overflow-hidden border bg-muted/10">
-                        {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
-                        <button type="button" onClick={() => {
-                          const vs = [...formData.variants] as any[];
-                          vs[i].images = (vs[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
-                          setFormData({ ...formData, variants: vs } as any);
-                        }} className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center">
-                          <X className="w-3 h-3 text-white" />
-                        </button>
+                )}
+                {isMulticolour && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Colour Name</label>
+                        <input
+                          type="text" placeholder="e.g. Crimson Red"
+                          className="w-full px-3 py-2 bg-white border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
+                          value={v.color || ''}
+                          onChange={e => {
+                            const name = e.target.value;
+                            const knownHex = COLOR_NAME_TO_HEX[name.toLowerCase().trim()];
+                            const vs = [...formData.variants] as any[];
+                            vs[i] = { ...vs[i], color: name, ...(knownHex ? { colorHex: knownHex } : {}) };
+                            setFormData({ ...formData, variants: vs } as any);
+                          }}
+                        />
                       </div>
-                    ))}
-                    <label className="w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
-                      {isUploading === (i + 100) ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Plus className="w-5 h-5 text-muted-foreground" />}
-                      <span className="text-[10px] text-muted-foreground mt-0.5">Add</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                        const file = e.target.files?.[0]; if (!file) return;
-                        setIsUploading(i + 100);
-                        try {
-                          const fd = new FormData(); fd.append('file', file);
-                          const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-                          const vs = [...formData.variants] as any[];
-                          vs[i].images = [...(vs[i].images || []), data.url];
-                          setFormData({ ...formData, variants: vs } as any);
-                        } catch (err: any) { alert('Upload failed'); }
-                        finally { setIsUploading(null); }
-                      }} />
-                    </label>
-                  </div>
-                </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Colour Swatch</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            className="w-10 h-10 rounded-lg border cursor-pointer"
+                            value={v.colorHex || '#000000'}
+                            onChange={e => {
+                              const hex = e.target.value;
+                              const knownName = HEX_TO_COLOR_NAME[hex.toLowerCase()];
+                              const vs = [...formData.variants] as any[];
+                              vs[i] = { ...vs[i], colorHex: hex, ...(knownName ? { color: knownName } : {}) };
+                              setFormData({ ...formData, variants: vs } as any);
+                            }}
+                          />
+                          <span className="text-xs text-muted-foreground">{v.colorHex || '#000000'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Per-colour image upload */}
+                    <div className="border-b pb-4">
+                      <label className="block text-xs font-medium mb-2">Colour Images <span className="text-muted-foreground font-normal">(shown when this colour is selected)</span></label>
+                      <div className="flex flex-wrap gap-2">
+                        {(v.images || []).map((imgUrl: string, imgIdx: number) => (
+                          <div key={imgIdx} className="relative w-16 h-16 rounded-lg overflow-hidden border bg-muted/10">
+                            {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
+                            <button type="button" onClick={() => {
+                              const vs = [...formData.variants] as any[];
+                              vs[i].images = (vs[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
+                              setFormData({ ...formData, variants: vs } as any);
+                            }} className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center">
+                              <X className="w-3 h-3 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+                          {isUploading === (i + 100) ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Plus className="w-5 h-5 text-muted-foreground" />}
+                          <span className="text-[10px] text-muted-foreground mt-0.5">Add</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0]; if (!file) return;
+                            setIsUploading(i + 100);
+                            try {
+                              const fd = new FormData(); fd.append('file', file);
+                              const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                              const vs = [...formData.variants] as any[];
+                              vs[i].images = [...(vs[i].images || []), data.url];
+                              setFormData({ ...formData, variants: vs } as any);
+                            } catch (err: any) { alert('Upload failed'); }
+                            finally { setIsUploading(null); }
+                          }} />
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Sub-table for Sizes & Stock */}
                 <div className="space-y-3">
@@ -719,6 +809,24 @@ export default function NewProductPage() {
           }}
           onClose={() => {
             setShowAIModal(false);
+          }}
+        />
+      )}
+
+      {/* ✨ AI Video Generator Modal */}
+      {showAIVideoModal && (
+        <AIVideoGeneratorModal
+          productName={formData.name || 'New Product'}
+          existingImages={formData.images}
+          onVideoApproved={(url) => {
+            setFormData(prev => ({
+              ...prev,
+              videoUrl: url,
+            }));
+            showFeedback('success', '✨ AI Video added to product!');
+          }}
+          onClose={() => {
+            setShowAIVideoModal(false);
           }}
         />
       )}

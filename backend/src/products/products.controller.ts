@@ -78,6 +78,17 @@ export class ProductsController {
     return this.productsService.trackViewer(id, visitorId || 'anonymous');
   }
 
+  @Post('variants/:variantId/notify-me')
+  @Public()
+  @ApiOperation({ summary: 'Subscribe to restock notifications' })
+  async subscribeRestock(
+    @Param('variantId', ParseUUIDPipe) variantId: string,
+    @Body('email') email: string,
+    @Body('productId') productId?: string,
+  ) {
+    return this.productsService.subscribeRestock(variantId, email, productId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')

@@ -27,6 +27,8 @@ const EMPTY_OFFER = {
   isActive: true,
   productIds: [] as string[],
   categoryIds: [] as string[],
+  offerType: 'BUY_X_GET_Y',
+  offerPrice: '',
 };
 
 export default function AdminOffersPage() {
@@ -135,6 +137,8 @@ export default function AdminOffersPage() {
       isActive: o.isActive,
       productIds: o.productIds || [],
       categoryIds: o.categoryIds || [],
+      offerType: o.offerType || 'BUY_X_GET_Y',
+      offerPrice: o.offerPrice ? String(o.offerPrice) : '',
     });
     setEditId(o.id);
     setProductSearch('');
@@ -144,8 +148,17 @@ export default function AdminOffersPage() {
 
   const handleSave = async () => {
     if (!form.title.trim()) return setMsg({ type: 'err', text: 'Offer title is required.' });
-    if (form.buyQuantity < 1 || form.getQuantity < 1) {
-      return setMsg({ type: 'err', text: 'Quantities must be at least 1.' });
+    if (form.offerType === 'BUY_X_GET_Y') {
+      if (form.buyQuantity < 1 || form.getQuantity < 1) {
+        return setMsg({ type: 'err', text: 'Quantities must be at least 1.' });
+      }
+    } else {
+      if (form.buyQuantity < 1) {
+        return setMsg({ type: 'err', text: 'Number of products must be at least 1.' });
+      }
+      if (!form.offerPrice || Number(form.offerPrice) < 1) {
+        return setMsg({ type: 'err', text: 'Offer price must be at least 1.' });
+      }
     }
 
     setSaving(true);
@@ -153,12 +166,14 @@ export default function AdminOffersPage() {
       const payload = {
         title: form.title.trim(),
         buyQuantity: Number(form.buyQuantity),
-        getQuantity: Number(form.getQuantity),
+        getQuantity: form.offerType === 'BUY_X_GET_Y' ? Number(form.getQuantity) : 0,
         minProductPrice: form.minProductPrice ? Number(form.minProductPrice) : null,
         maxProductPrice: form.maxProductPrice ? Number(form.maxProductPrice) : null,
         isActive: form.isActive,
         productIds: form.productIds,
         categoryIds: form.categoryIds,
+        offerType: form.offerType,
+        offerPrice: form.offerType === 'BUY_X_FOR_Y' ? Number(form.offerPrice) : null,
       };
 
       if (editId) {
@@ -287,28 +302,82 @@ export default function AdminOffersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Buy Quantity (X) *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.buyQuantity}
-                    onChange={e => setForm(p => ({ ...p, buyQuantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Get Free Quantity (Y) *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.getQuantity}
-                    onChange={e => setForm(p => ({ ...p, getQuantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-                    className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                  />
+              <div>
+                <label className="block text-sm font-medium mb-2">Offer Type *</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
+                    <input
+                      type="radio"
+                      name="offerType"
+                      value="BUY_X_GET_Y"
+                      checked={form.offerType === 'BUY_X_GET_Y'}
+                      onChange={() => setForm(p => ({ ...p, offerType: 'BUY_X_GET_Y' }))}
+                      className="accent-primary"
+                    />
+                    Buy X Get Y Free (e.g. Buy 2 Get 1 Free)
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
+                    <input
+                      type="radio"
+                      name="offerType"
+                      value="BUY_X_FOR_Y"
+                      checked={form.offerType === 'BUY_X_FOR_Y'}
+                      onChange={() => setForm(p => ({ ...p, offerType: 'BUY_X_FOR_Y' }))}
+                      className="accent-primary"
+                    />
+                    Buy X Items for fixed price (e.g. Buy 3 for ₹1000)
+                  </label>
                 </div>
               </div>
+
+              {form.offerType === 'BUY_X_GET_Y' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Buy Quantity (X) *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.buyQuantity}
+                      onChange={e => setForm(p => ({ ...p, buyQuantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Get Free Quantity (Y) *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.getQuantity}
+                      onChange={e => setForm(p => ({ ...p, getQuantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Number of Products (X) *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.buyQuantity}
+                      onChange={e => setForm(p => ({ ...p, buyQuantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Offer Price (₹) *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 1000"
+                      value={form.offerPrice}
+                      onChange={e => setForm(p => ({ ...p, offerPrice: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="border-t pt-4">
                 <h4 className="font-bold text-sm mb-3">Product Price Constraint (Optional)</h4>
@@ -505,7 +574,11 @@ export default function AdminOffersPage() {
                   <tr key={o.id} className="hover:bg-muted/5 transition-colors">
                     <td className="px-6 py-4 font-bold text-primary">{o.title}</td>
                     <td className="px-6 py-4 font-semibold text-gray-700">
-                      Buy {o.buyQuantity} Get {o.getQuantity} Free
+                      {o.offerType === 'BUY_X_FOR_Y' ? (
+                        <>Buy {o.buyQuantity} for ₹{o.offerPrice}</>
+                      ) : (
+                        <>Buy {o.buyQuantity} Get {o.getQuantity} Free</>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {o.minProductPrice || o.maxProductPrice ? (

@@ -135,9 +135,31 @@ function printOrderLabel(order: any, storeAddress?: string) {
   .total-row td{font-weight:700;border-top:2px solid #111;}
   .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
   @media print{button{display:none;}}
-  </style></head><body>
-  <button onclick="window.print()" style="margin-bottom:16px;padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
-  <div style="border:2px solid #111;border-radius:8px;padding:20px;">
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    async function downloadLabelAsJpg() {
+      const element = document.getElementById('label-content');
+      if (!element) return;
+      try {
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const link = document.createElement('a');
+        link.download = 'Order-Label-${order.orderNumber}.jpg';
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        alert('Download failed: ' + err.message);
+      }
+    }
+  </script>
+  </head><body>
+  <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
+    <button onclick="window.print()" style="padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
+    <button onclick="downloadLabelAsJpg()" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
+    <button onclick="window.close()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">❌ Close</button>
+  </div>
+  <div id="label-content" style="border:2px solid #111;border-radius:8px;padding:20px;background:white;">
     <h2>📦 Anjali Alankaram</h2>
     <p style="margin:0;font-size:12px;color:#6b7280;">Order Management Label</p>
     <hr class="divider"/>

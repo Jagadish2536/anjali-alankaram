@@ -99,15 +99,16 @@ function ProductsContent() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('recommended');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [maxPossible] = useState(10000);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Filters
-  const [selectedAvailability, setSelectedAvailability] = useState<string[]>([]);
+  // Filter selections
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedDiscountRange, setSelectedDiscountRange] = useState<number | null>(null);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -200,21 +201,32 @@ function ProductsContent() {
     };
   }, [hasMore, isFetchingMore, fetchMoreProducts]);
 
+  // Lock body scroll when mobile filters are open
+  useEffect(() => {
+    if (showMobileFilters) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMobileFilters]);
+
   // ── Client-side filtering & sorting ──────────────────────────────────────
   const displayedProducts = (() => {
     let list = [...allProducts];
 
-    // Availability filter — uses actual variant stock
-    if (selectedAvailability.length > 0) {
+    // Discount range filter
+    if (selectedDiscountRange !== null) {
       list = list.filter(p => {
-        const stock = getTotalStock(p);
-        const inStock = stock > 0;
-        const wantsIn = selectedAvailability.includes('In Stock');
-        const wantsOut = selectedAvailability.includes('Out of Stock');
-        if (wantsIn && wantsOut) return true;
-        if (wantsIn) return inStock;
-        if (wantsOut) return !inStock;
-        return true;
+        const base = Number(p.basePrice);
+        const sale = p.salePrice ? Number(p.salePrice) : null;
+        let pct = p.discountPercent || 0;
+        if (!pct && sale && base > 0) {
+          pct = Math.round(((base - sale) / base) * 100);
+        }
+        return pct >= selectedDiscountRange;
       });
     }
 
@@ -233,8 +245,30 @@ function ProductsContent() {
     }
 
     // Sort
-    if (sortBy === 'price-asc') list = list.sort((a, b) => Number(a.salePrice || a.basePrice) - Number(b.salePrice || b.basePrice));
-    else if (sortBy === 'price-desc') list = list.sort((a, b) => Number(b.salePrice || b.basePrice) - Number(a.salePrice || a.basePrice));
+    if (sortBy === 'whatsnew') {
+      list = list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === 'popularity') {
+      list = list.sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0));
+    } else if (sortBy === 'better-discount') {
+      list = list.sort((a, b) => {
+        const getPct = (p: any) => {
+          const base = Number(p.basePrice);
+          const sale = p.salePrice ? Number(p.salePrice) : null;
+          let pct = p.discountPercent || 0;
+          if (!pct && sale && base > 0) {
+            pct = Math.round(((base - sale) / base) * 100);
+          }
+          return pct;
+        };
+        return getPct(b) - getPct(a);
+      });
+    } else if (sortBy === 'price-asc') {
+      list = list.sort((a, b) => Number(a.salePrice || a.basePrice) - Number(b.salePrice || b.basePrice));
+    } else if (sortBy === 'price-desc') {
+      list = list.sort((a, b) => Number(b.salePrice || b.basePrice) - Number(a.salePrice || a.basePrice));
+    } else if (sortBy === 'rating') {
+      list = list.sort((a, b) => Number(b.avgRating || 0) - Number(a.avgRating || 0));
+    }
 
     return list;
   })();
@@ -299,17 +333,14 @@ function ProductsContent() {
   const toggleColor = (color: string) =>
     setSelectedColors(prev => prev.includes(color) ? prev.filter(x => x !== color) : [...prev, color]);
 
-  const toggleAvailability = (opt: string) =>
-    setSelectedAvailability(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
-
   const clearAllFilters = () => {
     setSelectedSizes([]);
     setSelectedColors([]);
-    setSelectedAvailability([]);
+    setSelectedDiscountRange(null);
     setPriceRange([0, maxPossible]);
   };
 
-  const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedAvailability.length > 0 || priceRange[0] > 0 || priceRange[1] < maxPossible;
+  const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedDiscountRange !== null || priceRange[0] > 0 || priceRange[1] < maxPossible;
 
   let pageTitle = 'All Products';
   let breadcrumb = 'Shop';
@@ -412,17 +443,19 @@ function ProductsContent() {
         </FilterGroup>
       )}
 
-      <FilterGroup title="Availability">
+      <FilterGroup title="Discount Range">
         <div className="space-y-2 pt-1">
-          {['In Stock', 'Out of Stock'].map(opt => (
-            <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+          {[10, 20, 30, 40, 50, 60, 70, 80, 90].map(val => (
+            <label key={val} className="flex items-center gap-2.5 cursor-pointer group">
               <input
-                type="checkbox"
-                checked={selectedAvailability.includes(opt)}
-                onChange={() => toggleAvailability(opt)}
-                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
+                type="radio"
+                name="discount-range"
+                checked={selectedDiscountRange === val}
+                onClick={() => setSelectedDiscountRange(prev => prev === val ? null : val)}
+                onChange={() => {}}
+                className="w-4 h-4 rounded-full border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
               />
-              <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{opt}</span>
+              <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{val}% and above</span>
             </label>
           ))}
         </div>
@@ -433,7 +466,7 @@ function ProductsContent() {
   const activeChips: { label: string; onRemove: () => void }[] = [
     ...selectedSizes.map(s => ({ label: `Size: ${s}`, onRemove: () => toggleSize(s) })),
     ...selectedColors.map(c => ({ label: `Colour: ${c}`, onRemove: () => toggleColor(c) })),
-    ...selectedAvailability.map(a => ({ label: a, onRemove: () => toggleAvailability(a) })),
+    ...(selectedDiscountRange !== null ? [{ label: `Discount: ${selectedDiscountRange}%+`, onRemove: () => setSelectedDiscountRange(null) }] : []),
   ];
 
   return (
@@ -472,11 +505,15 @@ function ProductsContent() {
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="text-sm border border-border rounded-lg px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+              className="text-sm border border-border rounded-lg px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer font-medium"
             >
-              <option value="newest">Date, new to old</option>
+              <option value="recommended">Recommended</option>
+              <option value="whatsnew">What's New</option>
+              <option value="popularity">Popularity</option>
+              <option value="better-discount">Better Discount</option>
               <option value="price-asc">Price: Low to High</option>
               <option value="price-desc">Price: High to Low</option>
+              <option value="rating">Customer Rating</option>
             </select>
           </div>
         </div>
@@ -498,11 +535,52 @@ function ProductsContent() {
           </div>
         )}
 
-        {showMobileFilters && (
-          <div className="md:hidden mb-6 p-5 border rounded-2xl bg-card">
+        {/* Mobile Slide-over Drawer Backdrop */}
+        <div
+          className={`fixed inset-0 bg-black/50 z-50 transition-opacity duration-300 md:hidden ${
+            showMobileFilters ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setShowMobileFilters(false)}
+        />
+
+        {/* Mobile Slide-over Drawer Content */}
+        <div
+          className={`fixed top-0 right-0 bottom-0 w-[85%] max-w-sm bg-background z-50 shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
+            showMobileFilters ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="flex items-center justify-between px-5 py-4 border-b">
+            <span className="text-base font-bold tracking-wide uppercase">Filters</span>
+            <button
+              onClick={() => setShowMobileFilters(false)}
+              className="p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-2">
             <SidebarContent />
           </div>
-        )}
+
+          <div className="p-4 border-t bg-muted/20 flex items-center gap-3">
+            <button
+              onClick={() => {
+                clearAllFilters();
+                setShowMobileFilters(false);
+              }}
+              className="flex-1 py-2.5 text-sm font-semibold border rounded-xl hover:bg-muted transition-colors"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={() => setShowMobileFilters(false)}
+              className="flex-1 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <aside className="hidden md:block space-y-2">

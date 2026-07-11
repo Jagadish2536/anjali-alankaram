@@ -36,7 +36,7 @@ export class AiImagesController {
   constructor(private readonly aiImagesService: AiImagesService) {}
 
   @Post('generate')
-  @ApiOperation({ summary: 'Generate 4 AI product images using face + product references' })
+  @ApiOperation({ summary: 'Generate AI product image using face + product references' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -79,6 +79,43 @@ export class AiImagesController {
       faceFile.mimetype,
       productFile.buffer,
       productFile.mimetype,
+      adminId,
+      body.productId,
+      body.customPrompt,
+    );
+  }
+
+  @Post('generate-video')
+  @ApiOperation({ summary: 'Generate an AI product advertising video using face + product references' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'faceImage', maxCount: 1 },
+      { name: 'productImage', maxCount: 1 },
+    ]),
+  )
+  async generateVideo(
+    @UploadedFiles() files: { faceImage?: Express.Multer.File[]; productImage?: Express.Multer.File[] },
+    @Req() req: any,
+    @Body() body: { productId?: string; customPrompt?: string; productImageUrl?: string },
+  ) {
+    const faceFile = files?.faceImage?.[0];
+    const productFile = files?.productImage?.[0];
+
+    if (!faceFile) throw new BadRequestException('faceImage is required');
+    if (!productFile && !body.productImageUrl) {
+      throw new BadRequestException('Either productImage upload or productImageUrl is required');
+    }
+
+    const adminId = req.user?.id;
+    this.logger.log(`Admin ${adminId} generating AI video for product ${body.productId || 'new'}`);
+
+    return this.aiImagesService.generateVideo(
+      faceFile.buffer,
+      faceFile.mimetype,
+      productFile ? productFile.buffer : undefined,
+      productFile ? productFile.mimetype : undefined,
+      body.productImageUrl,
       adminId,
       body.productId,
       body.customPrompt,

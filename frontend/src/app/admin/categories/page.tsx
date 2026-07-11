@@ -28,13 +28,22 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
   );
 }
 
+interface SizeRow {
+  size: string;
+  bust: string;
+  waist: string;
+  hips: string;
+  length: string;
+}
+
 interface CategoryForm {
   name: string;
   description: string;
   image: string;
+  sizeGuide: SizeRow[];
 }
 
-const emptyForm: CategoryForm = { name: '', description: '', image: '' };
+const emptyForm: CategoryForm = { name: '', description: '', image: '', sizeGuide: [] };
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -94,7 +103,12 @@ export default function AdminCategoriesPage() {
 
   const openEdit = (cat: any) => {
     setEditingId(cat.id);
-    setFormData({ name: cat.name, description: cat.description || '', image: cat.image || '' });
+    setFormData({
+      name: cat.name,
+      description: cat.description || '',
+      image: cat.image || '',
+      sizeGuide: cat.sizeGuide || [],
+    });
     setShowForm(true);
   };
 
@@ -251,6 +265,75 @@ export default function AdminCategoriesPage() {
                   </label>
                 </div>
               </div>
+            </div>
+
+            {/* ── Default Size Guide ── */}
+            <div className="border rounded-2xl p-6 bg-muted/5 space-y-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">📏 Default Category Size Guide</h3>
+                  <p className="text-[10px] text-muted-foreground">Products created in this category will default to these sizes.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    sizeGuide: [...prev.sizeGuide, { size: '', bust: '', waist: '', hips: '', length: '' }]
+                  }))}
+                  className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Row
+                </button>
+              </div>
+              {formData.sizeGuide.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-xs">
+                  No default size guide defined. Products will start with an empty size chart.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b">
+                        {['Size', 'Bust (in)', 'Waist (in)', 'Hips (in)', 'Length (in)', ''].map(h => (
+                          <th key={h} className="pb-2 pr-2 text-left font-bold text-muted-foreground uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.sizeGuide.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          {(['size', 'bust', 'waist', 'hips', 'length'] as const).map(field => (
+                            <td key={field} className="py-1.5 pr-2">
+                              <input
+                                type="text" placeholder={field === 'size' ? 'S, M, L' : '0'}
+                                className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
+                                value={row[field]}
+                                onChange={e => {
+                                  const updated = [...formData.sizeGuide];
+                                  updated[i] = { ...updated[i], [field]: e.target.value };
+                                  setFormData({ ...formData, sizeGuide: updated });
+                                }}
+                              />
+                            </td>
+                          ))}
+                          <td className="py-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({
+                                ...prev,
+                                sizeGuide: prev.sizeGuide.filter((_, idx) => idx !== i)
+                              }))}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

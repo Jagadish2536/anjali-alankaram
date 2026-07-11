@@ -41,6 +41,16 @@ export class OffersService {
     } else {
       clean.maxProductPrice = null;
     }
+    if (clean.offerPrice !== undefined && clean.offerPrice !== null && clean.offerPrice !== '') {
+      clean.offerPrice = parseFloat(String(clean.offerPrice));
+    } else {
+      clean.offerPrice = null;
+    }
+    if (clean.offerType !== undefined) {
+      clean.offerType = String(clean.offerType);
+    } else {
+      clean.offerType = 'BUY_X_GET_Y';
+    }
     if (clean.buyQuantity !== undefined) {
       clean.buyQuantity = parseInt(String(clean.buyQuantity), 10);
     }
@@ -125,34 +135,64 @@ export class OffersService {
         }
       }
 
-      // Check if we have enough qualifying units for the offer
-      const offerGroupSize = offer.buyQuantity + offer.getQuantity;
-      if (qualifyingUnits.length < offerGroupSize) {
-        continue;
-      }
+      const o = offer as any;
+      if (o.offerType === 'BUY_X_FOR_Y') {
+        const groupSize = offer.buyQuantity;
+        const groupCount = Math.floor(qualifyingUnits.length / groupSize);
+        if (groupCount === 0) {
+          continue;
+        }
 
-      // 2. Calculate Buy X Get Y Free discount
-      // Sort qualifying unit prices ascending (cheapest first)
-      qualifyingUnits.sort((a, b) => a - b);
+        // Sort descending to group the most expensive items first
+        qualifyingUnits.sort((a, b) => b - a);
 
-      // Determine how many items are free:
-      // For every group of (buyQuantity + getQuantity) items, getQuantity items are free
-      const groupCount = Math.floor(qualifyingUnits.length / offerGroupSize);
-      const freeCount = groupCount * offer.getQuantity;
+        const promoItemsCount = groupCount * groupSize;
+        let originalPromoSum = 0;
+        for (let i = 0; i < promoItemsCount; i++) {
+          originalPromoSum += qualifyingUnits[i];
+        }
 
-      // The cheapest freeCount items are free
-      let offerDiscount = 0;
-      for (let i = 0; i < freeCount; i++) {
-        offerDiscount += qualifyingUnits[i];
-      }
+        const packagePrice = groupCount * Number(o.offerPrice || 0);
+        const offerDiscount = originalPromoSum - packagePrice;
 
-      if (offerDiscount > maxDiscount) {
-        maxDiscount = offerDiscount;
-        bestOffer = {
-          id: offer.id,
-          title: offer.title,
-          discount: Math.round(offerDiscount),
-        };
+        if (offerDiscount > 0 && offerDiscount > maxDiscount) {
+          maxDiscount = offerDiscount;
+          bestOffer = {
+            id: offer.id,
+            title: offer.title,
+            discount: Math.round(offerDiscount),
+          };
+        }
+      } else {
+        // Check if we have enough qualifying units for the offer
+        const offerGroupSize = offer.buyQuantity + offer.getQuantity;
+        if (qualifyingUnits.length < offerGroupSize) {
+          continue;
+        }
+
+        // 2. Calculate Buy X Get Y Free discount
+        // Sort qualifying unit prices ascending (cheapest first)
+        qualifyingUnits.sort((a, b) => a - b);
+
+        // Determine how many items are free:
+        // For every group of (buyQuantity + getQuantity) items, getQuantity items are free
+        const groupCount = Math.floor(qualifyingUnits.length / offerGroupSize);
+        const freeCount = groupCount * offer.getQuantity;
+
+        // The cheapest freeCount items are free
+        let offerDiscount = 0;
+        for (let i = 0; i < freeCount; i++) {
+          offerDiscount += qualifyingUnits[i];
+        }
+
+        if (offerDiscount > 0 && offerDiscount > maxDiscount) {
+          maxDiscount = offerDiscount;
+          bestOffer = {
+            id: offer.id,
+            title: offer.title,
+            discount: Math.round(offerDiscount),
+          };
+        }
       }
     }
 

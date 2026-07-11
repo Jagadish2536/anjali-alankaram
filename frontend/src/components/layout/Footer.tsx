@@ -70,10 +70,10 @@ export default function Footer() {
 
   const storeName = s.storeName || 'Anjali Alankaram';
   const storeDesc = s.storeDescription || `Shop Sarees, Lehengas, Kurtis, Gowns, Kids Wear, Stretchable Blouses & Jewellery — All in One Place at ${storeName}`;
-  const instagramUrl = s.instagramUrl || 'https://instagram.com/jagadishvarma99';
-  const whatsappNumber = (s.whatsappNumber || '7032492775').replace(/[^0-9]/g, '');
-  const contactEmail = s.contactEmail || s.supportEmail || 'jagadishvarma99@gmail.com';
-  const contactPhone = s.contactPhone || s.supportPhone || '+91 7032492775';
+  const instagramUrl = s.instagramUrl || 'https://instagram.com/anjalialankaram';
+  const whatsappNumber = (s.whatsappNumber || '+91 9876543210').replace(/[^0-9]/g, '');
+  const contactEmail = s.contactEmail || s.supportEmail || 'support@anjalialankaram.com';
+  const contactPhone = s.contactPhone || s.supportPhone || '+91 9876543210';
   // Use live categories from API, fallback to settings footerCategories
   const footerCategories: { name: string; slug: string }[] = footerCats.length > 0
     ? footerCats
@@ -193,9 +193,13 @@ export default function Footer() {
           </div>
           <div className="flex flex-col items-center sm:items-end gap-1">
             <div className="flex items-center gap-2">
-              <a href="https://instagram.com/jagadishvarma99" target="_blank" rel="noopener noreferrer"
+              <a href={instagramUrl} target="_blank" rel="noopener noreferrer"
                 className="hover:text-white/70 transition-colors flex items-center gap-1">
-                <Instagram className="w-3.5 h-3.5" /> @jagadishvarma99
+                <Instagram className="w-3.5 h-3.5" /> {(() => {
+                  if (!instagramUrl) return '@anjalialankaram';
+                  const match = instagramUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/);
+                  return match ? `@${match[1]}` : '@anjalialankaram';
+                })()}
               </a>
             </div>
           </div>

@@ -516,6 +516,37 @@ export default function ProductDetailPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [notifyMsg, setNotifyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      setNotifyEmail(user.email);
+    }
+  }, [user]);
+
+  const handleNotifySubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notifyEmail || !notifyEmail.trim() || !selectedVariant) return;
+    setIsSubscribing(true);
+    setNotifyMsg(null);
+    try {
+      const { data } = await api.post(`/products/variants/${selectedVariant.id}/notify-me`, {
+        email: notifyEmail.trim(),
+        productId: product.id,
+      });
+      setNotifyMsg({ type: 'success', text: data.message || 'Subscribed successfully!' });
+    } catch (err: any) {
+      setNotifyMsg({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to subscribe. Please try again.',
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
   useEffect(() => {
     fetchSettings().catch(() => {});
   }, [fetchSettings]);
@@ -651,7 +682,8 @@ export default function ProductDetailPage() {
                 v.color?.toLowerCase() === colorParam.toLowerCase()
               )
             : null;
-          setSelectedVariant(matched || data.variants[0]);
+          const defaultVariant = data.variants.find((v: any) => v.stock > 0) || data.variants[0];
+          setSelectedVariant(matched || defaultVariant);
         }
       } catch {
         console.error('Failed to load product');
@@ -741,8 +773,10 @@ export default function ProductDetailPage() {
     if (!isAuthenticated) { router.push('/login?returnUrl=' + window.location.pathname); return; }
     setIsBuyingNow(true);
     try {
-      await addItem(selectedVariant.id, quantity);
-      router.push('/checkout');
+      if (!isAlreadyInCart) {
+        await addItem(selectedVariant.id, quantity);
+      }
+      router.push('/cart');
     } catch { alert('Failed. Please try again.'); }
     finally { setIsBuyingNow(false); }
   };
@@ -1150,11 +1184,10 @@ export default function ProductDetailPage() {
                         <button
                           key={v.id}
                           onClick={() => setSelectedVariant(v)}
-                          disabled={v.stock === 0}
                           className={`h-11 px-5 rounded-full border-2 text-sm font-semibold transition-all ${
                             selectedVariant?.id === v.id
                               ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                              : v.stock === 0 ? 'border-muted text-muted-foreground bg-muted/30 cursor-not-allowed line-through' : 'border-input hover:border-primary hover:text-primary'
+                              : v.stock === 0 ? 'border-muted text-muted-foreground bg-muted/30 line-through opacity-70' : 'border-input hover:border-primary hover:text-primary'
                           }`}
                         >
                           {v.size}{v.stock === 0 && ' ✕'}
@@ -1225,6 +1258,41 @@ export default function ProductDetailPage() {
             >
               {isBuyingNow ? <><Loader2 className="w-4 h-4 animate-spin" />Processing…</> : 'BUY NOW'}
             </button>
+
+            {selectedVariant && selectedVariant.stock === 0 && (
+              <div className="mt-2 p-4 border border-amber-200 bg-amber-50/50 rounded-2xl space-y-2.5">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <Star className="w-4 h-4 text-amber-600 fill-amber-600 animate-pulse" />
+                  <span className="text-sm font-bold">Out of Stock? Get Notified!</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Leave your email below and we'll notify you the moment this item is restocked.
+                </p>
+                <form onSubmit={handleNotifySubscribe} className="flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email"
+                    value={notifyEmail}
+                    onChange={e => setNotifyEmail(e.target.value)}
+                    className="flex-1 px-3 py-2 text-sm bg-white border border-input rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubscribing}
+                    className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isSubscribing ? 'Subscribing...' : 'Notify Me'}
+                  </button>
+                </form>
+                {notifyMsg && (
+                  <p className={`text-xs font-semibold mt-1 ${notifyMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                    {notifyMsg.text}
+                  </p>
+                )}
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground text-center">📦 Estimated Delivery: 10 - 12 days</p>
           </div>
 

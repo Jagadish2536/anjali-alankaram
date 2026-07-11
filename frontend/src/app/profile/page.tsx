@@ -242,7 +242,7 @@ export default function ProfilePage() {
     },
     {
       label: 'ORDERS',
-      items: [{ id: 'orders' as Tab, label: 'Orders & Returns' }],
+      items: [{ id: 'orders' as Tab, label: 'My Orders' }],
     },
     {
       label: 'CREDITS',
@@ -267,7 +267,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { label: 'Profile', sub: 'Edit your details', id: 'profile' as Tab, icon: User },
-                { label: 'Orders & Returns', sub: 'Track your orders', id: 'orders' as Tab, icon: Package },
+                { label: 'My Orders', sub: 'Track your orders', id: 'orders' as Tab, icon: Package },
                 { label: 'Addresses', sub: 'Manage delivery addresses', id: 'addresses' as Tab, icon: MapPin },
                 { label: 'Coupons', sub: 'View available coupons', id: 'coupons' as Tab, icon: Tag },
               ].map(card => (
@@ -432,7 +432,7 @@ export default function ProfilePage() {
       case 'orders':
         return (
           <div className="p-5 md:p-8">
-            <h2 className="text-lg font-black mb-6 pb-4 border-b">Orders & Returns</h2>
+            <h2 className="text-lg font-black mb-6 pb-4 border-b">My Orders</h2>
             {ordersLoading ? (
               <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : orders.length === 0 ? (
@@ -654,7 +654,7 @@ export default function ProfilePage() {
               <div className="bg-white border border-gray-200 rounded-sm divide-y">
                 {[
                   { label: 'Profile', sub: 'Edit your details', id: 'profile' as Tab, icon: User },
-                  { label: 'Orders & Returns', sub: 'Track your orders', id: 'orders' as Tab, icon: Package },
+                  { label: 'My Orders', sub: 'Track your orders', id: 'orders' as Tab, icon: Package },
                   { label: 'Addresses', sub: 'Manage delivery addresses', id: 'addresses' as Tab, icon: MapPin },
                   { label: 'Coupons', sub: 'View available coupons', id: 'coupons' as Tab, icon: Tag },
                 ].map(item => (

@@ -11,6 +11,7 @@ import { ProductStatus } from '@prisma/client';
 import { S3CleanupService } from '../s3-cleanup/s3-cleanup.service';
 import { CacheService } from '../cache/cache.service';
 import { SearchService } from '../search/search.service';
+import { EmailService } from '../email/email.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class ProductsService {
     private s3Cleanup: S3CleanupService,
     private cache: CacheService,
     private searchService: SearchService,
+    private emailService: EmailService,
   ) {}
 
   async findAll(filters: ProductFilterDto) {
@@ -384,6 +386,12 @@ export class ProductsService {
         let variantObj: any;
         if (v.id) {
           // Update existing variant
+          const existingVariant = await this.prisma.productVariant.findUnique({
+            where: { id: v.id },
+            select: { stock: true },
+          });
+          const oldStock = existingVariant?.stock ?? 0;
+
           variantObj = await this.prisma.productVariant.update({
             where: { id: v.id },
             data: {
@@ -395,6 +403,12 @@ export class ProductsService {
               sku: v.sku,
             },
           });
+
+          if (oldStock <= 0 && variantObj.stock > 0) {
+            this.triggerRestockNotifications(variantObj.id).catch(err => {
+              this.logger.error(`Error sending restock notifications: ${err.message}`);
+            });
+          }
         } else {
           // Create new variant
           variantObj = await this.prisma.productVariant.create({
@@ -559,6 +573,91 @@ export class ProductsService {
       // Graceful fallback to default count if Redis is down
       const mockCount = Math.floor(Math.random() * 10) + 5;
       return { count: mockCount };
+    }
+  }
+
+  async subscribeRestock(variantId: string, email: string, productId?: string) {
+    if (!email || !email.trim()) {
+      throw new BadRequestException('Email is required');
+    }
+    
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+    });
+    if (!variant) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    const prodId = productId || variant.productId;
+
+    const db = this.prisma as any;
+    const existing = await db.restockNotification.findFirst({
+      where: {
+        email: email.trim().toLowerCase(),
+        variantId,
+        isSent: false,
+      },
+    });
+
+    if (existing) {
+      return { success: true, message: 'You are already registered for notifications.' };
+    }
+
+    await db.restockNotification.create({
+      data: {
+        email: email.trim().toLowerCase(),
+        variantId,
+        productId: prodId,
+        isSent: false,
+      },
+    });
+
+    return { success: true, message: 'Notification subscription created successfully.' };
+  }
+
+  async triggerRestockNotifications(variantId: string) {
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: {
+        product: true,
+      },
+    });
+
+    if (!variant) return;
+
+    const db = this.prisma as any;
+    const subscribers = await db.restockNotification.findMany({
+      where: {
+        variantId,
+        isSent: false,
+      },
+    });
+
+    if (subscribers.length === 0) return;
+
+    this.logger.log(`Found ${subscribers.length} restock subscribers for variant ${variantId} (${variant.product.name} - ${variant.size})`);
+
+    const productUrl = `https://anjalialankaram.com/products/${variant.product.slug}`;
+    const productImage = variant.images?.[0] || variant.product.images?.[0] || null;
+
+    for (const sub of subscribers) {
+      try {
+        await this.emailService.sendRestockNotification(sub.email, {
+          productName: variant.product.name,
+          productUrl,
+          productImage,
+          size: variant.size,
+          color: variant.color || undefined,
+        });
+
+        await db.restockNotification.update({
+          where: { id: sub.id },
+          data: { isSent: true },
+        });
+      } catch (err) {
+        const error = err as any;
+        this.logger.error(`Failed to send restock notification to ${sub.email}: ${error.message}`);
+      }
     }
   }
 }

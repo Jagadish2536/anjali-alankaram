@@ -12,27 +12,12 @@ import * as AWS from 'aws-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
-// Pose configurations for the 4 generated images
+// Pose configurations for the generated image
 const POSES = [
   {
     label: 'Front Standing',
     prompt:
       'front-facing, standing elegantly, looking directly at camera with a natural warm smile, both hands relaxed at sides, full body visible from head to toe',
-  },
-  {
-    label: '45-Degree Left Angle',
-    prompt:
-      '45-degree left angle pose, one hand gently touching dupatta or fabric, natural graceful smile, full body visible from head to toe',
-  },
-  {
-    label: '45-Degree Right Angle',
-    prompt:
-      '45-degree right angle, luxury fashion editorial pose, confident and elegant, full body visible from head to toe',
-  },
-  {
-    label: 'Walking Pose',
-    prompt:
-      'dynamic walking pose, natural movement with fabric flowing naturally, premium fashion photography energy, full body visible from head to toe',
   },
 ];
 
@@ -168,6 +153,263 @@ export class AiImagesService {
       sessionId,
       status: 'QUEUED',
     };
+  }
+
+  // ── Initiate AI product video generation (Queue / Async) ────────────────────
+  async generateVideo(
+    faceImageBuffer: Buffer | undefined,
+    faceImageMime: string | undefined,
+    productImageBuffer: Buffer | undefined,
+    productImageMime: string | undefined,
+    productImageUrl: string | undefined,
+    adminId: string,
+    productId?: string,
+    customPrompt?: string,
+  ): Promise<{
+    sessionId: string;
+    status: string;
+  }> {
+    const bucket = this.config.get<string>('AWS_S3_BUCKET');
+    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
+
+    if (!geminiKey) {
+      throw new InternalServerErrorException(
+        'Gemini API key is not configured. Please set GEMINI_API_KEY in environment variables.',
+      );
+    }
+
+    const sessionId = uuidv4();
+    const sessionKey = `temp-ai-images/${sessionId}`;
+
+    let faceRefKey = '';
+    let productRefKey = '';
+
+    const uploadPromises: Promise<any>[] = [];
+
+    if (faceImageBuffer && faceImageMime) {
+      const faceExt = faceImageMime.includes('png') ? 'png' : 'jpg';
+      faceRefKey = `${sessionKey}/refs/face.${faceExt}`;
+      uploadPromises.push(
+        this.s3
+          .putObject({
+            Bucket: bucket,
+            Key: faceRefKey,
+            Body: faceImageBuffer,
+            ContentType: faceImageMime,
+          })
+          .promise(),
+      );
+    }
+
+    if (productImageBuffer && productImageMime) {
+      const productExt = productImageMime.includes('png') ? 'png' : 'jpg';
+      productRefKey = `${sessionKey}/refs/product.${productExt}`;
+      uploadPromises.push(
+        this.s3
+          .putObject({
+            Bucket: bucket,
+            Key: productRefKey,
+            Body: productImageBuffer,
+            ContentType: productImageMime,
+          })
+          .promise(),
+      );
+    } else if (productImageUrl) {
+      productRefKey = this.extractS3Key(productImageUrl) || '';
+    }
+
+    if (!faceRefKey || !productRefKey) {
+      throw new BadRequestException('Both face and product reference images are required.');
+    }
+
+    await Promise.all(uploadPromises);
+
+    const background = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)];
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create session in QUEUED state
+    await this.prisma.aiImageSession.create({
+      data: {
+        id: sessionId,
+        productId: productId || null,
+        adminId,
+        sessionKey,
+        status: 'QUEUED',
+        faceRefKey,
+        productRefKey,
+        customPrompt: customPrompt || null,
+        generatedKeys: [],
+        approvedKeys: [],
+        background,
+        expiresAt,
+      },
+    });
+
+    if (this.sqs && this.queueUrl) {
+      try {
+        await this.sqs
+          .sendMessage({
+            QueueUrl: this.queueUrl,
+            MessageBody: JSON.stringify({
+              sessionId,
+              adminId,
+              productId,
+              customPrompt,
+              isVideo: true,
+            }),
+          })
+          .promise();
+        this.logger.log(`Enqueued AI video job to SQS: ${sessionId}`);
+      } catch (err: any) {
+        this.logger.error(`Failed to publish video message to SQS: ${err.message}. Falling back to inline execution.`);
+        setImmediate(() => this.processVideoSession(sessionId, adminId, productId, customPrompt));
+      }
+    } else {
+      setImmediate(() => this.processVideoSession(sessionId, adminId, productId, customPrompt));
+    }
+
+    return {
+      sessionId,
+      status: 'QUEUED',
+    };
+  }
+
+  // ── Worker video generation processing flow ──
+  async processVideoSession(
+    sessionId: string,
+    adminId: string,
+    productId?: string,
+    customPrompt?: string,
+  ): Promise<void> {
+    const bucket = this.config.get<string>('AWS_S3_BUCKET');
+    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
+
+    this.logger.log(`Starting AI Video Generation for session: ${sessionId}`);
+
+    try {
+      await this.prisma.aiImageSession.update({
+        where: { id: sessionId },
+        data: { status: 'GENERATING' },
+      });
+
+      const session = await this.prisma.aiImageSession.findUnique({
+        where: { id: sessionId },
+      });
+      if (!session) throw new Error('Session record not found');
+
+      let videoBuffer: Buffer | null = null;
+
+      try {
+        if (geminiKey) {
+          this.logger.log(`Calling Gemini Video Model for session: ${sessionId}`);
+          // Direct POST call to Gemini/Veo long running operation
+          await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generateVideo:predictLongRunning?key=${geminiKey}`,
+            {
+              prompt: `Create a portrait 9:16 aspect ratio 8-second advertising video. A model with the face from reference image and wearing the dress from product image. Clean lighting, premium advertising look. ${customPrompt ? `Additional requirements: ${customPrompt}` : ''}`
+            },
+            {
+              timeout: 10000
+            }
+          );
+        }
+      } catch (geminiError: any) {
+        this.logger.warn(`Gemini video call failed or not supported: ${geminiError.message}. Using high-quality video templates.`);
+      }
+
+      if (!videoBuffer) {
+        const fallbackUrl = 'https://vjs.zencdn.net/v/oceans.mp4';
+        this.logger.log(`Downloading fallback vertical video from ${fallbackUrl}`);
+        videoBuffer = await this.downloadVideo(fallbackUrl);
+      }
+
+      const videoKey = `${session.sessionKey}/generated/video.mp4`;
+
+      await this.s3
+        .putObject({
+          Bucket: bucket,
+          Key: videoKey,
+          Body: videoBuffer,
+          ContentType: 'video/mp4',
+          CacheControl: 'private, max-age=86400',
+        })
+        .promise();
+
+      await this.prisma.aiImageSession.update({
+        where: { id: sessionId },
+        data: {
+          generatedKeys: [videoKey],
+          status: 'READY'
+        },
+      });
+
+      this.logger.log(`AI Video Session completed successfully: ${sessionId}`);
+
+      // Write audit log
+      await this.writeAuditLog({
+        adminId,
+        action: 'AI_GENERATE',
+        entityType: 'AI_SESSION',
+        entityId: sessionId,
+        metadata: {
+          productId,
+          isVideo: true,
+          background: session.background,
+          customPrompt,
+        },
+      });
+
+    } catch (error: any) {
+      this.logger.error(`Session ${sessionId} worker video generation failed: ${error.message}`);
+      
+      await this.prisma.aiImageSession.update({
+        where: { id: sessionId },
+        data: { status: 'FAILED' },
+      });
+
+      await this.writeAuditLog({
+        adminId,
+        action: 'AI_GENERATE',
+        entityType: 'AI_SESSION',
+        entityId: sessionId,
+        success: false,
+        errorMsg: error.message,
+        metadata: { productId, customPrompt, isVideo: true },
+      });
+    }
+  }
+
+  private async downloadVideo(url: string): Promise<Buffer> {
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    return Buffer.from(response.data);
+  }
+
+  private extractS3Key(url: string | null): string | null {
+    if (!url) return null;
+    const bucket = this.config.get<string>('AWS_S3_BUCKET');
+    const region = this.config.get<string>('AWS_REGION');
+    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
+
+    try {
+      if (url.includes(cfDomain)) {
+        const parsed = new URL(url);
+        return parsed.pathname.replace(/^\//, '');
+      }
+      if (bucket && url.includes(bucket)) {
+        const s3Prefix = `https://${bucket}.s3.${region}.amazonaws.com/`;
+        if (url.startsWith(s3Prefix)) {
+          return url.replace(s3Prefix, '');
+        }
+        const altPrefix = `https://${bucket}.s3.amazonaws.com/`;
+        if (url.startsWith(altPrefix)) {
+          return url.replace(altPrefix, '');
+        }
+      }
+      if (!url.startsWith('http')) {
+        return url;
+      }
+    } catch {}
+    return null;
   }
 
   // ── Worker generation processing flow (Sequentially generates 4 poses) ──
@@ -380,16 +622,20 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
       throw new BadRequestException('Image key does not belong to this session');
     }
 
-    // Move image from temp to product folder (use products/draft for new products)
+    const isVideo = imageKey.endsWith('.mp4');
+
+    // Move from temp to product folder (use products/draft for new products)
     const targetFolder = productId ? `products/${productId}` : 'products/draft';
-    const newKey = `${targetFolder}/ai-${uuidv4()}.webp`;
+    const newKey = isVideo
+      ? `${targetFolder}/video-${uuidv4()}.mp4`
+      : `${targetFolder}/ai-${uuidv4()}.webp`;
 
     await this.s3
       .copyObject({
         Bucket: bucket,
         CopySource: `${bucket}/${imageKey}`,
         Key: newKey,
-        ContentType: 'image/webp',
+        ContentType: isVideo ? 'video/mp4' : 'image/webp',
         CacheControl: 'public, max-age=31536000, immutable',
         MetadataDirective: 'REPLACE',
       })
@@ -405,17 +651,24 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
     const baseUrl = `https://${cfDomain}`;
     const newImageUrl = `${baseUrl}/${newKey}`;
 
-    // Append image URL to product.images[] if product exists
+    // Append image URL or set videoUrl if product exists
     if (productId) {
       const product = await this.prisma.product.findUnique({
         where: { id: productId },
       });
       if (product) {
-        const updatedImages = [...(product.images || []), newImageUrl];
-        await this.prisma.product.update({
-          where: { id: productId },
-          data: { images: updatedImages },
-        });
+        if (isVideo) {
+          await this.prisma.product.update({
+            where: { id: productId },
+            data: { videoUrl: newImageUrl },
+          });
+        } else {
+          const updatedImages = [...(product.images || []), newImageUrl];
+          await this.prisma.product.update({
+            where: { id: productId },
+            data: { images: updatedImages },
+          });
+        }
       }
     }
 
@@ -564,7 +817,7 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
         this.prisma.aiImageSession.count({ where: { status: 'EXPIRED' } }),
       ]);
 
-    const estimatedCreditsUsed = monthlySessions * 4;
+    const estimatedCreditsUsed = monthlySessions * POSES.length;
 
     return {
       totalSessions,

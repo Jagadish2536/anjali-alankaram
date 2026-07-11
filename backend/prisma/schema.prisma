@@ -254,6 +254,7 @@ model Category {
   parent      Category?  @relation("CategoryParent", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryParent")
   products    Product[]
+  sizeGuide   Json?
   isActive    Boolean    @default(true)
   sortOrder   Int        @default(0)
   createdAt   DateTime   @default(now())
@@ -293,6 +294,7 @@ model Product {
   totalSold        Int              @default(0)
   variants         ProductVariant[]
   reviews          Review[]
+  restockNotifications RestockNotification[]
   cartItems        CartItem[]
   wishlistItems    WishlistItem[]
   orderItems       OrderItem[]
@@ -328,6 +330,7 @@ model ProductVariant {
   warehouseInventory WarehouseInventory[]
   inventoryLogs      InventoryLog[]
   reservations       InventoryReservation[]
+  restockNotifications RestockNotification[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -761,8 +764,10 @@ model Offer {
   id              String   @id @default(uuid())
   title           String
   isActive        Boolean  @default(true)
-  buyQuantity     Int      // X in Buy X Get Y
-  getQuantity     Int      // Y in Buy X Get Y
+  offerType       String   @default("BUY_X_GET_Y")
+  offerPrice      Decimal? @db.Decimal(10, 2)
+  buyQuantity     Int      // X in Buy X Get Y (or X items in Buy X for Y Rs)
+  getQuantity     Int      // Y in Buy X Get Y (or 0 for Buy X for Y Rs)
   minProductPrice Decimal? @db.Decimal(10, 2)
   maxProductPrice Decimal? @db.Decimal(10, 2)
   productIds      String[]
@@ -845,5 +850,21 @@ model FeatureFlag {
   updatedAt   DateTime @updatedAt
 
   @@map("feature_flags")
+}
+
+model RestockNotification {
+  id         String   @id @default(uuid())
+  email      String
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId  String
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  isSent     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([email])
+  @@index([variantId])
+  @@map("restock_notifications")
 }
 

@@ -19,6 +19,11 @@ const AIImageGeneratorModal = dynamic(
   { ssr: false },
 );
 
+const AIVideoGeneratorModal = dynamic(
+  () => import('@/components/admin/AIVideoGeneratorModal'),
+  { ssr: false },
+);
+
 // ── Confirm Dialog ───────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }: {
   title: string; message: string; onConfirm: () => void; onCancel: () => void;
@@ -167,6 +172,8 @@ export default function AdminProductsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showAIVideoModal, setShowAIVideoModal] = useState(false);
+  const [isMulticolour, setIsMulticolour] = useState(false);
   const [aiProductTarget, setAiProductTarget] = useState<{ id: string; name: string } | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
@@ -353,11 +360,27 @@ export default function AdminProductsPage() {
       returnDays: String(product.returnDays ?? 0),
       sizeGuide: product.sizeGuide || [],
     });
-    setEditVariants(groupVariants(product.variants));
+    const grouped = groupVariants(product.variants);
+    const multi = grouped.length > 1 || (grouped[0]?.color !== '' && grouped[0]?.color !== undefined && grouped[0]?.color !== null);
+    setIsMulticolour(multi);
+    setEditVariants(grouped);
   };
 
   const closeEdit = () => {
     setEditingProduct(null);
+  };
+
+  const handleEditCategoryChange = (catId: string) => {
+    const selectedCat = categories.find(cat => cat.id === catId);
+    setEditForm(prev => {
+      const isGuideEmpty = !prev.sizeGuide || prev.sizeGuide.length === 0 || 
+        prev.sizeGuide.every((row: any) => !row.size && !row.bust && !row.waist && !row.hips && !row.length);
+      return {
+        ...prev,
+        categoryId: catId,
+        ...(isGuideEmpty && selectedCat?.sizeGuide ? { sizeGuide: selectedCat.sizeGuide } : {})
+      };
+    });
   };
 
   const handleAddEditVariantGroup = () => {
@@ -588,7 +611,7 @@ export default function AdminProductsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
-                  <select className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary" value={editForm.categoryId} onChange={e => setEditForm({ ...editForm, categoryId: e.target.value })}>
+                  <select className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary" value={editForm.categoryId} onChange={e => handleEditCategoryChange(e.target.value)}>
                     {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
                 </div>
@@ -712,11 +735,23 @@ export default function AdminProductsPage() {
               {/* Product Video (Local Upload) */}
               <div className="rounded-xl overflow-hidden border">
                 <div
-                  className="px-4 py-3 flex items-center gap-2 bg-primary text-primary-foreground"
+                  className="px-4 py-3 flex items-center justify-between bg-primary text-primary-foreground"
                 >
-                  <PlusCircle className="w-4 h-4 text-white" />
-                  <span className="text-sm font-bold text-white">Product Video (Local Upload)</span>
-                  <span className="text-white/70 text-xs ml-1">(optional)</span>
+                  <div className="flex items-center gap-2">
+                    <PlusCircle className="w-4 h-4 text-white" />
+                    <span className="text-sm font-bold text-white">Product Video (Local Upload)</span>
+                    <span className="text-white/70 text-xs ml-1">(optional)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiProductTarget({ id: editingProduct.id, name: editingProduct.name });
+                      setShowAIVideoModal(true);
+                    }}
+                    className="px-3 py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg shadow-sm text-xs font-bold flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> AI Video Creator
+                  </button>
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
@@ -831,103 +866,144 @@ export default function AdminProductsPage() {
               <div className="border rounded-xl overflow-hidden">
                 <div className="px-4 py-3 bg-green-50 border-b flex items-center justify-between">
                   <span className="text-sm font-bold text-green-800">📦 Sizes &amp; Stock by Color</span>
-                  <button
-                    type="button"
-                    onClick={handleAddEditVariantGroup}
-                    className="text-xs font-bold text-green-700 flex items-center gap-1 hover:underline"
-                  >
-                    <PlusCircle className="w-3 h-3" /> Add Variant Color
-                  </button>
+                  {isMulticolour && (
+                    <button
+                      type="button"
+                      onClick={handleAddEditVariantGroup}
+                      className="text-xs font-bold text-green-700 flex items-center gap-1 hover:underline"
+                    >
+                      <PlusCircle className="w-3 h-3" /> Add Variant Color
+                    </button>
+                  )}
+                </div>
+                <div className="p-4 space-y-4 border-b">
+                  {/* Single vs Multicolour Product Type Radio Toggle */}
+                  <div className="flex gap-6 pb-2 border-b">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="radio"
+                        name="productTypeEdit"
+                        checked={!isMulticolour}
+                        onChange={() => {
+                          setIsMulticolour(false);
+                          setEditVariants([
+                            {
+                              ...editVariants[0],
+                              color: '',
+                              colorHex: '#000000',
+                              images: []
+                            }
+                          ]);
+                        }}
+                        className="accent-primary"
+                      />
+                      Single Product (One color, multiple sizes)
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="radio"
+                        name="productTypeEdit"
+                        checked={isMulticolour}
+                        onChange={() => setIsMulticolour(true)}
+                        className="accent-primary"
+                      />
+                      Multicolour Product (Multiple colors/variants)
+                    </label>
+                  </div>
                 </div>
                 <div className="p-4 space-y-4">
                   {editVariants.map((v, i) => (
                     <div key={i} className="border rounded-xl p-3 bg-muted/5 space-y-3 text-xs">
-                      <div className="flex items-center justify-between border-b pb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Color Variant {i + 1}</span>
-                        {editVariants.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEditVariantGroup(i)}
-                            className="p-1 text-red-500 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                      {isMulticolour && (
+                        <div className="flex items-center justify-between border-b pb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Color Variant {i + 1}</span>
+                          {editVariants.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditVariantGroup(i)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                       
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-0.5">Colour Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Red"
-                            className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
-                            value={v.color || ''}
-                            onChange={e => {
-                              const name = e.target.value;
-                              // Auto-update swatch hex when a known color name is typed
-                              const knownHex = COLOR_NAME_TO_HEX[name.toLowerCase().trim()];
-                              const updated = [...editVariants];
-                              updated[i] = { ...updated[i], color: name, ...(knownHex ? { colorHex: knownHex } : {}) };
-                              setEditVariants(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-0.5">Colour Swatch</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              className="w-8 h-8 rounded border cursor-pointer shrink-0"
-                              value={v.colorHex || '#000000'}
-                              onChange={e => {
-                                const hex = e.target.value;
-                                // Auto-fill color name when picking from color picker
-                                const knownName = HEX_TO_COLOR_NAME[hex.toLowerCase()];
-                                const updated = [...editVariants];
-                                updated[i] = { ...updated[i], colorHex: hex, ...(knownName ? { color: knownName } : {}) };
-                                setEditVariants(updated);
-                              }}
-                            />
-                            <span className="text-[10px] text-muted-foreground">{v.colorHex || '#000000'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Variant images uploader */}
-                      <div className="border-b pb-2">
-                        <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-1">Variant Images</label>
-                        <div className="flex flex-wrap gap-2">
-                          {(v.images || []).map((imgUrl: string, imgIdx: number) => (
-                            <div key={imgIdx} className="relative w-12 h-12 rounded overflow-hidden border bg-muted/10">
-                              {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
-                              <button type="button" onClick={() => {
-                                const updated = [...editVariants];
-                                updated[i].images = (updated[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
-                                setEditVariants(updated);
-                              }} className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center">
-                                <X className="w-2.5 h-2.5 text-white" />
-                              </button>
+                      {isMulticolour && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-0.5">Colour Name</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Red"
+                                className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
+                                value={v.color || ''}
+                                onChange={e => {
+                                  const name = e.target.value;
+                                  const knownHex = COLOR_NAME_TO_HEX[name.toLowerCase().trim()];
+                                  const updated = [...editVariants];
+                                  updated[i] = { ...updated[i], color: name, ...(knownHex ? { colorHex: knownHex } : {}) };
+                                  setEditVariants(updated);
+                                }}
+                              />
                             </div>
-                          ))}
-                          <label className="w-12 h-12 rounded border border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
-                            {isUploading === (i + 100) ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Plus className="w-4 h-4 text-muted-foreground" />}
-                            <span className="text-[8px] text-muted-foreground mt-0.5">Add</span>
-                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                              const file = e.target.files?.[0]; if (!file) return;
-                              setIsUploading(i + 100);
-                              try {
-                                const fd = new FormData(); fd.append('file', file);
-                                const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-                                const updated = [...editVariants];
-                                updated[i].images = [...(updated[i].images || []), data.url];
-                                setEditVariants(updated);
-                              } catch (err: any) { alert('Upload failed'); }
-                              finally { setIsUploading(null); }
-                            }} />
-                          </label>
-                        </div>
-                      </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-0.5">Colour Swatch</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="color"
+                                  className="w-8 h-8 rounded border cursor-pointer shrink-0"
+                                  value={v.colorHex || '#000000'}
+                                  onChange={e => {
+                                    const hex = e.target.value;
+                                    const knownName = HEX_TO_COLOR_NAME[hex.toLowerCase()];
+                                    const updated = [...editVariants];
+                                    updated[i] = { ...updated[i], colorHex: hex, ...(knownName ? { color: knownName } : {}) };
+                                    setEditVariants(updated);
+                                  }}
+                                />
+                                <span className="text-[10px] text-muted-foreground">{v.colorHex || '#000000'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Variant images uploader */}
+                          <div className="border-b pb-2">
+                            <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-1">Variant Images</label>
+                            <div className="flex flex-wrap gap-2">
+                              {(v.images || []).map((imgUrl: string, imgIdx: number) => (
+                                <div key={imgIdx} className="relative w-12 h-12 rounded overflow-hidden border bg-muted/10">
+                                  {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
+                                  <button type="button" onClick={() => {
+                                    const updated = [...editVariants];
+                                    updated[i].images = (updated[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
+                                    setEditVariants(updated);
+                                  }} className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center">
+                                    <X className="w-2.5 h-2.5 text-white" />
+                                  </button>
+                                </div>
+                              ))}
+                              <label className="w-12 h-12 rounded border border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+                                {isUploading === (i + 100) ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Plus className="w-4 h-4 text-muted-foreground" />}
+                                <span className="text-[8px] text-muted-foreground mt-0.5">Add</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                  const file = e.target.files?.[0]; if (!file) return;
+                                  setIsUploading(i + 100);
+                                  try {
+                                    const fd = new FormData(); fd.append('file', file);
+                                    const { data } = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                                    const updated = [...editVariants];
+                                    updated[i].images = [...(updated[i].images || []), data.url];
+                                    setEditVariants(updated);
+                                  } catch (err: any) { alert('Upload failed'); }
+                                  finally { setIsUploading(null); }
+                                }} />
+                              </label>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       {/* Sub-table for Sizes & Stock */}
                       <div className="space-y-2">
@@ -1315,6 +1391,32 @@ export default function AdminProductsPage() {
           }}
           onClose={() => {
             setShowAIModal(false);
+            setAiProductTarget(null);
+            fetchProducts(true);
+          }}
+        />
+      )}
+
+      {/* ✨ AI Video Generator Modal */}
+      {showAIVideoModal && aiProductTarget && (
+        <AIVideoGeneratorModal
+          productId={aiProductTarget.id}
+          productName={aiProductTarget.name}
+          existingImages={editForm.images}
+          onVideoApproved={(url) => {
+            setEditForm(prev => ({
+              ...prev,
+              videoUrl: url,
+            }));
+            setProducts(prods => prods.map(p =>
+              p.id === aiProductTarget.id
+                ? { ...p, videoUrl: url }
+                : p
+            ));
+            showFeedback('success', '✨ AI Video added to product!');
+          }}
+          onClose={() => {
+            setShowAIVideoModal(false);
             setAiProductTarget(null);
             fetchProducts(true);
           }}
