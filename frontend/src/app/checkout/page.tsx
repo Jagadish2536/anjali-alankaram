@@ -74,7 +74,8 @@ function PincodeChecker() {
       </div>
       {open && (
         <div className="border-t px-4 py-3 bg-muted/10 flex gap-2">
-          <input type="text" maxLength={6} placeholder="Enter 6-digit pincode"
+          <label htmlFor="pincode-check-input" className="sr-only">Enter 6-digit pincode</label>
+          <input id="pincode-check-input" name="pincode" type="text" maxLength={6} placeholder="Enter 6-digit pincode"
             className="flex-1 px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
             value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
             onKeyDown={e => e.key === 'Enter' && check()} />
@@ -484,8 +485,8 @@ export default function CheckoutPage() {
                   <p className="text-sm text-muted-foreground py-4 text-center">No saved addresses. Add one below.</p>
                 )}
                 {addresses.map(addr => (
-                  <label key={addr.id} className={`flex gap-3 p-4 border rounded-xl cursor-pointer transition-all ${selectedAddress === addr.id ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-gray-300'}`}>
-                    <input type="radio" name="addr" value={addr.id} checked={selectedAddress === addr.id}
+                  <label key={addr.id} htmlFor={`addr-${addr.id}`} className={`flex gap-3 p-4 border rounded-xl cursor-pointer transition-all ${selectedAddress === addr.id ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-gray-300'}`}>
+                    <input id={`addr-${addr.id}`} type="radio" name="addr" value={addr.id} checked={selectedAddress === addr.id}
                       onChange={e => setSelectedAddress(e.target.value)} className="mt-1 accent-primary" />
                     <div>
                       <p className="font-bold text-sm">{addr.name}</p>
@@ -521,8 +522,8 @@ export default function CheckoutPage() {
                 <button onClick={() => setStep(1)} className="text-xs text-primary font-bold hover:underline">← Change Address</button>
               </div>
               <div className="p-5 space-y-3">
-                <label className={`flex gap-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-gray-300'}`}>
-                  <input type="radio" name="pay" value="RAZORPAY" checked={paymentMethod === 'RAZORPAY'}
+                <label htmlFor="pay-razorpay" className={`flex gap-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-gray-300'}`}>
+                  <input id="pay-razorpay" type="radio" name="pay" value="RAZORPAY" checked={paymentMethod === 'RAZORPAY'}
                     onChange={() => setPaymentMethod('RAZORPAY')} className="mt-1 accent-primary" />
                   <div>
                     <p className="font-bold text-sm">💳 Pay Online</p>
@@ -531,8 +532,8 @@ export default function CheckoutPage() {
                 </label>
 
                 {codEnabled && (
-                  <label className={`flex gap-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-gray-300'}`}>
-                    <input type="radio" name="pay" value="COD" checked={paymentMethod === 'COD'}
+                  <label htmlFor="pay-cod" className={`flex gap-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-gray-300'}`}>
+                    <input id="pay-cod" type="radio" name="pay" value="COD" checked={paymentMethod === 'COD'}
                       onChange={() => setPaymentMethod('COD')} className="mt-1 accent-primary" />
                     <div>
                       <p className="font-bold text-sm">💵 Cash on Delivery</p>
@@ -573,8 +574,11 @@ export default function CheckoutPage() {
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-0 border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary">
                 <Tag className="w-4 h-4 text-primary ml-3 shrink-0" />
+                <label htmlFor="coupon-code-input" className="sr-only">Apply Coupons</label>
                 <input
                   ref={couponInputRef}
+                  id="coupon-code-input"
+                  name="couponCode"
                   type="text" placeholder="Apply Coupons" value={couponCode}
                   onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponMsg(null); }}
                   onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
@@ -766,10 +770,13 @@ export default function CheckoutPage() {
               <div>
                 <p className="text-xs font-black tracking-widest text-gray-500 uppercase mb-3">Contact Details</p>
                 <div className="space-y-3">
-                  <input type="text" placeholder="Name*"
+                  <label htmlFor="addr-name" className="sr-only">Full Name</label>
+                  <input id="addr-name" name="name" type="text" placeholder="Name*"
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                     value={newAddress.name} onChange={e => setNewAddress(p => ({ ...p, name: e.target.value }))} />
-                  <input type="tel" placeholder="WhatsApp Number*" maxLength={10}
+                  
+                  <label htmlFor="addr-phone" className="sr-only">WhatsApp Number</label>
+                  <input id="addr-phone" name="phone" type="tel" placeholder="WhatsApp Number*" maxLength={10}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                     value={newAddress.phone} onChange={e => setNewAddress(p => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))} />
                 </div>
@@ -779,35 +786,45 @@ export default function CheckoutPage() {
               <div>
                 <p className="text-xs font-black tracking-widest text-gray-500 uppercase mb-3">Address</p>
                 <div className="space-y-3">
-                  <input type="text" placeholder="Pin Code*" maxLength={6}
+                  <label htmlFor="addr-pincode" className="sr-only">Pin Code</label>
+                  <input id="addr-pincode" name="pincode" type="text" placeholder="Pin Code*" maxLength={6}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                     value={newAddress.pincode} onChange={e => setNewAddress(p => ({ ...p, pincode: e.target.value.replace(/\D/g, '') }))} />
 
                   <div>
-                    <input type="text" placeholder="House Number/Tower/Block*"
+                    <label htmlFor="addr-line1" className="sr-only">House Number/Tower/Block</label>
+                    <input id="addr-line1" name="line1" type="text" placeholder="House Number/Tower/Block*"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                       value={newAddress.line1} onChange={e => setNewAddress(p => ({ ...p, line1: e.target.value }))} />
                     <p className="text-[11px] text-amber-600 mt-1 ml-1">*House Number will allow a doorstep delivery</p>
                   </div>
 
                   <div>
-                    <input type="text" placeholder="Address (locality, building, street)*"
+                    <label htmlFor="addr-line2" className="sr-only">Address (locality, building, street)</label>
+                    <input id="addr-line2" name="line2" type="text" placeholder="Address (locality, building, street)*"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                       value={newAddress.line2} onChange={e => setNewAddress(p => ({ ...p, line2: e.target.value }))} />
                     <p className="text-[11px] text-amber-600 mt-1 ml-1">*Please update society/apartment details</p>
                   </div>
 
-                  <input type="text" placeholder="Locality / Town*"
+                  <label htmlFor="addr-locality" className="sr-only">Locality / Town</label>
+                  <input id="addr-locality" name="locality" type="text" placeholder="Locality / Town*"
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
                     value={newAddress.locality} onChange={e => setNewAddress(p => ({ ...p, locality: e.target.value }))} />
 
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="text" placeholder="City / District*"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all bg-gray-50"
-                      value={newAddress.city} onChange={e => setNewAddress(p => ({ ...p, city: e.target.value }))} />
-                    <input type="text" placeholder="State*"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all bg-gray-50"
-                      value={newAddress.state} onChange={e => setNewAddress(p => ({ ...p, state: e.target.value }))} />
+                    <div>
+                      <label htmlFor="addr-city" className="sr-only">City / District</label>
+                      <input id="addr-city" name="city" type="text" placeholder="City / District*"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all bg-gray-50"
+                        value={newAddress.city} onChange={e => setNewAddress(p => ({ ...p, city: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label htmlFor="addr-state" className="sr-only">State</label>
+                      <input id="addr-state" name="state" type="text" placeholder="State*"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all bg-gray-50"
+                        value={newAddress.state} onChange={e => setNewAddress(p => ({ ...p, state: e.target.value }))} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -881,6 +898,10 @@ export default function CheckoutPage() {
               <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
                 <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
                 <span><strong>No Cancellation:</strong> Once payment is successful, no cancellation is allowed. Please check the order details once again.</span>
+              </div>
+              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                <span><strong>Record Unpacking Video:</strong> Please record a video of the product while unpacking the product.</span>
               </div>
             </div>
 

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Script from 'next/script';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import {
@@ -445,7 +446,13 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  const { settings, fetchSettings } = useSettingsStore();
   const [order, setOrder] = useState<any>(null);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [modal, setModal] = useState<'cancel' | 'return' | 'replace' | null>(null);
@@ -1110,14 +1117,17 @@ export default function OrderDetailPage() {
             ) : <p className="text-sm text-muted-foreground">No address</p>}
           </div>
 
-          {/* Warehouse info (if assigned) */}
-          {order.warehouse && (
-            <div className="bg-white border rounded-2xl p-5 shadow-sm">
-              <h2 className="font-bold mb-2 text-sm flex items-center gap-2"><Warehouse className="w-4 h-4 text-primary" /> Fulfillment Center</h2>
-              <p className="text-sm font-medium">{order.warehouse.name}</p>
-              <p className="text-xs text-muted-foreground font-mono">{order.warehouse.code}</p>
+          {/* From Address */}
+          <div className="bg-white border rounded-2xl p-5 shadow-sm">
+            <h2 className="font-bold mb-3 text-sm flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> From Address</h2>
+            <div className="text-sm space-y-0.5">
+              <p className="font-bold">{settings?.storeName || 'Anjali Alankaram'}</p>
+              <p className="text-muted-foreground whitespace-pre-line">
+                {settings?.storeAddress || 'Plot No. 45, Jubilee Hills, Hyderabad, Telangana - 500033'}
+              </p>
+              <p className="font-medium mt-2">📞 Support Number: {settings?.supportPhone || '+91 9876543210'}</p>
             </div>
-          )}
+          </div>
 
           {/* Trust badge */}
           <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4">

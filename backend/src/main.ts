@@ -90,7 +90,19 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // ── Static file serving (development / local storage) ───────────
-  app.use('/api/v1/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use(
+    '/api/v1/uploads',
+    express.static(path.join(process.cwd(), 'uploads'), {
+      setHeaders: (res, filePath) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (filePath.toLowerCase().endsWith('.avif')) {
+          res.setHeader('Content-Type', 'image/avif');
+        }
+      },
+    }),
+  );
 
   // ── Swagger (dev only) ───────────────────────────────────────────
   if (configService.get('NODE_ENV') !== 'production') {
