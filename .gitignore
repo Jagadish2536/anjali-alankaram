@@ -11,4 +11,5 @@ terraform.tfstate.backup
 *.log
 Dockerfile.local
 frontend/playwright-report/
-frontend/test-results/
+frontend/test-results/
+backups/
