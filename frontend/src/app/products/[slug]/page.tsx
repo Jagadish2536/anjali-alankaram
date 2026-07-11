@@ -8,6 +8,7 @@ import { formatPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useWishlistStore } from '@/store/useWishlistStore';
 import {
   Star, Minus, Plus, ShoppingBag, Heart, Zap,
   Instagram, ExternalLink, Truck, ShieldCheck, Video,
@@ -655,12 +656,14 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
   const { addItem, isLoading: isCartLoading, items: cartItems, fetchCart } = useCartStore();
+  const { items: wishlistItems, fetchWishlist, addItem: addToWishlistStore, removeItem: removeFromWishlistStore } = useWishlistStore();
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchCart().catch(() => {});
+      fetchWishlist().catch(() => {});
     }
-  }, [isAuthenticated, fetchCart]);
+  }, [isAuthenticated, fetchCart, fetchWishlist]);
 
   const isAlreadyInCart = selectedVariant 
     ? (cartItems || []).some((item: any) => item.variant?.id === selectedVariant.id)
@@ -697,11 +700,8 @@ export default function ProductDetailPage() {
   // ── Fetch wishlist status ───────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthenticated || !product) return;
-    api.get('/wishlist').then(({ data }) => {
-      const ids = data.items?.map((i: any) => i.productId) || [];
-      setIsWishlisted(ids.includes(product.id));
-    }).catch(() => {});
-  }, [isAuthenticated, product]);
+    setIsWishlisted(wishlistItems.some((i: any) => i.product.id === product.id));
+  }, [isAuthenticated, product, wishlistItems]);
 
   // ── Fetch reviews ───────────────────────────────────────────────────────
   const fetchReviews = async (productId: string) => {
@@ -786,11 +786,9 @@ export default function ProductDetailPage() {
     setWishlistLoading(true);
     try {
       if (isWishlisted) {
-        await api.delete(`/wishlist/${product.id}`);
-        setIsWishlisted(false);
+        await removeFromWishlistStore(product.id);
       } else {
-        await api.post(`/wishlist/${product.id}`, {});
-        setIsWishlisted(true);
+        await addToWishlistStore(product.id);
       }
     } catch { alert('Could not update wishlist'); }
     finally { setWishlistLoading(false); }

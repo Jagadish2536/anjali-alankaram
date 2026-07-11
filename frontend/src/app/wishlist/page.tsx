@@ -8,39 +8,18 @@ import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { HeartOff, ShoppingBag } from 'lucide-react';
 
+import { useWishlistStore } from '@/store/useWishlistStore';
+
 export default function WishlistPage() {
   const { isAuthenticated } = useAuthStore();
   const { addItem } = useCartStore();
-  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { items: wishlistItems, fetchWishlist, removeItem: removeFromWishlist, isLoading } = useWishlistStore();
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchWishlist();
-    } else {
-      setIsLoading(false);
     }
-  }, [isAuthenticated]);
-
-  const fetchWishlist = async () => {
-    try {
-      const { data } = await api.get('/wishlist');
-      setWishlistItems(data?.items || []);
-    } catch (e) {
-      console.error('Failed to load wishlist');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const removeFromWishlist = async (productId: string) => {
-    try {
-      await api.delete(`/wishlist/${productId}`);
-      setWishlistItems(prev => prev.filter(item => item.product.id !== productId));
-    } catch (e) {
-      console.error('Failed to remove item');
-    }
-  };
+  }, [isAuthenticated, fetchWishlist]);
 
   const handleAddToCart = async (product: any) => {
     if (!product.variants || product.variants.length === 0) return;

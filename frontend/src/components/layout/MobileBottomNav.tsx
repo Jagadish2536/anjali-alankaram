@@ -4,6 +4,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, Heart, ShoppingBag, User, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 
+import { useWishlistStore } from '@/store/useWishlistStore';
+import { useEffect, useState } from 'react';
+
 const NAV_ITEMS = [
   { label: 'Home',     href: '/',         icon: Home },
   { label: 'Wishlist', href: '/wishlist',  icon: Heart },
@@ -16,6 +19,17 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  const { items: wishlistItems, fetchWishlist } = useWishlistStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (isAuthenticated) {
+      fetchWishlist().catch(() => {});
+    }
+  }, [isAuthenticated, fetchWishlist]);
+
+  const wishlistCount = mounted ? wishlistItems?.length ?? 0 : 0;
 
   const isHiddenPage =
     pathname.startsWith('/admin') ||
@@ -52,7 +66,14 @@ export default function MobileBottomNav() {
               }`}
               aria-label={label}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+              <div className="relative">
+                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+                {label === 'Wishlist' && wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {wishlistCount > 9 ? '9+' : wishlistCount}
+                  </span>
+                )}
+              </div>
               <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : 'text-gray-400'}`}>
                 {label}
               </span>

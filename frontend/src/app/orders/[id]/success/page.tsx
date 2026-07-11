@@ -91,7 +91,7 @@ export default function OrderSuccessPage() {
                           </p>
                         </div>
                         <span className="text-sm font-bold text-primary shrink-0">
-                          ₹{Number(item.price).toFixed(0)}
+                          ₹{Number(item.unitPrice || item.price || 0).toFixed(0)}
                         </span>
                       </div>
                     );

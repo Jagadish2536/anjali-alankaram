@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useCartStore } from '@/store/useCartStore';
+import { useWishlistStore } from '@/store/useWishlistStore';
 import { api } from '@/lib/api';
 
 const STATIC_NAV_CATEGORIES = [
@@ -27,6 +28,7 @@ export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const { settings, fetchSettings } = useSettingsStore();
   const { items: cartItems } = useCartStore();
+  const { items: wishlistItems, fetchWishlist } = useWishlistStore();
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -53,7 +55,11 @@ export default function Navbar() {
   useEffect(() => {
     setMounted(true);
     fetchSettings();
-  }, [fetchSettings]);
+    if (isAuthenticated) {
+      useCartStore.getState().fetchCart().catch(() => {});
+      fetchWishlist().catch(() => {});
+    }
+  }, [fetchSettings, isAuthenticated, fetchWishlist]);
 
   useEffect(() => {
     api.get('/categories').then(({ data }) => {
@@ -89,6 +95,7 @@ export default function Navbar() {
   const storeName = settings.storeName || 'Anjali Alankaram';
   const marqueeText = (settings as any).marqueeText || 'Free Delivery on all Orders';
   const cartCount = mounted ? cartItems?.length ?? 0 : 0;
+  const wishlistCount = mounted ? wishlistItems?.length ?? 0 : 0;
 
   const getAdminHref = () => {
     if (!user) return '/admin';
@@ -207,8 +214,13 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop: Wishlist */}
-            <Link href="/wishlist" className="hidden md:flex text-foreground hover:text-primary transition-colors p-1" title="Wishlist">
+            <Link href="/wishlist" className="hidden md:flex relative text-foreground hover:text-primary transition-colors p-1" title="Wishlist">
               <Heart className="h-5 w-5" />
+              {mounted && wishlistCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {wishlistCount > 9 ? '9+' : wishlistCount}
+                </span>
+              )}
             </Link>
 
             {/* Desktop: Profile */}
