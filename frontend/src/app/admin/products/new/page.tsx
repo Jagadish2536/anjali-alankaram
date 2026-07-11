@@ -42,6 +42,7 @@ export default function NewProductPage() {
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [isMulticolour, setIsMulticolour] = useState(false);
+  const [selectedFullImage, setSelectedFullImage] = useState<string | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -346,19 +347,30 @@ export default function NewProductPage() {
           </div>
           <div className="grid grid-cols-1 gap-4">
             {formData.images.map((url, i) => (
-              <div key={i} className="flex gap-2">
-                <div className="flex-1 relative">
-                  <ImageIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="url" placeholder="Image URL (or upload below)"
-                    className="w-full pl-10 pr-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                    value={url}
-                    onChange={e => {
-                      const imgs = [...formData.images]; imgs[i] = e.target.value;
-                      setFormData({ ...formData, images: imgs });
-                    }}
-                  />
-                  <div className="mt-2">
+              <div key={i} className="flex gap-3 items-start border p-4 rounded-2xl bg-muted/5">
+                {url && (
+                  <div 
+                    className="w-16 h-16 rounded-xl overflow-hidden border shrink-0 bg-white cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                    onClick={() => setSelectedFullImage(url)}
+                    title="Click to view full image"
+                  >
+                    <img src={url} alt="preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <div className="relative">
+                    <ImageIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="url" placeholder="Image URL (or upload below)"
+                      className="w-full pl-10 pr-4 py-3 bg-muted/20 border rounded-xl outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={url}
+                      onChange={e => {
+                        const imgs = [...formData.images]; imgs[i] = e.target.value;
+                        setFormData({ ...formData, images: imgs });
+                      }}
+                    />
+                  </div>
+                  <div>
                     <label className="inline-flex items-center gap-2 cursor-pointer bg-muted hover:bg-muted/80 px-4 py-2 rounded-lg text-xs font-bold transition-all">
                       {isUploading === i ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                       {isUploading === i ? 'Uploading...' : url ? 'Change Photo' : 'Upload from Device'}
@@ -367,7 +379,7 @@ export default function NewProductPage() {
                   </div>
                 </div>
                 {formData.images.length > 1 && (
-                  <button type="button" onClick={() => handleRemoveImage(i)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors h-fit">
+                  <button type="button" onClick={() => handleRemoveImage(i)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors h-fit shrink-0">
                     <Trash2 className="w-5 h-5" />
                   </button>
                 )}
@@ -662,9 +674,14 @@ export default function NewProductPage() {
                       <label className="block text-xs font-medium mb-2">Colour Images <span className="text-muted-foreground font-normal">(shown when this colour is selected)</span></label>
                       <div className="flex flex-wrap gap-2">
                         {(v.images || []).map((imgUrl: string, imgIdx: number) => (
-                          <div key={imgIdx} className="relative w-16 h-16 rounded-lg overflow-hidden border bg-muted/10">
+                          <div 
+                            key={imgIdx} 
+                            className="relative w-16 h-16 rounded-lg overflow-hidden border bg-muted/10 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setSelectedFullImage(imgUrl)}
+                          >
                             {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
-                            <button type="button" onClick={() => {
+                            <button type="button" onClick={(e) => {
+                              e.stopPropagation();
                               const vs = [...formData.variants] as any[];
                               vs[i].images = (vs[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
                               setFormData({ ...formData, variants: vs } as any);
@@ -794,6 +811,21 @@ export default function NewProductPage() {
         />
       )}
 
+      {/* Full Image Preview Modal */}
+      {selectedFullImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedFullImage(null)} />
+          <div className="relative max-w-4xl max-h-[85vh] bg-transparent rounded-2xl overflow-hidden animate-in zoom-in-95 shrink-0 flex items-center justify-center">
+            <button 
+              onClick={() => setSelectedFullImage(null)} 
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img src={selectedFullImage} alt="Full preview" className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+          </div>
+        </div>
+      )}
 
     </div>
   );

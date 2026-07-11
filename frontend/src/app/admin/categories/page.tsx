@@ -55,6 +55,7 @@ export default function AdminCategoriesPage() {
   const [formData, setFormData] = useState<CategoryForm>(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedFullImage, setSelectedFullImage] = useState<string | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -200,163 +201,169 @@ export default function AdminCategoriesPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white border rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">{editingId ? 'Edit Category' : 'New Category'}</h2>
-            <button onClick={cancelForm} className="text-muted-foreground hover:text-foreground">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Category Name *</label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Sarees"
-                  className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Description (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Elegant ethnic wear"
-                  className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto pt-10 pb-10">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 animate-in zoom-in-95">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold font-outfit">{editingId ? 'Edit Category' : 'New Category'}</h2>
+              <button onClick={cancelForm} className="text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-
-            {/* Image Upload */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Category Image</label>
-              <div className="flex items-start gap-4">
-                {/* Preview */}
-                <div className="w-24 h-24 rounded-xl overflow-hidden bg-muted/30 border shrink-0 flex items-center justify-center">
-                  {formData.image ? (
-                    <Image src={formData.image} alt="preview" width={96} height={96} className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <input
-                    type="url"
-                    placeholder="Paste image URL, or upload below"
-                    className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-sm"
-                    value={formData.image}
-                    onChange={e => setFormData({ ...formData, image: e.target.value })}
-                  />
-                  <label className="inline-flex items-center gap-2 cursor-pointer bg-muted hover:bg-muted/80 px-4 py-2 rounded-lg text-xs font-bold transition-all">
-                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                    {isUploading ? 'Uploading...' : formData.image ? 'Change Image' : 'Upload from Device'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                      disabled={isUploading}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Default Size Guide ── */}
-            <div className="border rounded-2xl p-6 bg-muted/5 space-y-4">
-              <div className="flex justify-between items-center border-b pb-3">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">📏 Default Category Size Guide</h3>
-                  <p className="text-[10px] text-muted-foreground">Products created in this category will default to these sizes.</p>
+                  <label className="block text-sm font-medium mb-2">Category Name *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. Sarees"
+                    className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Elegant ethnic wear"
+                    className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                    value={formData.description}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Image Upload */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Category Image</label>
+                <div className="flex items-start gap-4">
+                  {/* Preview */}
+                  <div 
+                    className={`w-24 h-24 rounded-xl overflow-hidden bg-muted/30 border shrink-0 flex items-center justify-center ${formData.image ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                    onClick={() => formData.image && setSelectedFullImage(formData.image)}
+                    title={formData.image ? 'Click to view full image' : undefined}
+                  >
+                    {formData.image ? (
+                      <img src={formData.image} alt="preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="url"
+                      placeholder="Paste image URL, or upload below"
+                      className="w-full px-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={formData.image}
+                      onChange={e => setFormData({ ...formData, image: e.target.value })}
+                    />
+                    <label className="inline-flex items-center gap-2 cursor-pointer bg-muted hover:bg-muted/80 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                      {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      {isUploading ? 'Uploading...' : formData.image ? 'Change Image' : 'Upload from Device'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Default Size Guide ── */}
+              <div className="border rounded-2xl p-6 bg-muted/5 space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">📏 Default Category Size Guide</h3>
+                    <p className="text-[10px] text-muted-foreground">Products created in this category will default to these sizes.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      sizeGuide: [...prev.sizeGuide, { size: '', bust: '', waist: '', hips: '', length: '' }]
+                    }))}
+                    className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Row
+                  </button>
+                </div>
+                {formData.sizeGuide.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground text-xs">
+                    No default size guide defined. Products will start with an empty size chart.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b">
+                          {['Size', 'Bust (in)', 'Waist (in)', 'Hips (in)', 'Length (in)', ''].map(h => (
+                            <th key={h} className="pb-2 pr-2 text-left font-bold text-muted-foreground uppercase">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.sizeGuide.map((row, i) => (
+                          <tr key={i} className="border-b last:border-0">
+                            {(['size', 'bust', 'waist', 'hips', 'length'] as const).map(field => (
+                              <td key={field} className="py-1.5 pr-2">
+                                <input
+                                  type="text" placeholder={field === 'size' ? 'S, M, L' : '0'}
+                                  className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
+                                  value={row[field]}
+                                  onChange={e => {
+                                    const updated = [...formData.sizeGuide];
+                                    updated[i] = { ...updated[i], [field]: e.target.value };
+                                    setFormData({ ...formData, sizeGuide: updated });
+                                  }}
+                                />
+                              </td>
+                            ))}
+                            <td className="py-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({
+                                  ...prev,
+                                  sizeGuide: prev.sizeGuide.filter((_, idx) => idx !== i)
+                                }))}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setFormData(prev => ({
-                    ...prev,
-                    sizeGuide: [...prev.sizeGuide, { size: '', bust: '', waist: '', hips: '', length: '' }]
-                  }))}
-                  className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+                  onClick={cancelForm}
+                  className="px-4 py-2 rounded-lg font-medium hover:bg-muted"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Row
+                  Cancel
+                </button>
+                <button
+                  disabled={isSaving}
+                  type="submit"
+                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> {editingId ? 'Update Category' : 'Save Category'}</>}
                 </button>
               </div>
-              {formData.sizeGuide.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-xs">
-                  No default size guide defined. Products will start with an empty size chart.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b">
-                        {['Size', 'Bust (in)', 'Waist (in)', 'Hips (in)', 'Length (in)', ''].map(h => (
-                          <th key={h} className="pb-2 pr-2 text-left font-bold text-muted-foreground uppercase">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.sizeGuide.map((row, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          {(['size', 'bust', 'waist', 'hips', 'length'] as const).map(field => (
-                            <td key={field} className="py-1.5 pr-2">
-                              <input
-                                type="text" placeholder={field === 'size' ? 'S, M, L' : '0'}
-                                className="w-full px-2 py-1 bg-white border rounded text-xs outline-none focus:ring-1 focus:ring-primary"
-                                value={row[field]}
-                                onChange={e => {
-                                  const updated = [...formData.sizeGuide];
-                                  updated[i] = { ...updated[i], [field]: e.target.value };
-                                  setFormData({ ...formData, sizeGuide: updated });
-                                }}
-                              />
-                            </td>
-                          ))}
-                          <td className="py-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setFormData(prev => ({
-                                ...prev,
-                                sizeGuide: prev.sizeGuide.filter((_, idx) => idx !== i)
-                              }))}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={cancelForm}
-                className="px-4 py-2 rounded-lg font-medium hover:bg-muted"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={isSaving}
-                type="submit"
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> {editingId ? 'Update Category' : 'Save Category'}</>}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       )}
 
-      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-2xl shadow-sm overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/5 text-muted-foreground font-medium border-b">
             <tr>
@@ -376,9 +383,13 @@ export default function AdminCategoriesPage() {
               categories.map((cat) => (
                 <tr key={cat.id} className="hover:bg-muted/5 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted/30 border flex items-center justify-center">
+                    <div 
+                      className={`w-12 h-12 rounded-lg overflow-hidden bg-muted/30 border flex items-center justify-center ${cat.image ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                      onClick={() => cat.image && setSelectedFullImage(cat.image)}
+                      title={cat.image ? 'Click to view full image' : undefined}
+                    >
                       {cat.image ? (
-                        <Image src={cat.image} alt={cat.name} width={48} height={48} className="w-full h-full object-cover" />
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
                       ) : (
                         <ImageIcon className="w-5 h-5 text-muted-foreground" />
                       )}
@@ -411,6 +422,23 @@ export default function AdminCategoriesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Full Image Preview Modal */}
+      {selectedFullImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedFullImage(null)} />
+          <div className="relative max-w-4xl max-h-[85vh] bg-transparent rounded-2xl overflow-hidden animate-in zoom-in-95 shrink-0 flex items-center justify-center">
+            <button 
+              onClick={() => setSelectedFullImage(null)} 
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img src={selectedFullImage} alt="Full preview" className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -171,6 +171,7 @@ export default function AdminProductsPage() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [isMulticolour, setIsMulticolour] = useState(false);
   const [aiProductTarget, setAiProductTarget] = useState<{ id: string; name: string } | null>(null);
+  const [selectedFullImage, setSelectedFullImage] = useState<string | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
@@ -641,8 +642,17 @@ export default function AdminProductsPage() {
                 </div>
                 <div className="space-y-3">
                   {editForm.images.map((url, i) => (
-                    <div key={i} className="flex gap-2 items-start">
-                      <div className="flex-1">
+                    <div key={i} className="flex gap-3 items-start border p-3 rounded-xl bg-muted/5">
+                      {url && (
+                        <div 
+                          className="w-16 h-16 rounded-lg overflow-hidden border shrink-0 bg-white cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                          onClick={() => setSelectedFullImage(url)}
+                          title="Click to view full image"
+                        >
+                          <img src={url} alt="preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-2">
                         <div className="relative">
                           <ImageIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                           <input type="url" placeholder="Image URL" className="w-full pl-9 pr-4 py-2 bg-muted/20 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-sm" value={url} onChange={e => { const imgs = [...editForm.images]; imgs[i] = e.target.value; setEditForm({ ...editForm, images: imgs }); }} />
@@ -654,7 +664,7 @@ export default function AdminProductsPage() {
                         </label>
                       </div>
                       {editForm.images.length > 1 && (
-                        <button type="button" onClick={() => setEditForm({ ...editForm, images: editForm.images.filter((_, idx) => idx !== i) })} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                        <button type="button" onClick={() => setEditForm({ ...editForm, images: editForm.images.filter((_, idx) => idx !== i) })} className="p-2 text-red-500 hover:bg-red-50 rounded-lg shrink-0">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -955,9 +965,14 @@ export default function AdminProductsPage() {
                             <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-1">Variant Images</label>
                             <div className="flex flex-wrap gap-2">
                               {(v.images || []).map((imgUrl: string, imgIdx: number) => (
-                                <div key={imgIdx} className="relative w-12 h-12 rounded overflow-hidden border bg-muted/10">
+                                <div 
+                                  key={imgIdx} 
+                                  className="relative w-12 h-12 rounded overflow-hidden border bg-muted/10 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => setSelectedFullImage(imgUrl)}
+                                >
                                   {imgUrl && <img src={imgUrl} alt="" className="w-full h-full object-cover" />}
-                                  <button type="button" onClick={() => {
+                                  <button type="button" onClick={(e) => {
+                                    e.stopPropagation();
                                     const updated = [...editVariants];
                                     updated[i].images = (updated[i].images || []).filter((_: any, ii: number) => ii !== imgIdx);
                                     setEditVariants(updated);
@@ -1379,6 +1394,21 @@ export default function AdminProductsPage() {
         />
       )}
 
+      {/* Full Image Preview Modal */}
+      {selectedFullImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedFullImage(null)} />
+          <div className="relative max-w-4xl max-h-[85vh] bg-transparent rounded-2xl overflow-hidden animate-in zoom-in-95 shrink-0 flex items-center justify-center">
+            <button 
+              onClick={() => setSelectedFullImage(null)} 
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img src={selectedFullImage} alt="Full preview" className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+          </div>
+        </div>
+      )}
 
     </div>
   );

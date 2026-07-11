@@ -11,6 +11,7 @@ import { Cron } from '@nestjs/schedule';
 import * as AWS from 'aws-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { ImageOptimizerService } from '../uploads/image-optimizer.service';
 
 // Pose configurations for the generated image
 const POSES = [
@@ -41,6 +42,7 @@ export class AiImagesService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private imageOptimizer: ImageOptimizerService,
   ) {
     this.s3 = new AWS.S3({ region: this.config.get('AWS_REGION') });
     
@@ -391,7 +393,7 @@ export class AiImagesService {
     const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
 
     try {
-      if (url.includes(cfDomain)) {
+      if (url.includes(cfDomain) || url.includes('du327q4g8zq25.cloudfront.net')) {
         const parsed = new URL(url);
         return parsed.pathname.replace(/^\//, '');
       }
@@ -612,7 +614,7 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
     adminId: string,
   ): Promise<{ newImageUrl: string; newImageKey: string }> {
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
-    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
+    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN');
 
     const session = await this.prisma.aiImageSession.findUnique({
       where: { id: sessionId },
@@ -630,16 +632,67 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
       ? `${targetFolder}/video-${uuidv4()}.mp4`
       : `${targetFolder}/ai-${uuidv4()}.webp`;
 
-    await this.s3
-      .copyObject({
-        Bucket: bucket,
-        CopySource: `${bucket}/${imageKey}`,
-        Key: newKey,
-        ContentType: isVideo ? 'video/mp4' : 'image/webp',
-        CacheControl: 'public, max-age=31536000, immutable',
-        MetadataDirective: 'REPLACE',
-      })
-      .promise();
+    if (isVideo) {
+      await this.s3
+        .copyObject({
+          Bucket: bucket,
+          CopySource: `${bucket}/${imageKey}`,
+          Key: newKey,
+          ContentType: 'video/mp4',
+          CacheControl: 'public, max-age=31536000, immutable',
+          MetadataDirective: 'REPLACE',
+        })
+        .promise();
+    } else {
+      // For images, download, optimize and upload variants as well
+      const s3Object = await this.s3
+        .getObject({ Bucket: bucket, Key: imageKey })
+        .promise();
+      const buffer = s3Object.Body as Buffer;
+
+      // Upload original WebP image
+      await this.s3
+        .putObject({
+          Bucket: bucket,
+          Key: newKey,
+          Body: buffer,
+          ContentType: 'image/webp',
+          CacheControl: 'public, max-age=31536000, immutable',
+        })
+        .promise();
+
+      // Optimize variants
+      try {
+        const optimized = await this.imageOptimizer.optimize(buffer);
+        const dotIndex = newKey.lastIndexOf('.');
+        if (dotIndex !== -1) {
+          const baseKey = newKey.substring(0, dotIndex);
+          const variants = [
+            { suffix: 'thumbnail', body: optimized.thumbnail, mime: 'image/webp' },
+            { suffix: 'small', body: optimized.small, mime: 'image/webp' },
+            { suffix: 'medium', body: optimized.medium, mime: 'image/webp' },
+            { suffix: 'large', body: optimized.large, mime: 'image/webp' },
+            { suffix: 'avif', body: optimized.avif, mime: 'image/avif' },
+          ];
+
+          await Promise.all(
+            variants.map((v) =>
+              this.s3
+                .putObject({
+                  Bucket: bucket,
+                  Key: `${baseKey}_${v.suffix}.${v.mime.split('/')[1]}`,
+                  Body: v.body,
+                  ContentType: v.mime,
+                  CacheControl: 'public, max-age=31536000, immutable',
+                })
+                .promise()
+            )
+          );
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to optimize approved AI image variants: ${err.message}`);
+      }
+    }
 
     // Delete the temp copy
     await this.s3
@@ -648,7 +701,9 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
       .catch(() => {});
 
     // Build new URL
-    const baseUrl = `https://${cfDomain}`;
+    const baseUrl = cfDomain
+      ? `https://${cfDomain}`
+      : `https://${bucket}.s3.${this.config.get('AWS_REGION') || 'ap-south-2'}.amazonaws.com`;
     const newImageUrl = `${baseUrl}/${newKey}`;
 
     // Append image URL or set videoUrl if product exists
@@ -786,8 +841,10 @@ ${customPrompt ? `Additional instructions: ${customPrompt}` : ''}`,
     if (!session) throw new NotFoundException('Session not found');
 
     const bucket = this.config.get<string>('AWS_S3_BUCKET');
-    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN') || 'du327q4g8zq25.cloudfront.net';
-    const baseUrl = `https://${cfDomain}`;
+    const cfDomain = this.config.get<string>('CLOUDFRONT_DOMAIN');
+    const baseUrl = cfDomain
+      ? `https://${cfDomain}`
+      : `https://${bucket}.s3.${this.config.get('AWS_REGION') || 'ap-south-2'}.amazonaws.com`;
 
     return {
       ...session,

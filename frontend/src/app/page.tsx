@@ -113,7 +113,7 @@ function getHeroThemeStyles(primaryColorHex: string) {
   };
 }
 
-// ── Server-side data fetchers with revalidation (ISR 5 min) ──────────────────
+// ── Server-side data fetchers with no caching (immediate updates) ─────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
 async function fetchFromApi(endpoint: string, searchParams: Record<string, string> = {}) {
@@ -121,7 +121,7 @@ async function fetchFromApi(endpoint: string, searchParams: Record<string, strin
     const query = new URLSearchParams(searchParams).toString();
     const url = `${API_BASE}${endpoint}${query ? `?${query}` : ''}`;
     const res = await fetch(url, {
-      next: { revalidate: 300 } // 5 minutes cache revalidation
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
@@ -135,7 +135,7 @@ async function fetchFromApi(endpoint: string, searchParams: Record<string, strin
 async function fetchSettings() {
   try {
     const res = await fetch(`${API_BASE}/settings`, {
-      next: { revalidate: 300 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error();
     const data = await res.json();

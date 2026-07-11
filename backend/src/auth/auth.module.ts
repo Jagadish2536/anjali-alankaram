@@ -20,7 +20,7 @@ import { EmailModule } from '../email/email.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_ACCESS_EXPIRES', '15m') },
+        signOptions: { expiresIn: config.get('JWT_ACCESS_EXPIRES', '7d') },
       }),
     }),
   ],

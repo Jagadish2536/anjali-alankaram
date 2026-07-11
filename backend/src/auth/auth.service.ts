@@ -413,7 +413,7 @@ export class AuthService {
   private async generateTokens(user: any) {
     const payload = { sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.config.get('JWT_ACCESS_EXPIRES', '15m'),
+      expiresIn: this.config.get('JWT_ACCESS_EXPIRES', '7d'),
     });
 
     const refreshTokenValue = uuidv4();

@@ -14,6 +14,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Variables to handle token refresh queue for concurrent requests
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -30,7 +45,22 @@ api.interceptors.response.use(
     );
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
         const refreshToken = useAuthStore.getState().refreshToken;
         if (!refreshToken) throw new Error('No refresh token');
@@ -42,12 +72,28 @@ api.interceptors.response.use(
 
         useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
         
+        processQueue(null, data.accessToken);
+        
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(originalRequest);
-      } catch (err) {
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
+      } catch (err: any) {
+        processQueue(err, null);
+        
+        // Only log out if it is an explicit auth error (e.g. 400, 401, 403) from the server.
+        // If it is a network error or server error (5xx), do not log out.
+        const isAuthError = err.response && (
+          err.response.status === 400 ||
+          err.response.status === 401 ||
+          err.response.status === 403
+        );
+        
+        if (isAuthError) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        }
         return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);

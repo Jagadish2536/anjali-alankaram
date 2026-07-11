@@ -48,6 +48,9 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Print Label ────────────────────────────────────────────────────
 function printOrderLabel(order: any, storeAddress?: string) {
+  const settings = useSettingsStore.getState().settings;
+  const supportPhone = settings?.supportPhone || '+91 9876543210';
+
   // Expose download handler globally on parent window so child popup can trigger it
   (window as any).downloadLabelFromPopup = async (popupWin: Window, orderNum: string, btnElement?: HTMLButtonElement) => {
     const element = popupWin.document.getElementById('label-content');
@@ -105,7 +108,7 @@ function printOrderLabel(order: any, storeAddress?: string) {
     <h2>📦 Anjali Alankaram</h2>
     <p style="margin:0;font-size:12px;color:#6b7280;">Order Management Label</p>
     <hr class="divider"/>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div style="display:grid;grid-template-columns:1fr;gap:16px;">
       <div class="section">
         <div class="label">Order Info</div>
         <p style="margin:6px 0;font-size:16px;font-weight:700;font-family:monospace;">#${order.orderNumber}</p>
@@ -114,18 +117,13 @@ function printOrderLabel(order: any, storeAddress?: string) {
         ${order.awbCode ? `<p style="margin:6px 0;font-size:12px;"><strong>AWB:</strong> ${order.awbCode}</p>` : ''}
         ${order.courierName ? `<p style="margin:2px 0;font-size:12px;"><strong>Courier:</strong> ${order.courierName}</p>` : ''}
       </div>
-      <div class="section">
-        <div class="label">Customer</div>
-        <p style="margin:6px 0;font-weight:700;">${order.user?.name || 'Customer'}</p>
-        <p style="margin:2px 0;font-size:12px;">${order.user?.phone || ''}</p>
-        <p style="margin:2px 0;font-size:12px;">${order.user?.email || ''}</p>
-      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       <div class="section">
         <div class="label">From Address</div>
         <p style="margin:6px 0;font-weight:700;font-size:15px;">Anjali Alankaram</p>
         <p style="margin:2px 0;line-height:1.4;white-space:pre-line;">${storeAddress || 'Address not set'}</p>
+        <p style="margin:6px 0;font-size:13px;font-weight:700;">📞 Support: ${supportPhone}</p>
       </div>
       <div class="section">
         <div class="label">📍 Delivery Address</div>
