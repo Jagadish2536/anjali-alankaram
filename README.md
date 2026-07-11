@@ -131,7 +131,7 @@ graph TB
 - Product catalogue with variant system (size, colour, hex swatches)
 - Image lightbox with swipe gestures and zoom
 - Size guide modal (inches ↔ cm conversion)
-- Wishlist, cart, and one-page checkout
+- Wishlist (with persistent global count badge in header on both desktop and mobile BottomNav), cart, and one-page checkout
 - Razorpay online payment + Cash on Delivery
 - Coupon & automatic offer discounts
 - GST / shipping / COD charge calculation
@@ -175,6 +175,12 @@ graph TB
 - **Daily cron (2 AM)**: Full orphan scan — lists all S3 objects, compares against DB references, deletes unreferenced files
 - Cleanup reports saved to `s3://bucket/cleanup-logs/YYYY-MM-DD.json`
 - All operations logged to `AuditLog` table
+
+### 💾 Disaster Recovery & Migration Utilities (NEW)
+- **AWS Secrets Sync**: Push and merge local environment variables to AWS Secrets Manager using `sync-secrets.js` with endpoint exclusions.
+- **SSM Automated Backups**: Retrieve customer accounts and store settings directly from the production database in the private VPC subnet using `fetch-production-backup.js` and SSM ExecuteCommand agents.
+- **SSM Decrypted Secrets Backup**: Export decrypted backend and frontend secrets values from Secrets Manager to a secure local folder using `fetch-aws-secrets-backup.js`.
+- **Fargate State Restoration**: Bulk restore customers and configuration parameters back to fresh RDS database instances from local backup JSONs using the container execution script `run-restore.js`.
 
 ---
 
