@@ -98,6 +98,7 @@ function ProductsContent() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   
   const [sortBy, setSortBy] = useState('recommended');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -176,10 +177,12 @@ function ProductsContent() {
         setAllProducts(list);
         setNextCursor(data?.meta?.nextCursor || null);
         setHasMore(data?.meta?.hasMore || false);
+        setTotalCount(data?.meta?.total || 0);
       } catch {
         setAllProducts([]);
         setNextCursor(null);
         setHasMore(false);
+        setTotalCount(0);
       } finally {
         setIsLoading(false);
       }
@@ -214,6 +217,7 @@ function ProductsContent() {
       setAllProducts(prev => [...prev, ...newList]);
       setNextCursor(data?.meta?.nextCursor || null);
       setHasMore(data?.meta?.hasMore || false);
+      setTotalCount(data?.meta?.total || 0);
     } catch (e) {
       console.error('Failed to fetch more products', e);
     } finally {
@@ -562,7 +566,7 @@ function ProductsContent() {
         {/* Sort bar + count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading…' : `${renderItems.length} product${renderItems.length !== 1 ? 's' : ''}`}
+            {isLoading ? 'Loading…' : `${hasActiveFilters ? renderItems.length : totalCount} product${(hasActiveFilters ? renderItems.length : totalCount) !== 1 ? 's' : ''}`}
           </p>
           <div className="flex items-center gap-3">
             <button

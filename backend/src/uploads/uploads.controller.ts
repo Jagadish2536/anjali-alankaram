@@ -74,9 +74,7 @@ export class UploadsController {
 
     const isVideo = file.mimetype.startsWith('video/');
     const prefix = isVideo ? 'videos' : 'products';
-    const ext = path.extname(file.originalname) || (file.mimetype.includes('png') ? '.png' : '.jpg');
     const uuid = uuidv4();
-    const mainKey = `${prefix}/${uuid}${ext}`;
 
     const host = req.get('host');
     const protocol = req.protocol;
@@ -84,13 +82,23 @@ export class UploadsController {
     // Check if it's a processable image to generate optimized variants
     const processImage = !isVideo && this.imageOptimizer.isProcessableImage(file.mimetype);
     let optimized = null;
+    let mainBuffer = file.buffer;
+    let mainMime = file.mimetype;
+    let ext = path.extname(file.originalname) || (file.mimetype.includes('png') ? '.png' : '.jpg');
+
     if (processImage) {
       try {
-        optimized = await this.imageOptimizer.optimize(file.buffer);
+        const compressed = await this.imageOptimizer.compressMainImage(file.buffer, file.mimetype);
+        mainBuffer = compressed.buffer;
+        mainMime = compressed.mimetype;
+        ext = compressed.ext;
+        optimized = await this.imageOptimizer.optimize(mainBuffer);
       } catch (err) {
         this.logger.warn(`Optimization failed, falling back to original image upload: ${err.message}`);
       }
     }
+
+    const mainKey = `${prefix}/${uuid}${ext}`;
 
     if (isLocal) {
       const uploadDir = path.join(process.cwd(), 'uploads', prefix);
@@ -98,8 +106,8 @@ export class UploadsController {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
 
-      // Save original
-      fs.writeFileSync(path.join(uploadDir, `${uuid}${ext}`), file.buffer);
+      // Save compressed/original main
+      fs.writeFileSync(path.join(uploadDir, `${uuid}${ext}`), mainBuffer);
 
       // Save optimized variants if generated
       if (optimized) {
@@ -122,12 +130,12 @@ export class UploadsController {
     // AWS S3 Upload flow
     const bucket = this.config.get('AWS_S3_BUCKET');
     
-    // Upload original
+    // Upload compressed/original main
     await this.s3.putObject({
       Bucket: bucket,
       Key: mainKey,
-      Body: file.buffer,
-      ContentType: file.mimetype,
+      Body: mainBuffer,
+      ContentType: mainMime,
       CacheControl: isVideo
         ? 'public, max-age=86400'
         : 'public, max-age=31536000, immutable',
@@ -173,8 +181,8 @@ export class UploadsController {
       entityType: isVideo ? 'VIDEO' : 'IMAGE',
       s3Key: mainKey,
       metadata: {
-        size: file.size,
-        mimeType: file.mimetype,
+        size: mainBuffer.length,
+        mimeType: mainMime,
         hasVariants: !!optimized,
       },
     });

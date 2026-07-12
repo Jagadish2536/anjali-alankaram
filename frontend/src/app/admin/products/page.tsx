@@ -830,7 +830,8 @@ export default function AdminProductsPage() {
                                     value={row[field]}
                                     onChange={e => {
                                       const updated = [...editForm.sizeGuide];
-                                      updated[i] = { ...updated[i], [field]: e.target.value };
+                                      const val = field === 'size' ? e.target.value.toUpperCase() : e.target.value;
+                                      updated[i] = { ...updated[i], [field]: val };
                                       setEditForm({ ...editForm, sizeGuide: updated });
                                     }}
                                   />
@@ -1025,7 +1026,7 @@ export default function AdminProductsPage() {
                                   placeholder="e.g. S, M, L"
                                   className="w-full px-2 py-1 bg-muted/10 border rounded text-[10px] outline-none focus:ring-1 focus:ring-primary"
                                   value={sz.size}
-                                  onChange={e => handleUpdateEditSize(i, szIdx, 'size', e.target.value)}
+                                  onChange={e => handleUpdateEditSize(i, szIdx, 'size', e.target.value.toUpperCase())}
                                 />
                               </div>
                               <div className="col-span-3">

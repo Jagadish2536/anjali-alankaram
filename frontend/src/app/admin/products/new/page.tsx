@@ -542,7 +542,8 @@ export default function NewProductPage() {
                             value={row[field]}
                             onChange={e => {
                               const updated = [...formData.sizeGuide];
-                              updated[i] = { ...updated[i], [field]: e.target.value };
+                              const val = field === 'size' ? e.target.value.toUpperCase() : e.target.value;
+                              updated[i] = { ...updated[i], [field]: val };
                               setFormData({ ...formData, sizeGuide: updated });
                             }}
                           />
@@ -733,7 +734,7 @@ export default function NewProductPage() {
                             required type="text" placeholder="e.g. S, M, L"
                             className="w-full px-3 py-2 bg-muted/5 border rounded-lg outline-none focus:ring-2 focus:ring-primary text-xs"
                             value={sz.size}
-                            onChange={e => handleUpdateSize(i, szIdx, 'size', e.target.value)}
+                            onChange={e => handleUpdateSize(i, szIdx, 'size', e.target.value.toUpperCase())}
                           />
                         </div>
                         <div className="col-span-3">

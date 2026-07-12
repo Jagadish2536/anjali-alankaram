@@ -82,6 +82,69 @@ export class ImageOptimizerService {
     }
   }
 
+  async compressMainImage(buffer: Buffer, mimetype: string): Promise<{ buffer: Buffer; mimetype: string; ext: string }> {
+    try {
+      const metadata = await sharp(buffer).metadata();
+      const format = metadata.format;
+      
+      let ext = mimetype.includes('png') ? '.png' : '.jpg';
+      let outputMime = mimetype;
+
+      let pipeline = sharp(buffer);
+      
+      // Limit dimensions to max 2000px on the longest side to keep it crisp but reasonably sized
+      if (metadata.width && metadata.height && (metadata.width > 2000 || metadata.height > 2000)) {
+        pipeline = pipeline.resize(2000, 2000, { fit: 'inside', withoutEnlargement: true });
+      }
+
+      let outputBuffer: Buffer;
+      const formatToUse = (format === 'png' || mimetype.includes('png')) ? 'png' : 'jpeg';
+      
+      if (formatToUse === 'png') {
+        outputBuffer = await pipeline.png({ quality: 85, compressionLevel: 9 }).toBuffer();
+        outputMime = 'image/png';
+        ext = '.png';
+      } else {
+        outputBuffer = await pipeline.jpeg({ quality: 85, progressive: true }).toBuffer();
+        outputMime = 'image/jpeg';
+        ext = '.jpg';
+      }
+
+      // If the image is still > 500kb (512,000 bytes) and format is png, convert to webp for better compression
+      if (outputBuffer.length > 500 * 1024) {
+        outputBuffer = await sharp(buffer)
+          .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+        outputMime = 'image/webp';
+        ext = '.webp';
+      }
+
+      // If it is still > 500kb, lower webp quality to 75
+      if (outputBuffer.length > 500 * 1024) {
+        outputBuffer = await sharp(buffer)
+          .resize(1400, 1400, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 75 })
+          .toBuffer();
+      }
+
+      // If it is still > 500kb, lower webp quality to 70 and max size 1200
+      if (outputBuffer.length > 500 * 1024) {
+        outputBuffer = await sharp(buffer)
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 70 })
+          .toBuffer();
+      }
+
+      this.logger.log(`Compressed main image from ${buffer.length} to ${outputBuffer.length} bytes (target <= 500kb)`);
+
+      return { buffer: outputBuffer, mimetype: outputMime, ext };
+    } catch (err: any) {
+      this.logger.error('Failed to compress main image: ' + err.message);
+      return { buffer, mimetype, ext: mimetype.includes('png') ? '.png' : '.jpg' };
+    }
+  }
+
   /**
    * Helper to check if file mimetype is an image that can be processed.
    */

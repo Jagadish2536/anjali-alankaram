@@ -71,39 +71,55 @@ export default function WishlistPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {wishlistItems.map(({ product }) => (
-            <div key={product.id} className="group flex flex-col relative">
-              <button 
-                onClick={() => removeFromWishlist(product.id)}
-                className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-red-500 hover:bg-white transition-colors"
-                aria-label="Remove from wishlist"
-              >
-                <HeartOff className="w-4 h-4" />
-              </button>
-              
-              <Link href={`/products/${product.slug}`} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-accent/20 mb-3 block">
-                {product.images?.[0] && product.images[0].trim() !== '' ? (
-                  <Image src={product.images[0]} alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <Image src="/placeholder.png" alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
-                )}
-              </Link>
-              
-              <Link href={`/products/${product.slug}`}>
-                <h3 className="font-medium text-sm md:text-base line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-semibold">{formatPrice(product.salePrice || product.basePrice)}</span>
-                </div>
-              </Link>
-              
-              <button 
-                onClick={() => handleAddToCart(product)}
-                className="mt-3 w-full py-2 border rounded-lg flex items-center justify-center gap-2 text-sm font-medium hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
-              >
-                <ShoppingBag className="w-4 h-4" /> Move to Cart
-              </button>
-            </div>
-          ))}
+          {wishlistItems.map(({ product }) => {
+            const hasDiscount = product.salePrice && product.basePrice && Number(product.salePrice) < Number(product.basePrice);
+            const discountPct = hasDiscount
+              ? Math.round(((Number(product.basePrice) - Number(product.salePrice)) / Number(product.basePrice)) * 100)
+              : 0;
+            return (
+              <div key={product.id} className="group flex flex-col relative">
+                <button 
+                  onClick={() => removeFromWishlist(product.id)}
+                  className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-red-500 hover:bg-white transition-colors"
+                  aria-label="Remove from wishlist"
+                >
+                  <HeartOff className="w-4 h-4" />
+                </button>
+                
+                <Link href={`/products/${product.slug}`} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-accent/20 mb-3 block">
+                  {product.images?.[0] && product.images[0].trim() !== '' ? (
+                    <Image src={product.images[0]} alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <Image src="/placeholder.png" alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+                  )}
+                  {hasDiscount && (
+                    <span className="absolute top-2 left-2 bg-primary text-white text-[11px] font-bold px-2 py-1 rounded shadow z-10">
+                      {discountPct}% OFF
+                    </span>
+                  )}
+                </Link>
+                
+                <Link href={`/products/${product.slug}`}>
+                  <h3 className="font-medium text-sm md:text-base line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="font-semibold">{formatPrice(product.salePrice || product.basePrice)}</span>
+                    {hasDiscount && (
+                      <span className="text-muted-foreground line-through text-xs">
+                        {formatPrice(product.basePrice)}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+                
+                <button 
+                  onClick={() => handleAddToCart(product)}
+                  className="mt-3 w-full py-2 border rounded-lg flex items-center justify-center gap-2 text-sm font-medium hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4" /> Move to Cart
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

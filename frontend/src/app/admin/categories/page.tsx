@@ -323,7 +323,8 @@ export default function AdminCategoriesPage() {
                                   value={row[field]}
                                   onChange={e => {
                                     const updated = [...formData.sizeGuide];
-                                    updated[i] = { ...updated[i], [field]: e.target.value };
+                                    const val = field === 'size' ? e.target.value.toUpperCase() : e.target.value;
+                                    updated[i] = { ...updated[i], [field]: val };
                                     setFormData({ ...formData, sizeGuide: updated });
                                   }}
                                 />

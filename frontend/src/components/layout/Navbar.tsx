@@ -115,19 +115,6 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Announcement Bar ─────────────────────────────────────────── */}
-      {announcementVisible && (
-        <div className="w-full bg-primary text-primary-foreground text-xs font-medium py-2 px-4 flex items-center justify-center relative">
-          <span>{marqueeText}</span>
-          <button
-            onClick={() => setAnnouncementVisible(false)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center hover:opacity-70"
-            aria-label="Close announcement"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
 
       {/* ── Main Header ──────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 w-full bg-[#FDF5EC] shadow-sm">

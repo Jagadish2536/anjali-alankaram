@@ -19,6 +19,14 @@ export class CategoriesService {
   async create(dto: any) {
     const slug = slugify(dto.name, { lower: true, strict: true });
 
+    // Force sizeGuide sizes to uppercase
+    if (dto.sizeGuide && Array.isArray(dto.sizeGuide)) {
+      dto.sizeGuide = dto.sizeGuide.map((row: any) => ({
+        ...row,
+        size: (row.size || '').trim().toUpperCase()
+      }));
+    }
+
     // Check if category with this slug already exists (including soft-deleted ones)
     const existing = await this.prisma.category.findUnique({
       where: { slug },
@@ -58,6 +66,15 @@ export class CategoriesService {
       }
       dto.slug = slug;
     }
+
+    // Force sizeGuide sizes to uppercase
+    if (dto.sizeGuide && Array.isArray(dto.sizeGuide)) {
+      dto.sizeGuide = dto.sizeGuide.map((row: any) => ({
+        ...row,
+        size: (row.size || '').trim().toUpperCase()
+      }));
+    }
+
     return this.prisma.category.update({
       where: { id },
       data: dto,

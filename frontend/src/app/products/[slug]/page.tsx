@@ -1584,21 +1584,41 @@ export default function ProductDetailPage() {
         <div className="container py-8 pb-16">
           <h2 className="font-cormorant text-3xl font-bold text-center text-foreground mb-8">You Might Also Like</h2>
           <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
-            {relatedProducts.map(rp => (
-              <Link key={rp.id} href={`/products/${rp.slug}`} className="group shrink-0 w-44">
-                <div className="relative w-44 aspect-[3/4] rounded-xl overflow-hidden bg-muted mb-2">
-                  {rp.images?.[0] && rp.images[0].trim() !== ''
-                    ? <Image src={rp.images[0]} alt={rp.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                    : <Image src="/placeholder.png" alt={rp.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                  }
-                  <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                    <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+            {relatedProducts.map(rp => {
+              const hasDiscount = rp.salePrice && rp.basePrice && Number(rp.salePrice) < Number(rp.basePrice);
+              const discountPct = hasDiscount
+                ? Math.round(((Number(rp.basePrice) - Number(rp.salePrice)) / Number(rp.basePrice)) * 100)
+                : 0;
+              return (
+                <Link key={rp.id} href={`/products/${rp.slug}`} className="group shrink-0 w-44">
+                  <div className="relative w-44 aspect-[3/4] rounded-xl overflow-hidden bg-muted mb-2">
+                    {rp.images?.[0] && rp.images[0].trim() !== ''
+                      ? <Image src={rp.images[0]} alt={rp.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                      : <Image src="/placeholder.png" alt={rp.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                    }
+                    {hasDiscount && (
+                      <span className="absolute top-2 left-2 bg-primary text-white text-[11px] font-bold px-2 py-1 rounded shadow z-10 animate-fade-in">
+                        {discountPct}% OFF
+                      </span>
+                    )}
+                    <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                      <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+                    </div>
                   </div>
-                </div>
-                <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">{rp.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">₹ {Number(rp.salePrice || rp.basePrice).toLocaleString('en-IN')}</p>
-              </Link>
-            ))}
+                  <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">{rp.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs font-bold text-foreground">
+                      ₹ {Number(rp.salePrice || rp.basePrice).toLocaleString('en-IN')}
+                    </span>
+                    {hasDiscount && (
+                      <span className="text-[10px] text-muted-foreground line-through">
+                        ₹ {Number(rp.basePrice).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

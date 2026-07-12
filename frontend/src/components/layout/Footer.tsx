@@ -99,7 +99,7 @@ export default function Footer() {
               </div>
               <div>
                 <p className="font-cormorant text-xl font-bold text-white leading-none">{storeName}</p>
-                <p className="text-white/50 text-[10px] tracking-[0.2em] uppercase font-outfit">EST. 2024</p>
+                <p className="text-white/50 text-[10px] tracking-[0.2em] uppercase font-outfit">EST. 2026</p>
               </div>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">{storeDesc}</p>
@@ -191,18 +191,13 @@ export default function Footer() {
               </a>
             )}
           </div>
-          <div className="flex flex-col items-center sm:items-end gap-1">
             <div className="flex items-center gap-2">
-              <a href={instagramUrl} target="_blank" rel="noopener noreferrer"
-                className="hover:text-white/70 transition-colors flex items-center gap-1">
-                <Instagram className="w-3.5 h-3.5" /> {(() => {
-                  if (!instagramUrl) return '@anjalialankaram';
-                  const match = instagramUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/);
-                  return match ? `@${match[1]}` : '@anjalialankaram';
-                })()}
+              <span className="opacity-60">website design by</span>
+              <a href="https://instagram.com/jagadishvarma99" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/70 transition-colors flex items-center gap-1 font-medium">
+                <Instagram className="w-3.5 h-3.5" /> @jagadishvarma99
               </a>
             </div>
-          </div>
         </div>
       </div>
 

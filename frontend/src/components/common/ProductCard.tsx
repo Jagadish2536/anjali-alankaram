@@ -148,11 +148,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Top-left badge: OUT OF STOCK takes priority over discount */}
         {isOutOfStock ? (
-          <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+          <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
             OUT OF STOCK
           </span>
         ) : hasDiscount ? (
-          <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+          <span className="absolute top-2 left-2 bg-primary text-white text-[11px] font-bold px-2 py-1 rounded shadow">
             {discountPct}% OFF
           </span>
         ) : null}

@@ -173,7 +173,7 @@ export class ProductsService {
         const hasMore = products.length === Number(limit);
 
         return {
-          data: products,
+          data: products.map(p => this.sortProductVariants(p)),
           meta: {
             total,
             page: Number(page),
@@ -211,7 +211,7 @@ export class ProductsService {
         if (!product || product.status === 'ARCHIVED') {
           throw new NotFoundException('Product not found');
         }
-        return product;
+        return this.sortProductVariants(product);
       },
       CacheService.TTL.PRODUCT,
     );
@@ -221,12 +221,13 @@ export class ProductsService {
     return this.cache.getOrSet(
       CacheService.KEYS.homepageFeatured(),
       async () => {
-        return this.prisma.product.findMany({
+        const products = await this.prisma.product.findMany({
           where: { isFeatured: true, status: 'ACTIVE' },
           include: { variants: { where: { isActive: true } } },
           orderBy: { createdAt: 'desc' },
           take: 12,
         });
+        return products.map(p => this.sortProductVariants(p));
       },
       CacheService.TTL.HOMEPAGE,
     );
@@ -236,12 +237,13 @@ export class ProductsService {
     return this.cache.getOrSet(
       CacheService.KEYS.homepageNewArrivals(),
       async () => {
-        return this.prisma.product.findMany({
+        const products = await this.prisma.product.findMany({
           where: { isNewArrival: true, status: 'ACTIVE' },
           include: { variants: { where: { isActive: true } } },
           orderBy: { createdAt: 'desc' },
           take: 12,
         });
+        return products.map(p => this.sortProductVariants(p));
       },
       CacheService.TTL.HOMEPAGE,
     );
@@ -251,12 +253,13 @@ export class ProductsService {
     return this.cache.getOrSet(
       CacheService.KEYS.homepageBestsellers(),
       async () => {
-        return this.prisma.product.findMany({
+        const products = await this.prisma.product.findMany({
           where: { isBestseller: true, status: 'ACTIVE' },
           include: { variants: { where: { isActive: true } } },
           orderBy: { totalSold: 'desc' },
           take: 12,
         });
+        return products.map(p => this.sortProductVariants(p));
       },
       CacheService.TTL.HOMEPAGE,
     );
@@ -292,7 +295,7 @@ export class ProductsService {
     ]);
 
     return {
-      data: products,
+      data: products.map(p => this.sortProductVariants(p)),
       meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / limit) },
     };
   }
@@ -301,6 +304,14 @@ export class ProductsService {
     const slug = slugify(dto.name, { lower: true, strict: true });
     const existingSlug = await this.prisma.product.findUnique({ where: { slug } });
     const finalSlug = existingSlug ? `${slug}-${Date.now()}` : slug;
+
+    // Convert sizeGuide sizes to uppercase
+    if (dto.sizeGuide && Array.isArray(dto.sizeGuide)) {
+      dto.sizeGuide = dto.sizeGuide.map((row: any) => ({
+        ...row,
+        size: (row.size || '').trim().toUpperCase()
+      }));
+    }
 
     const product = await this.prisma.product.create({
       data: {
@@ -311,7 +322,8 @@ export class ProductsService {
           ? {
               create: dto.variants.map((v) => ({
                 ...v,
-                sku: v.sku || `${finalSlug}-${v.size}-${v.color || 'default'}`.toUpperCase(),
+                size: (v.size || '').trim().toUpperCase(),
+                sku: v.sku || `${finalSlug}-${(v.size || '').trim().toUpperCase()}-${v.color || 'default'}`.toUpperCase(),
               })),
             }
           : undefined,
@@ -330,7 +342,7 @@ export class ProductsService {
     // Index product in Meilisearch
     await this.searchService.indexProduct(product.id);
 
-    return product;
+    return this.sortProductVariants(product);
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -342,6 +354,14 @@ export class ProductsService {
 
     // Separate variants from the rest of the dto
     const { variants, ...productData } = dto as any;
+
+    // Convert sizeGuide sizes to uppercase
+    if (productData.sizeGuide && Array.isArray(productData.sizeGuide)) {
+      productData.sizeGuide = productData.sizeGuide.map((row: any) => ({
+        ...row,
+        size: (row.size || '').trim().toUpperCase()
+      }));
+    }
 
     // Update the core product fields
     const updated = await this.prisma.product.update({
@@ -389,6 +409,7 @@ export class ProductsService {
 
       for (const v of variants) {
         let variantObj: any;
+        const upperSize = (v.size || '').trim().toUpperCase();
         if (v.id) {
           // Update existing variant
           const existingVariant = await this.prisma.productVariant.findUnique({
@@ -400,7 +421,7 @@ export class ProductsService {
           variantObj = await this.prisma.productVariant.update({
             where: { id: v.id },
             data: {
-              size: v.size,
+              size: upperSize,
               color: v.color || null,
               colorHex: v.colorHex || null,
               images: Array.isArray(v.images) ? v.images : [],
@@ -419,12 +440,12 @@ export class ProductsService {
           variantObj = await this.prisma.productVariant.create({
             data: {
               productId: id,
-              size: v.size,
+              size: upperSize,
               color: v.color || null,
               colorHex: v.colorHex || null,
               images: Array.isArray(v.images) ? v.images : [],
               stock: v.stock,
-              sku: v.sku || `${id.substring(0, 4)}-${v.size}-${Date.now()}`.toUpperCase(),
+              sku: v.sku || `${id.substring(0, 4)}-${upperSize}-${Date.now()}`.toUpperCase(),
             },
           });
         }
@@ -435,14 +456,14 @@ export class ProductsService {
 
     const updatedProduct = await this.prisma.product.findUnique({
       where: { id },
-      include: { variants: { where: { isActive: true }, orderBy: { size: 'asc' } }, category: true },
+      include: { variants: { where: { isActive: true } }, category: true },
     });
 
     if (updatedProduct) {
       await this.searchService.indexProduct(updatedProduct.id);
     }
 
-    return updatedProduct;
+    return this.sortProductVariants(updatedProduct);
   }
 
   async remove(id: string, adminId?: string) {
@@ -664,5 +685,31 @@ export class ProductsService {
         this.logger.error(`Failed to send restock notification to ${sub.email}: ${error.message}`);
       }
     }
+  }
+
+  private sortProductVariants(product: any) {
+    if (!product) return product;
+    if (product.variants && Array.isArray(product.variants)) {
+      const SIZE_ORDER = [
+        'FREE', 'FREE SIZE', 'FS', 'ONE SIZE', 'OS',
+        'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL',
+        '3XL', '4XL', '5XL', '6XL', '7XL', '8XL',
+        '28', '30', '32', '34', '36', '38', '40', '42', '44', '46'
+      ];
+      product.variants.sort((a: any, b: any) => {
+        const sizeA = (a.size || '').trim().toUpperCase();
+        const sizeB = (b.size || '').trim().toUpperCase();
+        const idxA = SIZE_ORDER.indexOf(sizeA);
+        const idxB = SIZE_ORDER.indexOf(sizeB);
+        
+        if (idxA !== -1 && idxB !== -1) {
+          return idxA - idxB;
+        }
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return sizeA.localeCompare(sizeB);
+      });
+    }
+    return product;
   }
 }
