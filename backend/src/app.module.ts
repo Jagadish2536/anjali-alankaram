@@ -31,6 +31,7 @@ import { S3CleanupModule } from './s3-cleanup/s3-cleanup.module';
 import { CacheModule } from './cache/cache.module';
 import { SearchModule } from './search/search.module';
 import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -118,6 +119,7 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
     EmailModule,
     AiImagesModule,
     S3CleanupModule,
+    AuditLogModule,
   ],
 })
 export class AppModule {}

@@ -22,6 +22,7 @@ import {
   Coins,
   Percent,
   Star,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
@@ -38,6 +39,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Notifications', icon: Bell,              href: '/admin/notifications',  roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'AWS Billing',   icon: CreditCard,        href: '/admin/billing',        roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Razorpay',      icon: Coins,             href: '/admin/razorpay',       roles: ['ADMIN', 'SUPER_ADMIN'] },
+  { name: 'Logs',          icon: ClipboardList,     href: '/admin/logs',           roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Settings',      icon: Settings,          href: '/admin/settings',       roles: ['ADMIN', 'SUPER_ADMIN'] },
 ];
 

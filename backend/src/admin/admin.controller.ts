@@ -16,6 +16,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { InventoryService } from '../orders/inventory.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
+import { AuditLogService } from '../audit-log/audit-log.service';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -33,6 +34,7 @@ export class AdminController implements OnModuleInit {
     private paymentsService: PaymentsService,
     private inventoryService: InventoryService,
     @Inject(REDIS_CLIENT) private redis: Redis,
+    private auditLogService: AuditLogService,
   ) {
     const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
     const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
@@ -975,5 +977,17 @@ export class AdminController implements OnModuleInit {
         error: err?.response?.data?.error?.description || err.message || 'Failed to fetch refund',
       };
     }
+  }
+
+  @Get('logs')
+  @ApiOperation({ summary: 'Get all audit logs (admin only)' })
+  async getAuditLogs(
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+    @Query('adminId') adminId?: string,
+    @Query('action') action?: string,
+    @Query('entityType') entityType?: string,
+  ) {
+    return this.auditLogService.getLogs(Number(page), Number(limit), { adminId, action, entityType });
   }
 }
