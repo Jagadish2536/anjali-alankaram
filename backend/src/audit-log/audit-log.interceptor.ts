@@ -8,14 +8,18 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { AuditLogService } from './audit-log.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AuditLogInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditLogInterceptor.name);
 
-  constructor(private readonly auditLogService: AuditLogService) {}
+  constructor(
+    private readonly auditLogService: AuditLogService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
     const httpContext = context.switchToHttp();
     const request = httpContext.getRequest();
 
@@ -43,10 +47,59 @@ export class AuditLogInterceptor implements NestInterceptor {
       return next.handle();
     }
 
+    let oldEntity: any = null;
+    try {
+      const cleanUrl = url.split('?')[0]; // strip query string
+      const pathSegments = cleanUrl.split('/').filter(Boolean);
+
+      // Extract path segments to map entity
+      let primarySegment = pathSegments[0];
+      let routeParams = pathSegments.slice(1);
+
+      if (primarySegment === 'api') {
+        if (pathSegments[1] === 'v1') {
+          primarySegment = pathSegments[2];
+          routeParams = pathSegments.slice(3);
+        } else {
+          primarySegment = pathSegments[1];
+          routeParams = pathSegments.slice(2);
+        }
+      }
+
+      const entityId = routeParams[0] || null;
+      const isSettingsPost = primarySegment === 'settings' && method === 'POST';
+      const isUpdateOrDelete = ['PUT', 'PATCH', 'DELETE'].includes(method) || isSettingsPost;
+
+      if (isUpdateOrDelete) {
+        if (primarySegment === 'products' && entityId) {
+          oldEntity = await this.prisma.product.findUnique({
+            where: { id: entityId },
+            include: { variants: true },
+          });
+        } else if (primarySegment === 'categories' && entityId) {
+          oldEntity = await this.prisma.category.findUnique({
+            where: { id: entityId },
+          });
+        } else if (primarySegment === 'settings') {
+          oldEntity = await this.prisma.storeSettings.findFirst();
+        } else if (primarySegment === 'coupons' && entityId) {
+          oldEntity = await this.prisma.coupon.findUnique({
+            where: { id: entityId },
+          });
+        } else if (primarySegment === 'offers' && entityId) {
+          oldEntity = await this.prisma.offer.findUnique({
+            where: { id: entityId },
+          });
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Error fetching old entity before mutation: ${err.message}`);
+    }
+
     return next.handle().pipe(
       tap(async (responseBody) => {
         try {
-          await this.logAction(user, method, url, body, responseBody, true);
+          await this.logAction(user, method, url, body, responseBody, true, undefined, oldEntity);
         } catch (err: any) {
           this.logger.error(`Error writing audit log: ${err.message}`);
         }
@@ -61,6 +114,7 @@ export class AuditLogInterceptor implements NestInterceptor {
           null,
           false,
           error.message || error.response?.message || 'Unknown error',
+          oldEntity,
         ).catch((err) => this.logger.error(`Error writing failed audit log: ${err.message}`));
         return throwError(() => error);
       }),
@@ -75,6 +129,7 @@ export class AuditLogInterceptor implements NestInterceptor {
     responseBody: any,
     success: boolean,
     errorMsg?: string,
+    oldEntity?: any,
   ) {
     let entityType = 'SYSTEM';
     let action = 'UPDATE';
@@ -107,53 +162,79 @@ export class AuditLogInterceptor implements NestInterceptor {
     }
 
     if (!primarySegment) return;
+    entityId = routeParams[0] || null;
+
+    // Fetch the new entity state from db if update was successful
+    let newEntity: any = null;
+    if (success && oldEntity) {
+      try {
+        if (primarySegment === 'products' && entityId) {
+          newEntity = await this.prisma.product.findUnique({
+            where: { id: entityId },
+            include: { variants: true },
+          });
+        } else if (primarySegment === 'categories' && entityId) {
+          newEntity = await this.prisma.category.findUnique({
+            where: { id: entityId },
+          });
+        } else if (primarySegment === 'settings') {
+          newEntity = await this.prisma.storeSettings.findFirst();
+        } else if (primarySegment === 'coupons' && entityId) {
+          newEntity = await this.prisma.coupon.findUnique({
+            where: { id: entityId },
+          });
+        } else if (primarySegment === 'offers' && entityId) {
+          newEntity = await this.prisma.offer.findUnique({
+            where: { id: entityId },
+          });
+        }
+      } catch (err: any) {
+        this.logger.error(`Error fetching new entity for diff: ${err.message}`);
+      }
+    }
 
     switch (primarySegment) {
       case 'products':
         entityType = 'PRODUCT';
-        entityId = routeParams[0] || null;
         if (action === 'CREATE') {
-          description = `Created product: ${body?.name || 'unknown'}`;
+          description = `Created product: ${responseBody?.name || body?.name || 'unknown'}`;
         } else if (action === 'UPDATE') {
-          description = `Updated product: ${body?.name || entityId || 'unknown'}`;
+          description = `Updated product: ${newEntity?.name || oldEntity?.name || body?.name || entityId || 'unknown'}`;
         } else if (action === 'DELETE') {
-          description = `Deleted product ID: ${entityId}`;
+          description = `Deleted product: ${oldEntity?.name || entityId || 'unknown'}`;
         }
         break;
 
       case 'categories':
         entityType = 'CATEGORY';
-        entityId = routeParams[0] || null;
         if (action === 'CREATE') {
-          description = `Created category: ${body?.name || 'unknown'}`;
+          description = `Created category: ${responseBody?.name || body?.name || 'unknown'}`;
         } else if (action === 'UPDATE') {
-          description = `Updated category: ${body?.name || entityId || 'unknown'}`;
+          description = `Updated category: ${newEntity?.name || oldEntity?.name || body?.name || entityId || 'unknown'}`;
         } else if (action === 'DELETE') {
-          description = `Deleted category ID: ${entityId}`;
+          description = `Deleted category: ${oldEntity?.name || entityId || 'unknown'}`;
         }
         break;
 
       case 'coupons':
         entityType = 'COUPON';
-        entityId = routeParams[0] || null;
         if (action === 'CREATE') {
-          description = `Created coupon: ${body?.code || 'unknown'}`;
+          description = `Created coupon: ${responseBody?.code || body?.code || 'unknown'}`;
         } else if (action === 'UPDATE') {
-          description = `Updated coupon: ${body?.code || entityId || 'unknown'}`;
+          description = `Updated coupon: ${newEntity?.code || oldEntity?.code || body?.code || entityId || 'unknown'}`;
         } else if (action === 'DELETE') {
-          description = `Deleted coupon ID: ${entityId}`;
+          description = `Deleted coupon: ${oldEntity?.code || entityId || 'unknown'}`;
         }
         break;
 
       case 'offers':
         entityType = 'OFFER';
-        entityId = routeParams[0] || null;
         if (action === 'CREATE') {
-          description = `Created offer: ${body?.title || 'unknown'}`;
+          description = `Created offer: ${responseBody?.title || body?.title || 'unknown'}`;
         } else if (action === 'UPDATE') {
-          description = `Updated offer: ${body?.title || entityId || 'unknown'}`;
+          description = `Updated offer: ${newEntity?.title || oldEntity?.title || body?.title || entityId || 'unknown'}`;
         } else if (action === 'DELETE') {
-          description = `Deleted offer ID: ${entityId}`;
+          description = `Deleted offer: ${oldEntity?.title || entityId || 'unknown'}`;
         }
         break;
 
@@ -176,7 +257,6 @@ export class AuditLogInterceptor implements NestInterceptor {
 
       case 'reviews':
         entityType = 'REVIEW';
-        entityId = routeParams[0] || null;
         if (action === 'DELETE') {
           description = `Deleted review ID: ${entityId}`;
         } else {
@@ -186,7 +266,6 @@ export class AuditLogInterceptor implements NestInterceptor {
 
       case 'orders':
         entityType = 'ORDER';
-        entityId = routeParams[0] || null;
         if (url.includes('/cancel')) {
           action = 'CANCEL_ORDER';
           description = `Cancelled order ID: ${entityId}. Reason: ${body?.reason || 'none'}`;
@@ -206,7 +285,6 @@ export class AuditLogInterceptor implements NestInterceptor {
 
       case 'users':
         entityType = 'USER';
-        entityId = routeParams[0] || null;
         if (url.includes('/role')) {
           action = 'UPDATE_ROLE';
           description = `Changed user ID ${entityId} role to: ${body?.role || 'unknown'}`;
@@ -221,7 +299,6 @@ export class AuditLogInterceptor implements NestInterceptor {
 
       case 'warehouse':
         entityType = 'WAREHOUSE';
-        entityId = routeParams[0] || null;
         if (url.includes('/inventory/')) {
           action = 'UPDATE_INVENTORY';
           description = `Adjusted inventory in warehouse for variant: ${routeParams[2] || 'unknown'}`;
@@ -254,6 +331,20 @@ export class AuditLogInterceptor implements NestInterceptor {
         break;
     }
 
+    // Generate changes/diffs
+    const changes: any[] = [];
+    if (success && oldEntity && newEntity) {
+      if (entityType === 'PRODUCT') {
+        const generalChanges = this.diffObjects(oldEntity, newEntity, ['variants']);
+        const oldVars = oldEntity.variants || [];
+        const newVars = newEntity.variants || [];
+        const variantChanges = this.diffProductVariants(oldVars, newVars);
+        changes.push(...generalChanges, ...variantChanges);
+      } else if (entityType === 'CATEGORY' || entityType === 'SETTINGS' || entityType === 'COUPON' || entityType === 'OFFER') {
+        changes.push(...this.diffObjects(oldEntity, newEntity));
+      }
+    }
+
     // Prepare metadata for visual rendering
     const metadata: any = {
       adminName: user.name || 'Admin',
@@ -263,6 +354,10 @@ export class AuditLogInterceptor implements NestInterceptor {
       requestMethod: method,
       description,
     };
+
+    if (changes.length > 0) {
+      metadata.changes = changes;
+    }
 
     if (body) {
       const sanitizedBody = { ...body };
@@ -285,4 +380,120 @@ export class AuditLogInterceptor implements NestInterceptor {
       errorMsg,
     });
   }
+
+  private diffObjects(
+    oldObj: any,
+    newObj: any,
+    excludeKeys: string[] = [],
+  ): Array<{ field: string; old: any; new: any }> {
+    const changes: Array<{ field: string; old: any; new: any }> = [];
+    if (!oldObj || !newObj) return changes;
+
+    const standardExclude = [
+      'id',
+      'createdAt',
+      'updatedAt',
+      'adminId',
+      'variants',
+      'password',
+      'token',
+      'refreshToken',
+      'razorpayKeySecret',
+      'razorpayWebhookSecret',
+    ];
+    const actualExclude = [...standardExclude, ...excludeKeys];
+
+    const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+
+    for (const key of allKeys) {
+      if (actualExclude.includes(key)) continue;
+
+      const oldVal = oldObj[key];
+      const newVal = newObj[key];
+
+      // Normalize null/undefined/empty string
+      const oldValNormalized =
+        oldVal === null || oldVal === undefined ? '' : oldVal;
+      const newValNormalized =
+        newVal === null || newVal === undefined ? '' : newVal;
+
+      if (
+        typeof oldValNormalized === 'object' ||
+        typeof newValNormalized === 'object'
+      ) {
+        if (JSON.stringify(oldValNormalized) !== JSON.stringify(newValNormalized)) {
+          changes.push({
+            field: key,
+            old: oldVal,
+            new: newVal,
+          });
+        }
+      } else if (oldValNormalized !== newValNormalized) {
+        changes.push({
+          field: key,
+          old: oldVal,
+          new: newVal,
+        });
+      }
+    }
+
+    return changes;
+  }
+
+  private diffProductVariants(oldVariants: any[], newVariants: any[]): Array<any> {
+    const changes: Array<any> = [];
+    const oldActive = (oldVariants || []).filter((v) => v.isActive);
+    const newActive = (newVariants || []).filter((v) => v.isActive);
+
+    // Added variants
+    for (const newVal of newActive) {
+      const oldVal = oldActive.find(
+        (v) =>
+          v.id === newVal.id ||
+          (v.size === newVal.size && v.color === newVal.color),
+      );
+      if (!oldVal) {
+        changes.push({
+          field: 'Variant Added',
+          old: null,
+          new: `${newVal.size || 'N/A'}${newVal.color ? ` / ${newVal.color}` : ''} (SKU: ${newVal.sku || 'N/A'}, Stock: ${newVal.stock})`,
+        });
+      } else {
+        // Compare fields
+        if (oldVal.stock !== newVal.stock) {
+          changes.push({
+            field: `Variant ${newVal.size || 'N/A'}${newVal.color ? ` / ${newVal.color}` : ''} Stock`,
+            old: oldVal.stock,
+            new: newVal.stock,
+          });
+        }
+        if (oldVal.sku !== newVal.sku) {
+          changes.push({
+            field: `Variant ${newVal.size || 'N/A'}${newVal.color ? ` / ${newVal.color}` : ''} SKU`,
+            old: oldVal.sku,
+            new: newVal.sku,
+          });
+        }
+      }
+    }
+
+    // Removed variants
+    for (const oldVal of oldActive) {
+      const newVal = newActive.find(
+        (v) =>
+          v.id === oldVal.id ||
+          (v.size === oldVal.size && v.color === oldVal.color),
+      );
+      if (!newVal) {
+        changes.push({
+          field: 'Variant Removed',
+          old: `${oldVal.size || 'N/A'}${oldVal.color ? ` / ${oldVal.color}` : ''} (SKU: ${oldVal.sku || 'N/A'})`,
+          new: null,
+        });
+      }
+    }
+
+    return changes;
+  }
 }
+

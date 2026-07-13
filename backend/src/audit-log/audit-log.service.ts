@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -6,6 +7,25 @@ export class AuditLogService {
   private readonly logger = new Logger(AuditLogService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async deleteOldLogs() {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    try {
+      const { count } = await this.prisma.auditLog.deleteMany({
+        where: {
+          createdAt: {
+            lt: threeMonthsAgo,
+          },
+        },
+      });
+      this.logger.log(`Auto-deleted ${count} audit logs older than 3 months.`);
+    } catch (err: any) {
+      this.logger.error(`Failed to auto-delete old audit logs: ${err.message}`);
+    }
+  }
 
   async writeLog(params: {
     adminId: string;
@@ -33,10 +53,29 @@ export class AuditLogService {
     }
   }
 
+  async getLogUsers() {
+    return this.prisma.user.findMany({
+      where: {
+        role: {
+          in: ['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'ORDER_MANAGER', 'STOCK_MANAGER'],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
   async getLogs(
     page = 1,
     limit = 50,
-    filters?: { adminId?: string; action?: string; entityType?: string; startDate?: string; endDate?: string },
+    filters?: { adminId?: string; action?: string; entityType?: string; startDate?: string; endDate?: string; success?: boolean },
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -44,6 +83,7 @@ export class AuditLogService {
     if (filters?.adminId) where.adminId = filters.adminId;
     if (filters?.action) where.action = filters.action;
     if (filters?.entityType) where.entityType = filters.entityType;
+    if (filters?.success !== undefined) where.success = filters.success;
 
     if (filters?.startDate || filters?.endDate) {
       where.createdAt = {};
@@ -93,3 +133,4 @@ export class AuditLogService {
     };
   }
 }
+

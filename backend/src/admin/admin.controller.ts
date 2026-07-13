@@ -979,6 +979,12 @@ export class AdminController implements OnModuleInit {
     }
   }
 
+  @Get('logs/users')
+  @ApiOperation({ summary: 'Get all admin/staff users for logging actor list' })
+  async getLogUsers() {
+    return this.auditLogService.getLogUsers();
+  }
+
   @Get('logs')
   @ApiOperation({ summary: 'Get all audit logs (admin only)' })
   async getAuditLogs(
@@ -989,13 +995,21 @@ export class AdminController implements OnModuleInit {
     @Query('entityType') entityType?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('success') success?: string,
   ) {
+    let successBool: boolean | undefined = undefined;
+    if (success !== undefined && success !== 'all') {
+      successBool = success === 'true';
+    }
+
     return this.auditLogService.getLogs(Number(page), Number(limit), {
       adminId,
       action,
       entityType,
       startDate,
       endDate,
+      success: successBool,
     });
   }
+
 }

@@ -35,6 +35,7 @@ interface AuditLog {
     payload?: any;
     requestUrl?: string;
     requestMethod?: string;
+    changes?: any[];
   } | null;
   success: boolean;
   errorMsg: string | null;
@@ -62,12 +63,19 @@ export default function AdminLogsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  // New Filters
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState<string>('all');
+  const [selectedSuccess, setSelectedSuccess] = useState<string>('all');
+
   const hasActiveFilters =
     selectedEntityType !== 'all' ||
     selectedAction !== 'all' ||
     searchQuery !== '' ||
     startDate !== '' ||
-    endDate !== '';
+    endDate !== '' ||
+    selectedAdminId !== 'all' ||
+    selectedSuccess !== 'all';
 
   const handleClearFilters = () => {
     setSelectedEntityType('all');
@@ -75,6 +83,8 @@ export default function AdminLogsPage() {
     setStartDate('');
     setEndDate('');
     setSearchQuery('');
+    setSelectedAdminId('all');
+    setSelectedSuccess('all');
     setPage(1);
   };
 
@@ -104,6 +114,12 @@ export default function AdminLogsPage() {
       if (endDate) {
         params.endDate = endDate;
       }
+      if (selectedAdminId !== 'all') {
+        params.adminId = selectedAdminId;
+      }
+      if (selectedSuccess !== 'all') {
+        params.success = selectedSuccess === 'success' ? 'true' : 'false';
+      }
 
       const response = await api.get('/admin/logs', { params });
       if (response.data) {
@@ -120,9 +136,25 @@ export default function AdminLogsPage() {
     }
   };
 
+  // Fetch admin/staff users for the filter dropdown
+  useEffect(() => {
+    const fetchAdminUsers = async () => {
+      try {
+        const res = await api.get('/admin/logs/users');
+        if (Array.isArray(res.data)) {
+          setAdminUsers(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin users:', error);
+      }
+    };
+    fetchAdminUsers();
+  }, []);
+
   useEffect(() => {
     fetchLogs(1);
-  }, [selectedEntityType, selectedAction, startDate, endDate]);
+  }, [selectedEntityType, selectedAction, startDate, endDate, selectedAdminId, selectedSuccess]);
+
 
   const handlePrevPage = () => {
     if (page > 1) {
@@ -226,7 +258,7 @@ export default function AdminLogsPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 bg-white p-4 rounded-2xl shadow-sm border">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 bg-white p-4 rounded-2xl shadow-sm border items-center">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -285,9 +317,46 @@ export default function AdminLogsPage() {
           </select>
         </div>
 
-        {/* Start Date filter */}
+        {/* User filter */}
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+          <User className="w-4 h-4 text-muted-foreground shrink-0" />
+          <select
+            value={selectedAdminId}
+            onChange={(e) => {
+              setSelectedAdminId(e.target.value);
+              setPage(1);
+            }}
+            className="w-full py-2 px-3 bg-muted/30 border rounded-xl focus:outline-none text-sm"
+          >
+            <option value="all">All Users</option>
+            {adminUsers.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name || user.email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Status filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+          <select
+            value={selectedSuccess}
+            onChange={(e) => {
+              setSelectedSuccess(e.target.value);
+              setPage(1);
+            }}
+            className="w-full py-2 px-3 bg-muted/30 border rounded-xl focus:outline-none text-sm"
+          >
+            <option value="all">All Statuses</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+
+        {/* Start Date filter */}
+        <div className="flex items-center gap-2 px-3 bg-muted/30 border rounded-xl w-full">
+          <span className="text-xs font-bold text-muted-foreground shrink-0">From:</span>
           <input
             type="date"
             value={startDate}
@@ -295,14 +364,14 @@ export default function AdminLogsPage() {
               setStartDate(e.target.value);
               setPage(1);
             }}
-            className="w-full py-2 px-3 bg-muted/30 border rounded-xl focus:outline-none text-sm text-muted-foreground"
+            className="w-full py-2 bg-transparent focus:outline-none text-sm text-muted-foreground"
             title="Start Date"
           />
         </div>
 
         {/* End Date filter */}
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-2 px-3 bg-muted/30 border rounded-xl w-full">
+          <span className="text-xs font-bold text-muted-foreground shrink-0">To:</span>
           <input
             type="date"
             value={endDate}
@@ -310,13 +379,14 @@ export default function AdminLogsPage() {
               setEndDate(e.target.value);
               setPage(1);
             }}
-            className="w-full py-2 px-3 bg-muted/30 border rounded-xl focus:outline-none text-sm text-muted-foreground"
+            className="w-full py-2 bg-transparent focus:outline-none text-sm text-muted-foreground"
             title="End Date"
           />
         </div>
 
+
         {/* Stats & Reset */}
-        <div className="flex items-center justify-between gap-2 px-2 col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-1">
+        <div className="flex items-center justify-between gap-2 px-2 col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1">
           {hasActiveFilters ? (
             <button
               onClick={handleClearFilters}
@@ -632,6 +702,65 @@ export default function AdminLogsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Detailed Changes */}
+              {activeLog.metadata?.changes && activeLog.metadata.changes.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs uppercase font-extrabold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4 text-primary" />
+                    Detailed Changes
+                  </h4>
+                  <div className="border rounded-xl divide-y overflow-hidden bg-muted/5">
+                    {activeLog.metadata.changes.map((change: any, index: number) => {
+                      const isAdded = change.old === null || change.old === undefined || change.old === '';
+                      const isRemoved = change.new === null || change.new === undefined || change.new === '';
+
+                      return (
+                        <div key={index} className="p-3.5 flex flex-col gap-1.5 text-xs bg-white">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-foreground capitalize">
+                              {change.field.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                            {isAdded && (
+                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
+                                Added
+                              </span>
+                            )}
+                            {isRemoved && (
+                              <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold">
+                                Removed
+                              </span>
+                            )}
+                            {!isAdded && !isRemoved && (
+                              <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
+                                Modified
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center pt-1">
+                            {/* Old Value */}
+                            <div className="bg-rose-50/50 border border-rose-100 rounded-lg p-2 flex flex-col min-h-[48px] justify-center">
+                              <span className="text-[9px] uppercase font-bold text-rose-500 tracking-wider">Before</span>
+                              <span className="font-mono text-rose-700 break-all mt-0.5 line-through">
+                                {isAdded ? '—' : String(typeof change.old === 'object' ? JSON.stringify(change.old) : change.old)}
+                              </span>
+                            </div>
+
+                            {/* New Value */}
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-2 flex flex-col min-h-[48px] justify-center">
+                              <span className="text-[9px] uppercase font-bold text-emerald-500 tracking-wider">After</span>
+                              <span className="font-mono text-emerald-700 break-all mt-0.5 font-bold">
+                                {isRemoved ? '—' : String(typeof change.new === 'object' ? JSON.stringify(change.new) : change.new)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Payload Changes */}
               <div className="space-y-3">
