@@ -11,6 +11,8 @@ interface WishlistItem {
     basePrice: number;
     salePrice: number;
     variants: any[];
+    avgRating?: number | string;
+    reviewCount?: number;
   };
 }
 

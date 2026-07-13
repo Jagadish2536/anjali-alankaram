@@ -24,6 +24,8 @@ export interface ProductCardProps {
       images?: string[];
     }>;
     stock?: number;
+    avgRating?: number | string;
+    reviewCount?: number;
   };
   activeColor?: string;
   onAddToCart?: (id: string) => void;
@@ -189,6 +191,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="text-sm font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">
           {product.name}
         </h3>
+        {product.avgRating !== undefined && Number(product.avgRating) > 0 && (
+          <div className="flex items-center mt-1 mb-1">
+            <div className="inline-flex items-center gap-1 bg-[#008037] text-white text-[11px] font-bold px-2 py-0.5 rounded">
+              <span>{Number(product.avgRating).toFixed(1)}</span>
+              <span className="text-[9px]">★</span>
+              {product.reviewCount !== undefined && Number(product.reviewCount) > 0 && (
+                <>
+                  <span className="text-white/40 mx-0.5">|</span>
+                  <span>{product.reviewCount}</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-0.5">
           {isOutOfStock ? (
             <span className="text-xs font-semibold text-muted-foreground">

@@ -1606,6 +1606,20 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                   <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">{rp.name}</p>
+                  {rp.avgRating !== undefined && Number(rp.avgRating) > 0 && (
+                    <div className="flex items-center mt-1 mb-1">
+                      <div className="inline-flex items-center gap-1 bg-[#008037] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        <span>{Number(rp.avgRating).toFixed(1)}</span>
+                        <span className="text-[9px]">★</span>
+                        {rp.reviewCount !== undefined && Number(rp.reviewCount) > 0 && (
+                          <>
+                            <span className="text-white/40 mx-0.5">|</span>
+                            <span>{rp.reviewCount}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs font-bold text-foreground">
                       ₹ {Number(rp.salePrice || rp.basePrice).toLocaleString('en-IN')}

@@ -402,6 +402,7 @@ function ProductsContent() {
   };
 
   const hasActiveFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedCategories.length > 0 || selectedDiscountRange !== null || priceRange[0] > 0 || priceRange[1] < maxPossible;
+  const hasActiveClientFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedDiscountRange !== null;
 
   let pageTitle = 'All Products';
   let breadcrumb = 'Shop';
@@ -566,7 +567,7 @@ function ProductsContent() {
         {/* Sort bar + count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading…' : `${hasActiveFilters ? renderItems.length : totalCount} product${(hasActiveFilters ? renderItems.length : totalCount) !== 1 ? 's' : ''}`}
+            {isLoading ? 'Loading…' : `${hasActiveClientFilters ? renderItems.length : totalCount} product${(hasActiveClientFilters ? renderItems.length : totalCount) !== 1 ? 's' : ''}`}
           </p>
           <div className="flex items-center gap-3">
             <button

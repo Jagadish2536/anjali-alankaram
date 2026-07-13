@@ -390,6 +390,17 @@ export default function Navbar() {
                   </Link>
                 </>
               )}
+              <div className="text-center pt-4 text-[11px] text-muted-foreground border-t border-dashed border-primary/10 mt-4">
+                This website is designed by insta id{' '}
+                <a
+                  href="https://instagram.com/jagadishvarma99"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-primary hover:underline"
+                >
+                  @jagadishvarma99
+                </a>
+              </div>
             </div>
           </div>
         </>

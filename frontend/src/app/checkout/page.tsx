@@ -878,7 +878,7 @@ export default function CheckoutPage() {
                 <AlertTriangle className="w-8 h-8 text-amber-500" />
               </div>
               <h2 className="text-xl font-extrabold text-gray-900 tracking-tight font-outfit">
-                Important Payment Policy
+                Important Policy
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 Please review our terms before proceeding to payment.
@@ -902,6 +902,14 @@ export default function CheckoutPage() {
               <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
                 <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
                 <span><strong>Record Unpacking Video:</strong> Please record a video of the product while unpacking the product.</span>
+              </div>
+              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                <span><strong>Colour Note:</strong> There may be slight colour difference in camera due to lighting.</span>
+              </div>
+              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                <span><strong>AI Note:</strong> Some images and videos are created with AI so there may be slight change in design.</span>
               </div>
             </div>
 

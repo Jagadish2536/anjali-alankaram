@@ -6,7 +6,6 @@ import { MobileCollectionCard } from '@/components/homepage/CollectionCard';
 import { ProductCard } from '@/components/common/ProductCard';
 import { VideoCarousel } from '@/components/homepage/VideoCarousel';
 import { CustomerReviewsSection } from '@/components/homepage/CustomerReviewsSection';
-import { AppDownloadSection } from '@/components/homepage/AppDownloadSection';
 
 // ── Lily Watermark BG ─────────────────────────────────────────────────────────
 const lilyBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath d='M60 100C60 100 30 80 30 55C30 40 44 28 60 28C76 28 90 40 90 55C90 80 60 100 60 100Z' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3Cpath d='M60 100C60 100 42 76 42 52C42 38 50 24 60 24C70 24 78 38 78 52C78 76 60 100 60 100Z' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3Cpath d='M60 28C60 28 36 36 32 54' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3Cpath d='M60 28C60 28 84 36 88 54' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.12'/%3E%3C/svg%3E")`;
@@ -384,9 +383,6 @@ export default async function Home() {
           <CustomerReviewsSection reviews={recentReviews} />
         </Suspense>
       )}
-      
-      {/* ── § 10 APP DOWNLOAD SECTION ─────────────────────────────────── */}
-      <AppDownloadSection />
     </div>
   );
 }
