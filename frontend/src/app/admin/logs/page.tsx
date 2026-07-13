@@ -57,8 +57,26 @@ export default function AdminLogsPage() {
   // Filters
   const [selectedEntityType, setSelectedEntityType] = useState<string>('all');
   const [selectedAction, setSelectedAction] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  const hasActiveFilters =
+    selectedEntityType !== 'all' ||
+    selectedAction !== 'all' ||
+    searchQuery !== '' ||
+    startDate !== '' ||
+    endDate !== '';
+
+  const handleClearFilters = () => {
+    setSelectedEntityType('all');
+    setSelectedAction('all');
+    setStartDate('');
+    setEndDate('');
+    setSearchQuery('');
+    setPage(1);
+  };
 
   // Detail Modal
   const [activeLog, setActiveLog] = useState<AuditLog | null>(null);
@@ -80,6 +98,12 @@ export default function AdminLogsPage() {
       if (selectedAction !== 'all') {
         params.action = selectedAction;
       }
+      if (startDate) {
+        params.startDate = startDate;
+      }
+      if (endDate) {
+        params.endDate = endDate;
+      }
 
       const response = await api.get('/admin/logs', { params });
       if (response.data) {
@@ -98,7 +122,7 @@ export default function AdminLogsPage() {
 
   useEffect(() => {
     fetchLogs(1);
-  }, [selectedEntityType, selectedAction]);
+  }, [selectedEntityType, selectedAction, startDate, endDate]);
 
   const handlePrevPage = () => {
     if (page > 1) {
@@ -202,7 +226,7 @@ export default function AdminLogsPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white p-4 rounded-2xl shadow-sm border">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 bg-white p-4 rounded-2xl shadow-sm border">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -261,9 +285,51 @@ export default function AdminLogsPage() {
           </select>
         </div>
 
-        {/* Stats Summary */}
-        <div className="flex items-center justify-end text-xs md:text-sm text-muted-foreground font-medium px-2">
-          Showing {filteredLogs.length} of {total} total logs
+        {/* Start Date filter */}
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              setPage(1);
+            }}
+            className="w-full py-2 px-3 bg-muted/30 border rounded-xl focus:outline-none text-sm text-muted-foreground"
+            title="Start Date"
+          />
+        </div>
+
+        {/* End Date filter */}
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setPage(1);
+            }}
+            className="w-full py-2 px-3 bg-muted/30 border rounded-xl focus:outline-none text-sm text-muted-foreground"
+            title="End Date"
+          />
+        </div>
+
+        {/* Stats & Reset */}
+        <div className="flex items-center justify-between gap-2 px-2 col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-1">
+          {hasActiveFilters ? (
+            <button
+              onClick={handleClearFilters}
+              className="text-xs text-rose-600 hover:text-rose-700 hover:underline font-semibold shrink-0"
+            >
+              Clear Filters
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground shrink-0">No active filters</span>
+          )}
+          <span className="text-xs text-muted-foreground font-medium text-right truncate">
+            {filteredLogs.length} / {total} logs
+          </span>
         </div>
       </div>
 

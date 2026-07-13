@@ -36,7 +36,7 @@ export class AuditLogService {
   async getLogs(
     page = 1,
     limit = 50,
-    filters?: { adminId?: string; action?: string; entityType?: string },
+    filters?: { adminId?: string; action?: string; entityType?: string; startDate?: string; endDate?: string },
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -44,6 +44,18 @@ export class AuditLogService {
     if (filters?.adminId) where.adminId = filters.adminId;
     if (filters?.action) where.action = filters.action;
     if (filters?.entityType) where.entityType = filters.entityType;
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) {
+        const end = new Date(filters.endDate);
+        if (filters.endDate.length <= 10) {
+          end.setHours(23, 59, 59, 999);
+        }
+        where.createdAt.lte = end;
+      }
+    }
 
     const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({

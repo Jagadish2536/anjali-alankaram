@@ -987,7 +987,15 @@ export class AdminController implements OnModuleInit {
     @Query('adminId') adminId?: string,
     @Query('action') action?: string,
     @Query('entityType') entityType?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    return this.auditLogService.getLogs(Number(page), Number(limit), { adminId, action, entityType });
+    return this.auditLogService.getLogs(Number(page), Number(limit), {
+      adminId,
+      action,
+      entityType,
+      startDate,
+      endDate,
+    });
   }
 }
