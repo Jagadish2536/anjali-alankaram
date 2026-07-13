@@ -155,6 +155,18 @@ export default function AdminLogsPage() {
     fetchLogs(1);
   }, [selectedEntityType, selectedAction, startDate, endDate, selectedAdminId, selectedSuccess]);
 
+  // Prevent background scroll when log details drawer is open
+  useEffect(() => {
+    if (activeLog) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeLog]);
+
 
   const handlePrevPage = () => {
     if (page > 1) {
@@ -258,7 +270,7 @@ export default function AdminLogsPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 bg-white p-4 rounded-2xl shadow-sm border items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white p-4 rounded-2xl shadow-sm border items-center">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -386,7 +398,7 @@ export default function AdminLogsPage() {
 
 
         {/* Stats & Reset */}
-        <div className="flex items-center justify-between gap-2 px-2 col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1">
+        <div className="flex items-center justify-between gap-2 px-2">
           {hasActiveFilters ? (
             <button
               onClick={handleClearFilters}
@@ -397,7 +409,7 @@ export default function AdminLogsPage() {
           ) : (
             <span className="text-xs text-muted-foreground shrink-0">No active filters</span>
           )}
-          <span className="text-xs text-muted-foreground font-medium text-right truncate">
+          <span className="text-xs text-muted-foreground font-medium text-right shrink-0">
             {filteredLogs.length} / {total} logs
           </span>
         </div>
