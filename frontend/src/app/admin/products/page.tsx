@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -155,6 +155,8 @@ interface EditFormData {
 
 export default function AdminProductsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editProductId = searchParams.get('editProductId');
   const { user, isAuthenticated } = useAuthStore();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -212,6 +214,19 @@ export default function AdminProductsPage() {
       setCategories(Array.isArray(data) ? data : data.data || []);
     } catch (e) {}
   };
+
+  useEffect(() => {
+    if (editProductId && products.length > 0) {
+      const prod = products.find(p => p.id === editProductId);
+      if (prod) {
+        openEdit(prod);
+        // Clear query param so it doesn't reopen if closed
+        const sp = new URLSearchParams(window.location.search);
+        sp.delete('editProductId');
+        router.replace(`${window.location.pathname}?${sp.toString()}`, { scroll: false });
+      }
+    }
+  }, [editProductId, products]);
 
   // ── Inventory Report functions ────────────────────────────────────
   const fetchInventoryReport = async () => {
@@ -1109,14 +1124,15 @@ export default function AdminProductsPage() {
                 <th className="px-6 py-4">Price</th>
                 <th className="px-6 py-4">Stock Status</th>
                 <th className="px-6 py-4">Tags</th>
+                <th className="px-6 py-4 hidden sm:table-cell">Category</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {isLoading ? (
-                <tr><td colSpan={5} className="p-8 text-center animate-pulse">Loading catalogue...</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center animate-pulse">Loading catalogue...</td></tr>
               ) : filteredProducts.length === 0 ? (
-                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No products found.</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No products found.</td></tr>
               ) : (
                 filteredProducts.map((product) => {
                   const totalStock = product.variants?.reduce((sum: number, v: any) => sum + v.stock, 0) || 0;
@@ -1130,7 +1146,14 @@ export default function AdminProductsPage() {
                         </div>
                         <div>
                           <p className="font-medium max-w-[200px] truncate" title={product.name}>{product.name}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{product.variants?.length || 0} variants</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            <span className="text-xs text-muted-foreground">{product.variants?.length || 0} variants</span>
+                            {product.category?.name && (
+                              <span className="sm:hidden text-[9px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+                                {product.category.name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -1165,6 +1188,11 @@ export default function AdminProductsPage() {
                             BESTSELLER
                           </button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 hidden sm:table-cell">
+                        <span className="text-xs font-semibold text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-full border border-border">
+                          {product.category?.name || 'Uncategorized'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-3">

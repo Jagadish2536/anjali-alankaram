@@ -63,6 +63,8 @@ interface StoreSettings {
   themeFontSizeScale: string;
   marqueeEnabled: boolean;
   reviewsEnabled: boolean;
+  paymentPolicyEnabled: boolean;
+  paymentPolicyPoints: string[];
 }
 
 interface SettingsStore {
@@ -133,6 +135,15 @@ const DEFAULT_SETTINGS: StoreSettings = {
   themeFontSizeScale: 'Medium',
   marqueeEnabled: true,
   reviewsEnabled: true,
+  paymentPolicyEnabled: true,
+  paymentPolicyPoints: [
+    "No Refund / Exchange / Returns: Once payment is successful, the order cannot be refunded, exchanged, or returned.",
+    "No COD Support: Cash on Delivery is not supported/applicable once payment is completed online.",
+    "No Cancellation: Once payment is successful, no cancellation is allowed. Please check the order details once again.",
+    "Record Unpacking Video: Please record a video of the product while unpacking the product.",
+    "Colour Note: There may be slight colour difference in camera due to lighting.",
+    "AI Note: Some images and videos are created with AI so there may be slight change in design."
+  ],
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -156,6 +167,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             themeFontSizeScale: data.themeFontSizeScale || DEFAULT_SETTINGS.themeFontSizeScale,
             marqueeEnabled: data.marqueeEnabled !== null && data.marqueeEnabled !== undefined ? Boolean(data.marqueeEnabled) : DEFAULT_SETTINGS.marqueeEnabled,
             reviewsEnabled: data.reviewsEnabled !== null && data.reviewsEnabled !== undefined ? Boolean(data.reviewsEnabled) : DEFAULT_SETTINGS.reviewsEnabled,
+            paymentPolicyEnabled: data.paymentPolicyEnabled !== null && data.paymentPolicyEnabled !== undefined ? Boolean(data.paymentPolicyEnabled) : DEFAULT_SETTINGS.paymentPolicyEnabled,
+            paymentPolicyPoints: Array.isArray(data.paymentPolicyPoints) ? data.paymentPolicyPoints : DEFAULT_SETTINGS.paymentPolicyPoints,
             heroImage3Url: data.heroImage3Url || DEFAULT_SETTINGS.heroImage3Url,
             // Ensure numeric fields are proper numbers
             gstRate: Number(data.gstRate ?? DEFAULT_SETTINGS.gstRate),

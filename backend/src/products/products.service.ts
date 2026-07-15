@@ -58,12 +58,14 @@ export class ProductsService {
     if (categoryId) {
       where.categoryId = categoryId;
     } else if (categorySlug) {
-      if (categorySlug.includes(',')) {
-        const slugs = categorySlug.split(',').map((s: string) => s.trim()).filter(Boolean);
-        where.category = { slug: { in: slugs } };
-      } else {
-        where.category = { slug: categorySlug };
-      }
+      const slugs = categorySlug.split(',').map((s: string) => s.trim()).filter(Boolean);
+      const mappedSlugs = new Set<string>();
+      slugs.forEach(s => {
+        mappedSlugs.add(s);
+        if (s === 'saree') mappedSlugs.add('sarees');
+        if (s === 'sarees') mappedSlugs.add('saree');
+      });
+      where.category = { slug: { in: Array.from(mappedSlugs) } };
     }
 
     if (isNewArrival === 'true') {

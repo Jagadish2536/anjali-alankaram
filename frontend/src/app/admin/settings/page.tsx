@@ -623,6 +623,15 @@ export default function AdminSettingsPage() {
     themeFontSizeScale: 'Medium',
     marqueeEnabled: true,
     reviewsEnabled: true,
+    paymentPolicyEnabled: true,
+    paymentPolicyPoints: [
+      "No Refund / Exchange / Returns: Once payment is successful, the order cannot be refunded, exchanged, or returned.",
+      "No COD Support: Cash on Delivery is not supported/applicable once payment is completed online.",
+      "No Cancellation: Once payment is successful, no cancellation is allowed. Please check the order details once again.",
+      "Record Unpacking Video: Please record a video of the product while unpacking the product.",
+      "Colour Note: There may be slight colour difference in camera due to lighting.",
+      "AI Note: Some images and videos are created with AI so there may be slight change in design."
+    ],
   });
 
   // ── Payment form state ────────────────────────────────────────────────────
@@ -1603,6 +1612,70 @@ export default function AdminSettingsPage() {
                       />
                     </div>
                   </Field>
+                )}
+              </div>
+
+              {/* ── Payment Policy Settings ── */}
+              <div className="rounded-2xl border bg-card p-5 space-y-4">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" /> Payment Policy Warnings
+                </h3>
+                <Toggle
+                  label="Enable Policy Warning Modal"
+                  desc="Show a confirmation modal to customers with policy warnings before they proceed to payment."
+                  checked={formData.paymentPolicyEnabled ?? true}
+                  onChange={v => setFormData(prev => ({ ...prev, paymentPolicyEnabled: v }))}
+                />
+                
+                {(formData.paymentPolicyEnabled ?? true) && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Policy Warning Points</p>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Define the points shown to users in the warning modal. Use a colon (:) to bold the section header (e.g. "No Refund: No refunds allowed").
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {(formData.paymentPolicyPoints || []).map((point: string, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center bg-muted/10 p-2 rounded-xl border">
+                          <input
+                            type="text"
+                            value={point}
+                            onChange={e => {
+                              const updated = [...(formData.paymentPolicyPoints || [])];
+                              updated[idx] = e.target.value;
+                              setFormData(prev => ({ ...prev, paymentPolicyPoints: updated }));
+                            }}
+                            className="flex-1 bg-white border px-3 py-2 rounded-lg text-sm outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="e.g. Colour Note: Slight colour difference may occur due to lighting."
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (formData.paymentPolicyPoints || []).filter((_: any, i: number) => i !== idx);
+                              setFormData(prev => ({ ...prev, paymentPolicyPoints: updated }));
+                            }}
+                            className="p-2 text-red-655 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Point"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [...(formData.paymentPolicyPoints || []), ""];
+                        setFormData(prev => ({ ...prev, paymentPolicyPoints: updated }));
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add New Point
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

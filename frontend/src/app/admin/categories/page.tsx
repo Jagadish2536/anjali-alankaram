@@ -58,6 +58,52 @@ export default function AdminCategoriesPage() {
   const [selectedFullImage, setSelectedFullImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [selectedCategoryProducts, setSelectedCategoryProducts] = useState<{ id: string; name: string } | null>(null);
+  const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
+  const [isProductsLoading, setIsProductsLoading] = useState(false);
+  const [productConfirmDelete, setProductConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const openCategoryProducts = async (cat: any) => {
+    setSelectedCategoryProducts({ id: cat.id, name: cat.name });
+    setIsProductsLoading(true);
+    try {
+      const { data } = await api.get(`/products?categoryId=${cat.id}&limit=100&status=ALL`);
+      setCategoryProducts(data?.data || []);
+    } catch (e) {
+      showFeedback('error', 'Failed to load products for this category.');
+    } finally {
+      setIsProductsLoading(false);
+    }
+  };
+
+  const deleteProductFromCategory = async (productId: string) => {
+    try {
+      await api.delete(`/products/${productId}`);
+      setCategoryProducts(prods => prods.filter(p => p.id !== productId));
+      
+      // Update the category product count in the categories list
+      if (selectedCategoryProducts) {
+        setCategories(cats => cats.map(c => {
+          if (c.id === selectedCategoryProducts.id) {
+            return {
+              ...c,
+              _count: {
+                ...c._count,
+                products: Math.max(0, (c._count?.products ?? 1) - 1)
+              }
+            };
+          }
+          return c;
+        }));
+      }
+      
+      setProductConfirmDelete(null);
+      showFeedback('success', 'Product deleted successfully!');
+    } catch (e: any) {
+      showFeedback('error', 'Failed to delete product: ' + (e.response?.data?.message || e.message));
+    }
+  };
+
   const filteredCategories = categories.filter(c =>
     (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.slug || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -392,14 +438,15 @@ export default function AdminCategoriesPage() {
                 <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Slug</th>
                 <th className="px-6 py-4">Default Sizes</th>
+                <th className="px-6 py-4">Products</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {isLoading ? (
-                <tr><td colSpan={4} className="p-10 text-center animate-pulse">Loading categories...</td></tr>
+                <tr><td colSpan={5} className="p-10 text-center animate-pulse">Loading categories...</td></tr>
               ) : filteredCategories.length === 0 ? (
-                <tr><td colSpan={4} className="p-10 text-center text-muted-foreground">No categories found.</td></tr>
+                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No categories found.</td></tr>
               ) : (
                 filteredCategories.map((cat) => (
                   <tr key={cat.id} className="hover:bg-muted/5 transition-colors">
@@ -433,6 +480,14 @@ export default function AdminCategoriesPage() {
                           None
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => openCategoryProducts(cat)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-full w-fit border border-primary/10 transition-colors"
+                      >
+                        {cat._count?.products ?? 0} products
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-3">
@@ -474,6 +529,141 @@ export default function AdminCategoriesPage() {
             <img src={selectedFullImage} alt="Full preview" className="max-w-full max-h-[85vh] object-contain rounded-lg" />
           </div>
         </div>
+      )}
+
+      {/* Category Products Modal */}
+      {selectedCategoryProducts && (
+        <div className="fixed inset-0 z-[60] bg-black/50 flex items-start justify-center overflow-y-auto pt-10 pb-10">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-in zoom-in-95">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b">
+              <div>
+                <h2 className="text-xl font-bold font-outfit text-[#1A1A1A]">Products in "{selectedCategoryProducts.name}"</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Manage, edit, or delete products in this category.</p>
+              </div>
+              <button 
+                onClick={() => setSelectedCategoryProducts(null)} 
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6">
+              {isProductsLoading ? (
+                <div className="py-20 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading products...</p>
+                </div>
+              ) : categoryProducts.length === 0 ? (
+                <div className="py-20 text-center text-muted-foreground">
+                  No products found in this category.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border rounded-xl">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-muted/10 text-muted-foreground font-medium border-b text-xs uppercase">
+                      <tr>
+                        <th className="px-4 py-3">Product</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Price</th>
+                        <th className="px-4 py-3">Stock</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {categoryProducts.map(prod => {
+                        const totalStock = prod.variants && prod.variants.length > 0
+                          ? prod.variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
+                          : prod.stock || 0;
+                          
+                        return (
+                          <tr key={prod.id} className="hover:bg-muted/5 transition-colors">
+                            <td className="px-4 py-3 flex items-center gap-3">
+                              <div className="w-10 h-12 rounded overflow-hidden bg-accent/20 border shrink-0 flex items-center justify-center">
+                                {prod.images && prod.images.length > 0 ? (
+                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-xs truncate max-w-[200px]" title={prod.name}>{prod.name}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px]">{prod.sku || 'No SKU'}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {prod.status === 'ACTIVE' && (
+                                <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-150 px-2 py-0.5 rounded-full">Active</span>
+                              )}
+                              {prod.status === 'DRAFT' && (
+                                <span className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-full">Draft</span>
+                              )}
+                              {prod.status === 'OUT_OF_STOCK' && (
+                                <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-150 px-2 py-0.5 rounded-full">Out of Stock</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-xs">
+                              ₹{prod.salePrice ? prod.salePrice : prod.basePrice}
+                            </td>
+                            <td className="px-4 py-3">
+                              {totalStock > 0 ? (
+                                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                                  {totalStock} in stock
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+                                  Out of stock
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                <a
+                                  href={`/admin/products?editProductId=${prod.id}`}
+                                  target="_blank"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border rounded-lg text-primary hover:bg-primary/5 transition-all"
+                                  title="Edit product in new tab"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                                </a>
+                                <button
+                                  onClick={() => setProductConfirmDelete({ id: prod.id, name: prod.name })}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border rounded-lg text-red-650 hover:bg-red-50 hover:border-red-200 transition-all"
+                                  title="Delete product"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end p-4 sm:p-6 border-t bg-muted/5">
+              <button 
+                onClick={() => setSelectedCategoryProducts(null)} 
+                className="px-6 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:bg-primary/90 transition-all text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Delete Confirmation Dialog */}
+      {productConfirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${productConfirmDelete.name}"?`}
+          message="This action cannot be undone. The product will be permanently removed from your store."
+          onConfirm={() => deleteProductFromCategory(productConfirmDelete.id)}
+          onCancel={() => setProductConfirmDelete(null)}
+        />
       )}
 
     </div>

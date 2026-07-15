@@ -51,6 +51,7 @@ export class SettingsController {
       marqueeText, heroImageUrl, heroLeftImageUrl, heroImage3Url, heroTitle, heroSubtitle, heroTitleEnabled, heroSubtitleEnabled,
       bankName, accountNumber, ifscCode, accountHolderName,
       themePrimaryColor, themeBackgroundColor, themeHeadingFont, themeBodyFont, themeFontSizeScale, marqueeEnabled,
+      paymentPolicyEnabled, paymentPolicyPoints,
     } = data;
 
     // Build clean payload with only defined values (skip undefined)
@@ -109,6 +110,8 @@ export class SettingsController {
     safe('themeBodyFont', themeBodyFont);
     safe('themeFontSizeScale', themeFontSizeScale);
     safe('marqueeEnabled', marqueeEnabled !== undefined ? Boolean(marqueeEnabled) : undefined);
+    safe('paymentPolicyEnabled', paymentPolicyEnabled !== undefined ? Boolean(paymentPolicyEnabled) : undefined);
+    safe('paymentPolicyPoints', paymentPolicyPoints);
 
     const settings = await this.prisma.storeSettings.findFirst();
 

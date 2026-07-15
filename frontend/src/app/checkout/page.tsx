@@ -103,6 +103,12 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const isSuccessRef = useRef(false);
   const [showPaymentWarningModal, setShowPaymentWarningModal] = useState(false);
+  const [showPlatformFeeModal, setShowPlatformFeeModal] = useState(false);
+
+  // Scroll to top on step change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [step]);
 
   // Lock body scroll when payment policy modal is open
   useEffect(() => {
@@ -505,7 +511,13 @@ export default function CheckoutPage() {
                 ) : null}
 
                 {addresses.length > 0 && (
-                  <button onClick={() => setShowPaymentWarningModal(true)} disabled={!selectedAddress}
+                  <button onClick={() => {
+                    if (settings.paymentPolicyEnabled) {
+                      setShowPaymentWarningModal(true);
+                    } else {
+                      setStep(2);
+                    }
+                  }} disabled={!selectedAddress}
                     className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 mt-2">
                     CONTINUE TO PAYMENT →
                   </button>
@@ -675,7 +687,13 @@ export default function CheckoutPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground flex items-center gap-1">
                     Platform Fee
-                    <span className="text-[10px] text-primary border-b border-primary/50 cursor-default leading-none">Know More</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPlatformFeeModal(true)}
+                      className="text-[10px] text-primary border-b border-primary/50 cursor-pointer leading-none hover:text-primary/80 focus:outline-none"
+                    >
+                      Know More
+                    </button>
                   </span>
                   <span className="font-medium">₹{platformFeeAmount}</span>
                 </div>
@@ -886,31 +904,26 @@ export default function CheckoutPage() {
             </div>
 
             {/* Warnings list */}
-            <div className="bg-[#FAF9F6] border border-amber-100 rounded-xl p-4 space-y-3 mb-6">
-              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
-                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>No Refund / Exchange / Returns:</strong> Once payment is successful, the order cannot be refunded, exchanged, or returned.</span>
-              </div>
-              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
-                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>No COD Support:</strong> Cash on Delivery is not supported/applicable once payment is completed online.</span>
-              </div>
-              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
-                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>No Cancellation:</strong> Once payment is successful, no cancellation is allowed. Please check the order details once again.</span>
-              </div>
-              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
-                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>Record Unpacking Video:</strong> Please record a video of the product while unpacking the product.</span>
-              </div>
-              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
-                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>Colour Note:</strong> There may be slight colour difference in camera due to lighting.</span>
-              </div>
-              <div className="flex gap-2 items-start text-sm text-gray-700 text-left">
-                <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>AI Note:</strong> Some images and videos are created with AI so there may be slight change in design.</span>
-              </div>
+            <div className="bg-[#FAF9F6] border border-amber-100 rounded-xl p-4 space-y-3 mb-6 max-h-[35vh] overflow-y-auto">
+              {(settings.paymentPolicyPoints || []).map((pt: string, idx: number) => {
+                const colonIdx = pt.indexOf(':');
+                if (colonIdx !== -1) {
+                  const boldPart = pt.substring(0, colonIdx + 1);
+                  const normalPart = pt.substring(colonIdx + 1);
+                  return (
+                    <div key={idx} className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                      <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                      <span><strong>{boldPart}</strong>{normalPart}</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={idx} className="flex gap-2 items-start text-sm text-gray-700 text-left">
+                    <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                    <span>{pt}</span>
+                  </div>
+                );
+              })}
             </div>
 
             <p className="text-center font-bold text-sm text-gray-800 mb-6">
@@ -939,6 +952,27 @@ export default function CheckoutPage() {
                 Go to Cart
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showPlatformFeeModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPlatformFeeModal(false)} />
+          <div className="relative bg-white rounded-2xl w-full max-w-sm p-6 flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 mx-auto text-primary">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h3 className="font-outfit font-bold text-lg text-foreground mb-2">About Platform Fee</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              This small fee is charged per order to support our digital infrastructure and ensure a safe, secure, and premium shopping experience.
+            </p>
+            <button
+              onClick={() => setShowPlatformFeeModal(false)}
+              className="mt-5 w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:bg-primary/90 transition-all text-xs"
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}

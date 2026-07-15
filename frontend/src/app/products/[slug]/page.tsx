@@ -465,41 +465,48 @@ function StarRater({ value, onChange }: { value: number; onChange: (v: number) =
 // ── Review Card ─────────────────────────────────────────────────────────────
 function ReviewCard({ review, onDelete, currentUserId }: { review: any; onDelete: () => void; currentUserId?: string }) {
   return (
-    <div className="border border-primary/10 rounded-2xl p-5 space-y-3 hover:border-primary/20 transition-colors bg-primary/5">
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm">
-            {review.user?.name?.[0]?.toUpperCase() || 'U'}
-          </div>
+    <div className="bg-white rounded-3xl p-6 shadow-md border border-border/80 text-left transition-all duration-300 hover:shadow-lg flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
+      {/* Avatar/Initial */}
+      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-base shrink-0">
+        {review.user?.name?.[0]?.toUpperCase() || 'U'}
+      </div>
+      
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start gap-4">
           <div>
-            <p className="text-sm font-bold">{review.user?.name || 'Customer'}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className="flex">
+            <p className="font-cormorant text-lg font-bold text-primary">{review.user?.name || 'Customer'}</p>
+            <div className="flex items-center gap-2 mt-1 mb-2">
+              <div className="flex gap-0.5">
                 {[1,2,3,4,5].map(s => (
-                  <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-primary stroke-primary' : 'stroke-primary/30'}`} />
+                  <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-primary stroke-primary' : 'fill-none stroke-muted-foreground/30'}`} />
                 ))}
               </div>
               {review.isVerified && (
-                <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <span className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-150 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <CheckCircle2 className="w-2.5 h-2.5" /> Verified Purchase
                 </span>
               )}
             </div>
           </div>
+          
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground">
+              {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+            {review.userId === currentUserId && (
+              <button onClick={onDelete} className="p-1.5 text-muted-foreground hover:text-red-655 hover:bg-red-50 rounded-lg transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
-          {review.userId === currentUserId && (
-            <button onClick={onDelete} className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        
+        {review.title && <p className="text-sm font-bold text-foreground mb-1">{review.title}</p>}
+        {review.comment && (
+          <p className="text-foreground/80 text-sm leading-relaxed italic">&ldquo;{review.comment}&rdquo;</p>
+        )}
       </div>
-      {review.title && <p className="text-sm font-bold">{review.title}</p>}
-      {review.comment && <p className="text-sm text-muted-foreground leading-relaxed">{review.comment}</p>}
     </div>
   );
 }
@@ -654,6 +661,13 @@ export default function ProductDetailPage() {
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
+
+  const scrollToReviews = () => {
+    const el = document.getElementById('reviews-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const { addItem, isLoading: isCartLoading, items: cartItems, fetchCart } = useCartStore();
   const { items: wishlistItems, fetchWishlist, addItem: addToWishlistStore, removeItem: removeFromWishlistStore } = useWishlistStore();
@@ -1063,11 +1077,24 @@ export default function ProductDetailPage() {
           <div>
             <h1 className="font-outfit text-2xl md:text-3xl font-bold text-foreground leading-tight">{product.name}</h1>
             <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center gap-1">
-                {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(Number(product.avgRating)) ? 'fill-primary stroke-primary' : 'stroke-primary/30 fill-none opacity-40'}`} />)}
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Star
+                    key={s}
+                    className={`w-4 h-4 ${
+                      s <= Math.round(Number(product.avgRating))
+                        ? 'fill-primary stroke-primary'
+                        : 'fill-none stroke-muted-foreground/40'
+                    }`}
+                  />
+                ))}
               </div>
-              <button onClick={() => { setActiveTab('reviews'); document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' }); }}
-                className="text-xs text-muted-foreground hover:text-primary underline">{product.reviewCount} reviews</button>
+              <button
+                onClick={scrollToReviews}
+                className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
+              >
+                {product.reviewCount} reviews
+              </button>
               {product.isBestseller && <span className="text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 px-2 py-0.5 rounded-full">🔥 Bestseller</span>}
             </div>
           </div>
@@ -1119,13 +1146,12 @@ export default function ProductDetailPage() {
                     </div>
                     <div className="flex flex-wrap gap-2.5">
                       {uniqueColours.map((v: any) => {
-                        // Is this colour hex or a name? Detect by leading '#'
-                        const isHex = v.color?.startsWith('#');
                         const selectedColorGroup = selectedVariant?.color;
                         const isSelected = selectedColorGroup === v.color;
                         const outOfStock = product.variants
                           .filter((vv: any) => vv.color === v.color)
                           .every((vv: any) => vv.stock === 0);
+                        const swatchBg = v.colorHex || v.color || '#ccc';
                         return (
                           <button
                             key={v.id}
@@ -1142,17 +1168,10 @@ export default function ProductDetailPage() {
                               isSelected ? 'border-foreground scale-110 shadow-md' : 'border-transparent hover:border-foreground/40'
                             } ${outOfStock ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
-                            {isHex ? (
-                              <span
-                                className="block w-7 h-7 rounded-full"
-                                style={{ backgroundColor: v.color }}
-                              />
-                            ) : (
-                              <span
-                                className="block w-7 h-7 rounded-full border border-border"
-                                style={{ backgroundColor: v.color }}
-                              />
-                            )}
+                            <span
+                              className="block w-7 h-7 rounded-full border border-border"
+                              style={{ backgroundColor: swatchBg }}
+                            />
                             {outOfStock && (
                               <span className="absolute inset-0 flex items-center justify-center">
                                 <span className="block w-8 h-0.5 bg-muted-foreground/60 rotate-45 rounded-full" />

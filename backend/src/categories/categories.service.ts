@@ -11,6 +11,9 @@ export class CategoriesService {
       where: { isActive: true },
       include: {
         children: { where: { isActive: true } },
+        _count: {
+          select: { products: true }
+        }
       },
       orderBy: { sortOrder: 'asc' },
     });

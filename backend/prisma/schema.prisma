@@ -751,6 +751,8 @@ model StoreSettings {
   themeFontSizeScale      String?  @default("Medium")
   marqueeEnabled          Boolean? @default(true)
   reviewsEnabled          Boolean? @default(true)
+  paymentPolicyEnabled    Boolean? @default(true)
+  paymentPolicyPoints     String[] @default(["No Refund / Exchange / Returns: Once payment is successful, the order cannot be refunded, exchanged, or returned.", "No COD Support: Cash on Delivery is not supported/applicable once payment is completed online.", "No Cancellation: Once payment is successful, no cancellation is allowed. Please check the order details once again.", "Record Unpacking Video: Please record a video of the product while unpacking the product.", "Colour Note: There may be slight colour difference in camera due to lighting.", "AI Note: Some images and videos are created with AI so there may be slight change in design."])
   updatedAt               DateTime @updatedAt
 
   @@map("store_settings")
