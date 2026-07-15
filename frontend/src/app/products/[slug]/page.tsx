@@ -1077,23 +1077,13 @@ export default function ProductDetailPage() {
           <div>
             <h1 className="font-outfit text-2xl md:text-3xl font-bold text-foreground leading-tight">{product.name}</h1>
             <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <Star
-                    key={s}
-                    className={`w-4 h-4 ${
-                      s <= Math.round(Number(product.avgRating))
-                        ? 'fill-primary stroke-primary'
-                        : 'fill-none stroke-muted-foreground/40'
-                    }`}
-                  />
-                ))}
-              </div>
               <button
                 onClick={scrollToReviews}
-                className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 bg-[#008A4B] text-white text-xs font-bold px-2.5 py-1 rounded-md hover:bg-[#008A4B]/90 transition-colors focus:outline-none shrink-0"
               >
-                {product.reviewCount} reviews
+                <span>{Number(product.avgRating || 0).toFixed(1)} ★</span>
+                <span className="text-white/40">|</span>
+                <span>{product.reviewCount}</span>
               </button>
               {product.isBestseller && <span className="text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 px-2 py-0.5 rounded-full">🔥 Bestseller</span>}
             </div>

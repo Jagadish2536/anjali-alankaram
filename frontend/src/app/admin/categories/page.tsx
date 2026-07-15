@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 // ── Confirm Dialog ───────────────────────────────────────────────
@@ -46,6 +47,7 @@ interface CategoryForm {
 const emptyForm: CategoryForm = { name: '', description: '', image: '', sizeGuide: [] };
 
 export default function AdminCategoriesPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,6 +64,18 @@ export default function AdminCategoriesPage() {
   const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(false);
   const [productConfirmDelete, setProductConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  // Lock body scroll when category products modal is open
+  useEffect(() => {
+    if (selectedCategoryProducts) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedCategoryProducts]);
 
   const openCategoryProducts = async (cat: any) => {
     setSelectedCategoryProducts({ id: cat.id, name: cat.name });
@@ -618,14 +632,13 @@ export default function AdminCategoriesPage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex justify-end gap-2">
-                                <a
-                                  href={`/admin/products?editProductId=${prod.id}`}
-                                  target="_blank"
+                                <button
+                                  onClick={() => router.push(`/admin/products?editProductId=${prod.id}`)}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border rounded-lg text-primary hover:bg-primary/5 transition-all"
-                                  title="Edit product in new tab"
+                                  title="Edit product"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" /> Edit
-                                </a>
+                                </button>
                                 <button
                                   onClick={() => setProductConfirmDelete({ id: prod.id, name: prod.name })}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border rounded-lg text-red-650 hover:bg-red-50 hover:border-red-200 transition-all"

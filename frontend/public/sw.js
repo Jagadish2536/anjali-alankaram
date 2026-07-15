@@ -35,20 +35,32 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ── Fetch: Network-first for HTML pages, Cache-first for static assets ────
+// ── Fetch: Cache-first for images & static assets, Network-first for HTML pages ────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   if (
     request.method !== 'GET' ||
-    !url.protocol.startsWith('http') ||
-    url.hostname !== self.location.hostname
+    !url.protocol.startsWith('http')
   ) {
     return;
   }
 
+  // Skip API requests from caching
   if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // Intercept images from S3 / CloudFront, local images, static files, and Google Fonts
+  const isCachableAsset = 
+    url.hostname === self.location.hostname ||
+    url.hostname.includes('amazonaws.com') ||
+    url.hostname.includes('cloudfront.net') ||
+    url.hostname.includes('fonts.googleapis.com') ||
+    url.hostname.includes('fonts.gstatic.com');
+
+  if (!isCachableAsset) {
     return;
   }
 
@@ -74,7 +86,7 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       return fetch(request)
         .then((response) => {
-          if (!response || response.status !== 200 || response.type === 'opaque') {
+          if (!response || (response.status !== 200 && response.status !== 0)) {
             return response;
           }
           const clone = response.clone();

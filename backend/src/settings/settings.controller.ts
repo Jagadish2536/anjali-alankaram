@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Inject, Sse, MessageEvent } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -8,6 +8,20 @@ import { PaymentsService } from '../payments/payments.service';
 import Redis from 'ioredis';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Observable, Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+export class RealtimeEventBroker {
+  private static subject = new Subject<{ type: string; data?: any }>();
+
+  static get$(): Observable<{ type: string; data?: any }> {
+    return this.subject.asObservable();
+  }
+
+  static emit(type: string, data?: any) {
+    this.subject.next({ type, data });
+  }
+}
 
 @Controller('settings')
 export class SettingsController {
@@ -16,6 +30,13 @@ export class SettingsController {
     @Inject(REDIS_CLIENT) private redis: Redis,
     private paymentsService: PaymentsService,
   ) {}
+
+  @Sse('sse')
+  sse(): Observable<MessageEvent> {
+    return RealtimeEventBroker.get$().pipe(
+      map(event => ({ data: event } as MessageEvent))
+    );
+  }
 
   @Get()
   async getSettings() {
@@ -115,14 +136,17 @@ export class SettingsController {
 
     const settings = await this.prisma.storeSettings.findFirst();
 
+    let result;
     if (settings) {
-      return this.prisma.storeSettings.update({
+      result = await this.prisma.storeSettings.update({
         where: { id: settings.id },
         data: cleanData,
       });
     } else {
-      return this.prisma.storeSettings.create({ data: cleanData });
+      result = await this.prisma.storeSettings.create({ data: cleanData });
     }
+    RealtimeEventBroker.emit('settings-updated', result);
+    return result;
   }
 
   // ── Payment config (reads/writes DB & .env file fallback) ────────────────

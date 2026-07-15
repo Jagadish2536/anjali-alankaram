@@ -110,13 +110,13 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [step]);
 
-  // Lock body scroll when payment policy modal is open
+  // Lock body scroll when payment policy modal or platform fee modal is open
   useEffect(() => {
-    if (!showPaymentWarningModal) return;
+    if (!showPaymentWarningModal && !showPlatformFeeModal) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [showPaymentWarningModal]);
+  }, [showPaymentWarningModal, showPlatformFeeModal]);
 
   // Qty edit state
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);

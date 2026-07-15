@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { RealtimeEventBroker } from '../settings/settings.controller';
 
 @ApiTags('Products')
 @Controller('products')
@@ -95,7 +96,9 @@ export class ProductsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create product (Admin)' })
   async create(@Body() dto: CreateProductDto) {
-    return this.productsService.create(dto);
+    const p = await this.productsService.create(dto);
+    RealtimeEventBroker.emit('products-updated', p);
+    return p;
   }
 
   @Put(':id')
@@ -104,7 +107,9 @@ export class ProductsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update product (Admin)' })
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
-    return this.productsService.update(id, dto);
+    const p = await this.productsService.update(id, dto);
+    RealtimeEventBroker.emit('products-updated', p);
+    return p;
   }
 
   @Delete(':id')
@@ -113,6 +118,8 @@ export class ProductsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete product (Admin)' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productsService.remove(id);
+    const p = await this.productsService.remove(id);
+    RealtimeEventBroker.emit('products-updated', { id });
+    return p;
   }
 }

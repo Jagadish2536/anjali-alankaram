@@ -8,6 +8,7 @@ import { OAuthProvider } from '@/components/providers/OAuthProvider'
 import { MaintenanceProvider } from '@/components/providers/MaintenanceProvider'
 import VisitorTracker from '@/components/VisitorTracker'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
+import RealtimeSync from '@/components/common/RealtimeSync'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' })
@@ -67,6 +68,7 @@ export default function RootLayout({
           <MaintenanceProvider>
             <ServiceWorkerRegistration />
             <VisitorTracker />
+            <RealtimeSync />
             <Navbar />
             {/* pb-16 on mobile so content isn't hidden behind bottom nav */}
             <main className="flex-1 pb-16 md:pb-0">

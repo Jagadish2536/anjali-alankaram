@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { RealtimeEventBroker } from '../settings/settings.controller';
 
 @ApiTags('Categories')
 @Controller('categories')
@@ -24,7 +25,9 @@ export class CategoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create category (Admin)' })
   async create(@Body() dto: any) {
-    return this.categoriesService.create(dto);
+    const c = await this.categoriesService.create(dto);
+    RealtimeEventBroker.emit('categories-updated', c);
+    return c;
   }
 
   @Put(':id')
@@ -33,7 +36,9 @@ export class CategoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update category (Admin)' })
   async update(@Param('id') id: string, @Body() dto: any) {
-    return this.categoriesService.update(id, dto);
+    const c = await this.categoriesService.update(id, dto);
+    RealtimeEventBroker.emit('categories-updated', c);
+    return c;
   }
 
   @Delete(':id')
@@ -42,6 +47,8 @@ export class CategoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete category (Admin)' })
   async remove(@Param('id') id: string) {
-    return this.categoriesService.remove(id);
+    const c = await this.categoriesService.remove(id);
+    RealtimeEventBroker.emit('categories-updated', { id });
+    return c;
   }
 }
