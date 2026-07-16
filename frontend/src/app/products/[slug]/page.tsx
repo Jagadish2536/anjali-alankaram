@@ -523,6 +523,18 @@ export default function ProductDetailPage() {
     setMounted(true);
   }, []);
   const showProductId = mounted && isAuthenticated && user && ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER', 'ORDER_MANAGER', 'WAREHOUSE_STAFF'].includes(user.role || '');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyId = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (id) {
+      navigator.clipboard.writeText(id).then(() => {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 1500);
+      });
+    }
+  };
 
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
@@ -1087,10 +1099,22 @@ export default function ProductDetailPage() {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                className="text-xs font-mono text-muted-foreground bg-muted/40 px-2 py-1 rounded border border-border mt-2 w-fit select-all cursor-text" 
+                className="text-xs font-mono text-muted-foreground bg-muted/40 px-2.5 py-1.5 rounded border border-border mt-2 w-fit select-all cursor-text flex items-center gap-2 hover:bg-muted/80 transition-colors" 
                 title="Product ID (Double-click to select all)"
               >
-                ID: {product.id}
+                <span>ID: {product.id}</span>
+                <button
+                  type="button"
+                  onClick={(e) => handleCopyId(e, product.id)}
+                  className="p-0.5 rounded hover:bg-black/5 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                  title="Copy ID to clipboard"
+                >
+                  {copiedId === product.id ? (
+                    <Check className="w-3.5 h-3.5 text-green-600 animate-in zoom-in-75 duration-100" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-muted-foreground/80 hover:text-foreground" />
+                  )}
+                </button>
               </div>
             )}
             <div className="flex items-center gap-4 mt-2">
@@ -1638,10 +1662,22 @@ export default function ProductDetailPage() {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      className="text-[9px] font-mono text-muted-foreground bg-muted/40 px-1 py-0.5 rounded border border-border mt-1 w-fit select-all cursor-text" 
+                      className="text-[9px] font-mono text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border mt-1 w-fit select-all cursor-text flex items-center gap-1 hover:bg-muted/80 transition-colors" 
                       title="Product ID (Double-click to select all)"
                     >
-                      ID: {rp.id}
+                      <span>ID: {rp.id}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyId(e, rp.id)}
+                        className="p-0.5 rounded hover:bg-black/5 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                        title="Copy ID to clipboard"
+                      >
+                        {copiedId === rp.id ? (
+                          <Check className="w-2.5 h-2.5 text-green-600 animate-in zoom-in-75 duration-100" />
+                        ) : (
+                          <Copy className="w-2.5 h-2.5 text-muted-foreground/80 hover:text-foreground" />
+                        )}
+                      </button>
                     </div>
                   )}
                   {rp.avgRating !== undefined && Number(rp.avgRating) > 0 && (

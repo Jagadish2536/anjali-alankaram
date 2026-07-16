@@ -79,6 +79,19 @@ export default function AdminCategoriesPage() {
     setModalCurrentPage(1);
   }, [modalSearchQuery]);
 
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyId = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (id) {
+      navigator.clipboard.writeText(id).then(() => {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 1500);
+      });
+    }
+  };
+
   // Lock body scroll when category products modal is open
   useEffect(() => {
     if (selectedCategoryProducts) {
@@ -758,7 +771,21 @@ export default function AdminCategoriesPage() {
                                     </div>
                                     <div className="min-w-0">
                                       <p className="font-medium text-xs truncate max-w-[200px]" title={prod.name}>{prod.name}</p>
-                                      <p className="text-[10px] font-mono text-muted-foreground select-all mt-0.5" title="Double click to copy ID">ID: {prod.id}</p>
+                                      <div className="flex items-center gap-1 mt-0.5 text-[10px] font-mono text-muted-foreground">
+                                        <span>ID: {prod.id}</span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleCopyId(e, prod.id)}
+                                          className="p-0.5 rounded hover:bg-black/5 text-muted-foreground hover:text-foreground transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
+                                          title="Copy ID to clipboard"
+                                        >
+                                          {copiedId === prod.id ? (
+                                            <Check className="w-3 h-3 text-green-600 animate-in zoom-in-75 duration-100" />
+                                          ) : (
+                                            <Copy className="w-3 h-3 text-muted-foreground/80 hover:text-foreground" />
+                                          )}
+                                        </button>
+                                      </div>
                                     </div>
                                   </td>
                                   <td className="px-4 py-3">

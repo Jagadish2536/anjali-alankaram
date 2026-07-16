@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, ShoppingBag, Copy, Check } from 'lucide-react';
 import { OptimizedImage } from './OptimizedImage';
 import { formatPrice } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -41,6 +41,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [mounted, setMounted] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(product.id).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -200,18 +210,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="text-sm font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">
           {product.name}
         </h3>
+
         {showProductId && (
           <div 
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
             }}
-            className="text-[10px] font-mono text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border mt-1 w-fit select-all cursor-text" 
+            className="text-[10px] font-mono text-muted-foreground bg-muted/40 px-2 py-1 rounded border border-border mt-1.5 w-fit select-all cursor-text flex items-center gap-1.5 hover:bg-muted/80 transition-colors" 
             title="Product ID (Double-click to select all)"
           >
-            ID: {product.id}
+            <span>ID: {product.id}</span>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="p-0.5 rounded hover:bg-black/5 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+              title="Copy ID to clipboard"
+            >
+              {copied ? (
+                <Check className="w-3 h-3 text-green-600 animate-in zoom-in-75 duration-100" />
+              ) : (
+                <Copy className="w-3 h-3 text-muted-foreground/80 hover:text-foreground" />
+              )}
+            </button>
           </div>
         )}
+
         {product.avgRating !== undefined && Number(product.avgRating) > 0 && (
           <div className="flex items-center mt-1 mb-1">
             <div className="inline-flex items-center gap-1 bg-[#008037] text-white text-[11px] font-bold px-2 py-0.5 rounded">

@@ -10,7 +10,7 @@ import {
   Plus, Edit2, Trash2, Search, AlertCircle, CheckCircle2,
   Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink, AlertTriangle,
   BarChart3, Printer, FileDown, RefreshCw, PackageCheck, PackageX, Wand2, Sparkles,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Copy, Check
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
@@ -169,6 +169,19 @@ export default function AdminProductsPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, itemsPerPage]);
+
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyId = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (id) {
+      navigator.clipboard.writeText(id).then(() => {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 1500);
+      });
+    }
+  };
 
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', videoUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
@@ -1181,7 +1194,21 @@ export default function AdminProductsPage() {
                         </div>
                         <div>
                           <p className="font-medium max-w-[200px] truncate" title={product.name}>{product.name}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground select-all mt-0.5" title="Double click to copy ID">ID: {product.id}</p>
+                          <div className="flex items-center gap-1 mt-0.5 text-[10px] font-mono text-muted-foreground">
+                            <span>ID: {product.id}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopyId(e, product.id)}
+                              className="p-0.5 rounded hover:bg-black/5 text-muted-foreground hover:text-foreground transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
+                              title="Copy ID to clipboard"
+                            >
+                              {copiedId === product.id ? (
+                                <Check className="w-3 h-3 text-green-600 animate-in zoom-in-75 duration-100" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-muted-foreground/80 hover:text-foreground" />
+                              )}
+                            </button>
+                          </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             <span className="text-xs text-muted-foreground">{product.variants?.length || 0} variants</span>
                             {product.category?.name && (
