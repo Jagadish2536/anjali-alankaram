@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { OptimizedImage } from './OptimizedImage';
 import { formatPrice } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export interface ProductCardProps {
   product: {
@@ -38,6 +39,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [localColor, setLocalColor] = useState(activeColor);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [mounted, setMounted] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const showProductId = mounted && isAuthenticated && user && ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER', 'ORDER_MANAGER', 'WAREHOUSE_STAFF'].includes(user.role || '');
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const card = e.currentTarget;
@@ -191,6 +200,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="text-sm font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">
           {product.name}
         </h3>
+        {showProductId && (
+          <div 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="text-[10px] font-mono text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border mt-1 w-fit select-all cursor-text" 
+            title="Product ID (Double-click to select all)"
+          >
+            ID: {product.id}
+          </div>
+        )}
         {product.avgRating !== undefined && Number(product.avgRating) > 0 && (
           <div className="flex items-center mt-1 mb-1">
             <div className="inline-flex items-center gap-1 bg-[#008037] text-white text-[11px] font-bold px-2 py-0.5 rounded">

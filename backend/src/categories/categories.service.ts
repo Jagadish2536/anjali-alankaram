@@ -12,7 +12,11 @@ export class CategoriesService {
       include: {
         children: { where: { isActive: true } },
         _count: {
-          select: { products: true }
+          select: {
+            products: {
+              where: { status: 'ACTIVE' }
+            }
+          }
         }
       },
       orderBy: { sortOrder: 'asc' },

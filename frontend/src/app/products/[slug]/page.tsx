@@ -518,6 +518,11 @@ export default function ProductDetailPage() {
   const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
   const { settings, fetchSettings } = useSettingsStore();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const showProductId = mounted && isAuthenticated && user && ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER', 'ORDER_MANAGER', 'WAREHOUSE_STAFF'].includes(user.role || '');
 
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
@@ -1076,6 +1081,18 @@ export default function ProductDetailPage() {
           {/* Name + social proof */}
           <div>
             <h1 className="font-outfit text-2xl md:text-3xl font-bold text-foreground leading-tight">{product.name}</h1>
+            {showProductId && (
+              <div 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="text-xs font-mono text-muted-foreground bg-muted/40 px-2 py-1 rounded border border-border mt-2 w-fit select-all cursor-text" 
+                title="Product ID (Double-click to select all)"
+              >
+                ID: {product.id}
+              </div>
+            )}
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={scrollToReviews}
@@ -1615,6 +1632,18 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                   <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">{rp.name}</p>
+                  {showProductId && (
+                    <div 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      className="text-[9px] font-mono text-muted-foreground bg-muted/40 px-1 py-0.5 rounded border border-border mt-1 w-fit select-all cursor-text" 
+                      title="Product ID (Double-click to select all)"
+                    >
+                      ID: {rp.id}
+                    </div>
+                  )}
                   {rp.avgRating !== undefined && Number(rp.avgRating) > 0 && (
                     <div className="flex items-center mt-1 mb-1">
                       <div className="inline-flex items-center gap-1 bg-[#008037] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">

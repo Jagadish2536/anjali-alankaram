@@ -9,7 +9,8 @@ import { formatPrice } from '@/lib/utils';
 import {
   Plus, Edit2, Trash2, Search, AlertCircle, CheckCircle2,
   Loader2, Save, X, ImageIcon, PlusCircle, Instagram, ExternalLink, AlertTriangle,
-  BarChart3, Printer, FileDown, RefreshCw, PackageCheck, PackageX, Wand2, Sparkles
+  BarChart3, Printer, FileDown, RefreshCw, PackageCheck, PackageX, Wand2, Sparkles,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
@@ -162,6 +163,13 @@ export default function AdminProductsPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, itemsPerPage]);
+
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({ name: '', description: '', material: '', careInstructions: '', basePrice: '', salePrice: '', status: 'ACTIVE', categoryId: '', images: [''], instagramReelUrl: '', videoUrl: '', codAvailable: true, returnEnabled: true, replaceEnabled: true, returnDays: '14', sizeGuide: [] });
   const [editVariants, setEditVariants] = useState<ColorGroup[]>([]);
@@ -199,7 +207,7 @@ export default function AdminProductsPage() {
     setIsLoading(true);
     try {
       const t = force ? `&t=${Date.now()}` : '';
-      const { data } = await api.get(`/products?limit=100&status=ALL${t}`);
+      const { data } = await api.get(`/products?limit=-1&status=ALL${t}`);
       setProducts(data.data);
     } catch (e) {
       console.error('Failed to fetch products');
@@ -508,7 +516,15 @@ export default function AdminProductsPage() {
   };
 
   const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.variants?.some((v: any) => v.sku?.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -1103,7 +1119,7 @@ export default function AdminProductsPage() {
       )}
 
       <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b bg-muted/10 flex items-center">
+        <div className="p-4 border-b bg-muted/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -1113,6 +1129,21 @@ export default function AdminProductsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-primary outline-none"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">View count:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-white border rounded-lg px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
           </div>
         </div>
 
@@ -1134,18 +1165,23 @@ export default function AdminProductsPage() {
               ) : filteredProducts.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No products found.</td></tr>
               ) : (
-                filteredProducts.map((product) => {
+                paginatedProducts.map((product) => {
                   const totalStock = product.variants?.reduce((sum: number, v: any) => sum + v.stock, 0) || 0;
                   const isOutOfStock = totalStock === 0;
 
                   return (
                     <tr key={product.id} className="hover:bg-muted/5 transition-colors">
                       <td className="px-6 py-4 flex items-center gap-4">
-                        <div className="relative w-12 h-16 rounded overflow-hidden bg-accent/20 shrink-0">
+                        <div 
+                          onClick={() => product.images?.[0] && setSelectedFullImage(product.images[0])}
+                          className="relative w-12 h-16 rounded overflow-hidden bg-accent/20 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          title="Click to enlarge"
+                        >
                           {product.images?.[0] && <Image src={product.images[0]} alt={product.name} fill className="object-cover" />}
                         </div>
                         <div>
                           <p className="font-medium max-w-[200px] truncate" title={product.name}>{product.name}</p>
+                          <p className="text-[10px] font-mono text-muted-foreground select-all mt-0.5" title="Double click to copy ID">ID: {product.id}</p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             <span className="text-xs text-muted-foreground">{product.variants?.length || 0} variants</span>
                             {product.category?.name && (
@@ -1219,6 +1255,75 @@ export default function AdminProductsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-muted/5 text-muted-foreground text-sm">
+            <div className="text-xs">
+              Showing <span className="font-semibold text-foreground">{filteredProducts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+              <span className="font-semibold text-foreground">{Math.min(filteredProducts.length, currentPage * itemsPerPage)}</span> of{' '}
+              <span className="font-semibold text-foreground">{filteredProducts.length}</span> products
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-2 border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {(() => {
+                const pages = [];
+                const maxVisible = 5;
+                if (totalPages <= maxVisible) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  if (currentPage > 3) pages.push('...');
+                  const start = Math.max(2, currentPage - 1);
+                  const end = Math.min(totalPages - 1, currentPage + 1);
+                  for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                  }
+                  if (currentPage < totalPages - 2) pages.push('...');
+                  pages.push(totalPages);
+                }
+                return pages.map((page, idx) => {
+                  if (page === '...') {
+                    return (
+                      <span key={`dots-${idx}`} className="px-3 py-1.5 text-muted-foreground/60 select-none">
+                        ...
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(Number(page))}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                        currentPage === page
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-white hover:bg-muted text-muted-foreground border-border'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                });
+              })()}
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Inventory Report Modal ──────────────────────────────── */}

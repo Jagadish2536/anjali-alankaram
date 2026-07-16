@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -59,11 +59,25 @@ export default function AdminCategoriesPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedFullImage, setSelectedFullImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const [selectedCategoryProducts, setSelectedCategoryProducts] = useState<{ id: string; name: string } | null>(null);
   const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(false);
   const [productConfirmDelete, setProductConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [modalCurrentPage, setModalCurrentPage] = useState(1);
+  const [modalItemsPerPage, setModalItemsPerPage] = useState(20);
+
+  useEffect(() => {
+    setModalCurrentPage(1);
+  }, [modalSearchQuery]);
 
   // Lock body scroll when category products modal is open
   useEffect(() => {
@@ -81,7 +95,7 @@ export default function AdminCategoriesPage() {
     setSelectedCategoryProducts({ id: cat.id, name: cat.name });
     setIsProductsLoading(true);
     try {
-      const { data } = await api.get(`/products?categoryId=${cat.id}&limit=100&status=ALL`);
+      const { data } = await api.get(`/products?categoryId=${cat.id}&limit=-1&status=ALL`);
       setCategoryProducts(data?.data || []);
     } catch (e) {
       showFeedback('error', 'Failed to load products for this category.');
@@ -122,6 +136,24 @@ export default function AdminCategoriesPage() {
     (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.slug || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
+  const paginatedCategories = filteredCategories.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const filteredCategoryProducts = categoryProducts.filter(p =>
+    (p.name || '').toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+    (p.id || '').toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+    (p.variants || []).some((v: any) => (v.sku || '').toLowerCase().includes(modalSearchQuery.toLowerCase()))
+  );
+
+  const modalTotalPages = Math.ceil(filteredCategoryProducts.length / modalItemsPerPage);
+  const paginatedCategoryProducts = filteredCategoryProducts.slice(
+    (modalCurrentPage - 1) * modalItemsPerPage,
+    modalCurrentPage * modalItemsPerPage
   );
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
@@ -244,22 +276,22 @@ export default function AdminCategoriesPage() {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-outfit font-bold">Category Management</h1>
           <p className="text-muted-foreground mt-1">Create and manage your store's departments.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3 w-full sm:w-auto">
           <button
             onClick={() => fetchCategories()}
-            className="px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors"
+            className="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors text-sm"
           >
             Refresh
           </button>
           {!showForm && (
             <button
               onClick={openCreate}
-              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors"
+              className="flex-1 sm:flex-none bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors text-sm"
             >
               <Plus className="w-5 h-5" /> Add Category
             </button>
@@ -432,7 +464,7 @@ export default function AdminCategoriesPage() {
       )}
 
       <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b bg-muted/10 flex items-center">
+        <div className="p-4 border-b bg-muted/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -443,6 +475,21 @@ export default function AdminCategoriesPage() {
               className="w-full pl-10 pr-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-primary outline-none"
             />
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">View count:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-white border rounded-lg px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -450,8 +497,8 @@ export default function AdminCategoriesPage() {
             <thead className="bg-muted/5 text-muted-foreground font-medium border-b">
               <tr>
                 <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4">Slug</th>
-                <th className="px-6 py-4">Default Sizes</th>
+                <th className="px-6 py-4 hidden md:table-cell">Slug</th>
+                <th className="px-6 py-4 hidden sm:table-cell">Default Sizes</th>
                 <th className="px-6 py-4">Products</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -462,7 +509,7 @@ export default function AdminCategoriesPage() {
               ) : filteredCategories.length === 0 ? (
                 <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No categories found.</td></tr>
               ) : (
-                filteredCategories.map((cat) => (
+                paginatedCategories.map((cat) => (
                   <tr key={cat.id} className="hover:bg-muted/5 transition-colors">
                     <td className="px-6 py-4 flex items-center gap-4">
                       <div 
@@ -481,10 +528,10 @@ export default function AdminCategoriesPage() {
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-1 max-w-[250px]">{cat.description || 'No description'}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-muted-foreground font-mono text-xs">
+                    <td className="px-6 py-4 text-muted-foreground font-mono text-xs hidden md:table-cell">
                       /{cat.slug}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 hidden sm:table-cell">
                       {cat.sizeGuide && Array.isArray(cat.sizeGuide) && cat.sizeGuide.length > 0 ? (
                         <span className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded-full w-fit border border-green-100">
                           {cat.sizeGuide.length} sizes
@@ -527,6 +574,75 @@ export default function AdminCategoriesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-muted/5 text-muted-foreground text-sm">
+            <div className="text-xs">
+              Showing <span className="font-semibold text-foreground">{filteredCategories.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+              <span className="font-semibold text-foreground">{Math.min(filteredCategories.length, currentPage * itemsPerPage)}</span> of{' '}
+              <span className="font-semibold text-foreground">{filteredCategories.length}</span> categories
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-2 border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {(() => {
+                const pages = [];
+                const maxVisible = 5;
+                if (totalPages <= maxVisible) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  if (currentPage > 3) pages.push('...');
+                  const start = Math.max(2, currentPage - 1);
+                  const end = Math.min(totalPages - 1, currentPage + 1);
+                  for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                  }
+                  if (currentPage < totalPages - 2) pages.push('...');
+                  pages.push(totalPages);
+                }
+                return pages.map((page, idx) => {
+                  if (page === '...') {
+                    return (
+                      <span key={`dots-${idx}`} className="px-3 py-1.5 text-muted-foreground/60 select-none">
+                        ...
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(Number(page))}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                        currentPage === page
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-white hover:bg-muted text-muted-foreground border-border'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                });
+              })()}
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Full Image Preview Modal */}
@@ -573,86 +689,163 @@ export default function AdminCategoriesPage() {
                   No products found in this category.
                 </div>
               ) : (
-                <div className="overflow-x-auto border rounded-xl">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted/10 text-muted-foreground font-medium border-b text-xs uppercase">
-                      <tr>
-                        <th className="px-4 py-3">Product</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Price</th>
-                        <th className="px-4 py-3">Stock</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {categoryProducts.map(prod => {
-                        const totalStock = prod.variants && prod.variants.length > 0
-                          ? prod.variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
-                          : prod.stock || 0;
-                          
-                        return (
-                          <tr key={prod.id} className="hover:bg-muted/5 transition-colors">
-                            <td className="px-4 py-3 flex items-center gap-3">
-                              <div className="w-10 h-12 rounded overflow-hidden bg-accent/20 border shrink-0 flex items-center justify-center">
-                                {prod.images && prod.images.length > 0 ? (
-                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-xs truncate max-w-[200px]" title={prod.name}>{prod.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px]">{prod.sku || 'No SKU'}</p>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              {prod.status === 'ACTIVE' && (
-                                <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-150 px-2 py-0.5 rounded-full">Active</span>
-                              )}
-                              {prod.status === 'DRAFT' && (
-                                <span className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-full">Draft</span>
-                              )}
-                              {prod.status === 'OUT_OF_STOCK' && (
-                                <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-150 px-2 py-0.5 rounded-full">Out of Stock</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 font-medium text-xs">
-                              ₹{prod.salePrice ? prod.salePrice : prod.basePrice}
-                            </td>
-                            <td className="px-4 py-3">
-                              {totalStock > 0 ? (
-                                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                                  {totalStock} in stock
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
-                                  Out of stock
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => router.push(`/admin/products?editProductId=${prod.id}`)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border rounded-lg text-primary hover:bg-primary/5 transition-all"
-                                  title="Edit product"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                                </button>
-                                <button
-                                  onClick={() => setProductConfirmDelete({ id: prod.id, name: prod.name })}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border rounded-lg text-red-650 hover:bg-red-50 hover:border-red-200 transition-all"
-                                  title="Delete product"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" /> Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="space-y-4">
+                  {/* Modal Header Controls */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/5 p-3 border rounded-xl">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search by ID or name..."
+                        value={modalSearchQuery}
+                        onChange={(e) => setModalSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">View count:</span>
+                      <select
+                        value={modalItemsPerPage}
+                        onChange={(e) => {
+                          setModalItemsPerPage(Number(e.target.value));
+                          setModalCurrentPage(1);
+                        }}
+                        className="bg-white border rounded-lg px-2.5 py-1.5 font-semibold focus:ring-2 focus:ring-primary outline-none cursor-pointer text-xs"
+                      >
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {filteredCategoryProducts.length === 0 ? (
+                    <div className="py-12 text-center text-muted-foreground text-xs">
+                      No products match your search query in this category.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto border rounded-xl w-full">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-muted/10 text-muted-foreground font-medium border-b text-xs uppercase">
+                            <tr>
+                              <th className="px-4 py-3">Product</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Price</th>
+                              <th className="px-4 py-3">Stock</th>
+                              <th className="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {paginatedCategoryProducts.map(prod => {
+                              const totalStock = prod.variants && prod.variants.length > 0
+                                ? prod.variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
+                                : prod.stock || 0;
+                                
+                              return (
+                                <tr key={prod.id} className="hover:bg-muted/5 transition-colors">
+                                  <td className="px-4 py-3 flex items-center gap-3">
+                                    <div 
+                                      onClick={() => prod.images?.[0] && setSelectedFullImage(prod.images[0])}
+                                      className="w-10 h-12 rounded overflow-hidden bg-accent/20 border shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                                      title="Click to enlarge"
+                                    >
+                                      {prod.images && prod.images.length > 0 ? (
+                                        <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-xs truncate max-w-[200px]" title={prod.name}>{prod.name}</p>
+                                      <p className="text-[10px] font-mono text-muted-foreground select-all mt-0.5" title="Double click to copy ID">ID: {prod.id}</p>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {prod.status === 'ACTIVE' && (
+                                      <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-150 px-2 py-0.5 rounded-full">Active</span>
+                                    )}
+                                    {prod.status === 'DRAFT' && (
+                                      <span className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-full">Draft</span>
+                                    )}
+                                    {prod.status === 'OUT_OF_STOCK' && (
+                                      <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-150 px-2 py-0.5 rounded-full">Out of Stock</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 font-medium text-xs">
+                                    ₹{prod.salePrice ? prod.salePrice : prod.basePrice}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {totalStock > 0 ? (
+                                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                                        {totalStock} in stock
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+                                        Out of stock
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <button
+                                        onClick={() => router.push(`/admin/products?editProductId=${prod.id}`)}
+                                        className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:px-2.5 sm:py-1 border rounded-lg text-primary hover:bg-primary/5 transition-all text-xs font-bold"
+                                        title="Edit product"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                        <span className="hidden sm:inline ml-1">Edit</span>
+                                      </button>
+                                      <button
+                                        onClick={() => setProductConfirmDelete({ id: prod.id, name: prod.name })}
+                                        className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:px-2.5 sm:py-1 border rounded-lg text-red-650 hover:bg-red-50 hover:border-red-200 transition-all text-xs font-bold"
+                                        title="Delete product"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span className="hidden sm:inline ml-1">Delete</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Modal Pagination Controls */}
+                      {modalTotalPages > 1 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border rounded-xl bg-muted/5 text-muted-foreground text-xs">
+                          <div>
+                            Showing <span className="font-semibold text-foreground">{(modalCurrentPage - 1) * modalItemsPerPage + 1}</span> to{' '}
+                            <span className="font-semibold text-foreground">{Math.min(filteredCategoryProducts.length, modalCurrentPage * modalItemsPerPage)}</span> of{' '}
+                            <span className="font-semibold text-foreground">{filteredCategoryProducts.length}</span> products
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setModalCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={modalCurrentPage === 1}
+                              className="p-1.5 border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-xs font-semibold text-foreground">
+                              Page {modalCurrentPage} of {modalTotalPages}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setModalCurrentPage(prev => Math.min(modalTotalPages, prev + 1))}
+                              disabled={modalCurrentPage === modalTotalPages}
+                              className="p-1.5 border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>

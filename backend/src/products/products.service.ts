@@ -151,14 +151,16 @@ export class ProductsService {
       cacheKey,
       async () => {
         const prismaCursor = cursor ? { id: cursor } : undefined;
-        const skip = cursor ? 1 : (page - 1) * limit;
+        const isUnlimited = Number(limit) <= 0;
+        const skip = isUnlimited ? undefined : (cursor ? 1 : (page - 1) * limit);
+        const take = isUnlimited ? undefined : Number(limit);
 
         const [products, total] = await Promise.all([
           this.prisma.product.findMany({
             where,
             cursor: prismaCursor,
             skip,
-            take: Number(limit),
+            take,
             orderBy: { [sortBy]: sortOrder },
             include: {
               category: { select: { id: true, name: true, slug: true } },
@@ -169,10 +171,10 @@ export class ProductsService {
         ]);
 
         const nextCursor =
-          products.length === Number(limit)
+          !isUnlimited && products.length === Number(limit)
             ? products[products.length - 1].id
             : null;
-        const hasMore = products.length === Number(limit);
+        const hasMore = !isUnlimited && products.length === Number(limit);
 
         return {
           data: products.map(p => this.sortProductVariants(p)),
@@ -180,7 +182,7 @@ export class ProductsService {
             total,
             page: Number(page),
             limit: Number(limit),
-            totalPages: Math.ceil(total / limit),
+            totalPages: isUnlimited ? 1 : Math.ceil(total / limit),
             nextCursor,
             hasMore,
           },
