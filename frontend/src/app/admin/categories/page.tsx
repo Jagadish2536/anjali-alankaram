@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search, ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
