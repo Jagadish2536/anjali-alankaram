@@ -112,11 +112,12 @@ export class ProductsService {
       };
     }
 
-    // Full-text search across name, description, material
+    // Full-text search across id, name, description, material
     if (search && search.trim()) {
       if (!where.AND) where.AND = [];
       where.AND.push({
         OR: [
+          { id: { contains: search.trim(), mode: 'insensitive' } },
           { name: { contains: search.trim(), mode: 'insensitive' } },
           { description: { contains: search.trim(), mode: 'insensitive' } },
           { material: { contains: search.trim(), mode: 'insensitive' } },
