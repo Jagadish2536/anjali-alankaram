@@ -107,7 +107,7 @@ export class OrdersService {
     }
 
     // 7. All charges
-    const isFreeShipping = coupon?.type === 'FREE_SHIPPING' || !shippingEnabled || (subtotal - discountAmount - offerDiscount) >= freeShipThreshold;
+    const isFreeShipping = coupon?.type === 'FREE_SHIPPING' || !shippingEnabled || (freeShipThreshold > 0 && (subtotal - discountAmount - offerDiscount) >= freeShipThreshold);
     const shippingCharge = isFreeShipping ? 0 : shippingFee;
     const giftCharge = dto.isGift && settings?.giftEnabled ? Number((settings as any)?.giftAmount ?? 35) : 0;
     const gstAmount = gstEnabled ? Math.round(subtotal * gstRate / 100) : 0;

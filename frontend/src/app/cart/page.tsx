@@ -84,7 +84,8 @@ export default function CartPage() {
   const shippingCharge = settings.shippingCharge;
 
   const offerDiscount = appliedOffer ? Number(appliedOffer.discount) : 0;
-  const shipping = !shippingEnabled ? 0 : (subtotal >= freeShippingThreshold ? 0 : shippingCharge);
+  const isFreeShipping = !shippingEnabled || (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold);
+  const shipping = isFreeShipping ? 0 : Number(shippingCharge);
   const total = Math.max(0, subtotal - offerDiscount + shipping);
 
   return (

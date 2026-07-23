@@ -244,7 +244,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b z-50 flex items-center justify-between px-4 shadow-sm">
+      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b z-50 flex items-center justify-between px-4 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
         <div>
           <span className="font-outfit font-black text-base text-primary">Anjali Admin</span>
           <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${roleBadge.color}`}>
@@ -260,7 +260,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
           <aside className="w-64 h-full bg-white shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-4 border-b bg-muted/30 mt-14">
+            <div className="px-4 py-4 border-b bg-muted/30" style={{ marginTop: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
               <p className="text-sm font-bold">{user?.name || 'Admin'}</p>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${roleBadge.color}`}>
                 {roleBadge.label}
@@ -279,7 +279,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ${isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-60'} pt-14 lg:pt-0 min-h-screen overflow-x-hidden`}>
+      <main className={`flex-1 transition-all duration-300 ${isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-60'} lg:pt-0 min-h-screen overflow-x-hidden`} style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
         {children}
       </main>
     </div>

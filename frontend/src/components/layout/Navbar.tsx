@@ -117,11 +117,11 @@ export default function Navbar() {
     <>
 
       {/* ── Main Header ──────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 w-full bg-[#FDF5EC] shadow-sm">
+      <header className="sticky top-0 z-50 w-full bg-[#FDF5EC] shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
 
         {/* ── Search overlay on mobile ── */}
         {showSearch && (
-          <div className="absolute inset-0 z-20 bg-[#FDF5EC] flex items-center gap-3 px-4 h-14">
+          <div className="absolute inset-x-0 top-0 z-20 bg-[#FDF5EC] flex items-center gap-3 px-4 min-h-[3.5rem]" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
             <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-2">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
@@ -292,7 +292,7 @@ export default function Navbar() {
             onClick={() => setMobileOpen(false)}
           />
           {/* Drawer panel */}
-          <div className="fixed top-0 left-0 bottom-0 z-[70] w-[85vw] max-w-sm bg-[#FDF5EC] md:hidden flex flex-col shadow-2xl overflow-y-auto">
+          <div className="fixed top-0 left-0 bottom-0 z-[70] w-[85vw] max-w-sm bg-[#FDF5EC] md:hidden flex flex-col shadow-2xl overflow-y-auto" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
             {/* Drawer header */}
             <div className="flex items-center justify-between px-4 h-14 border-b border-primary/10 shrink-0">
               <button onClick={() => setMobileOpen(false)} className="p-1 text-foreground">

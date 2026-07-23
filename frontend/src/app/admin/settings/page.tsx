@@ -821,13 +821,13 @@ export default function AdminSettingsPage() {
 
   const sections = [
     { name: 'General', icon: Settings, desc: 'Store details and contact info.' },
+    { name: 'Regional', icon: Globe, desc: 'Tax and shipping settings.' },
+    { name: 'Coupons', icon: Tag, desc: 'Create and manage coupon codes.' },
     { name: 'Theme', icon: Palette, desc: 'Customize colours and typography.' },
+    { name: 'Profile', icon: User, desc: 'Your account settings.' },
     { name: 'Notifications', icon: Bell, desc: 'Email and SMS alerts.' },
     { name: 'Payments', icon: CreditCard, desc: 'Razorpay integration.' },
     { name: 'Bank Details', icon: Landmark, desc: 'Change store bank details.' },
-    { name: 'Regional', icon: Globe, desc: 'Tax and shipping settings.' },
-    { name: 'Coupons', icon: Tag, desc: 'Create and manage coupon codes.' },
-    { name: 'Profile', icon: User, desc: 'Your account settings.' },
   ];
 
   const set = (key: string) => (val: any) => setFormData(prev => ({ ...prev, [key]: val }));

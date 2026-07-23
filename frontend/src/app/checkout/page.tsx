@@ -193,8 +193,9 @@ export default function CheckoutPage() {
   
   const offerDiscount = appliedOffer ? Number(appliedOffer.discount) : 0;
 
-  // Shipping: free if shippingEnabled is off, or if subtotal >= threshold, else charge shippingCharge
-  const shipping = !shippingEnabled ? 0 : (subtotal >= freeShippingThreshold ? 0 : shippingCharge);
+  // Shipping: free if shippingEnabled is off, or if freeShippingThreshold > 0 and subtotal >= threshold, else charge shippingCharge
+  const isFreeShipping = !shippingEnabled || (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold);
+  const shipping = isFreeShipping ? 0 : Number(shippingCharge);
   const platformFee = platformFeeEnabled ? platformFeeAmount : 0;
   const codFee = paymentMethod === 'COD' ? codCharges : 0;
   const gstAmount = gstEnabled ? Math.round(subtotal * gstRate / 100) : 0;
