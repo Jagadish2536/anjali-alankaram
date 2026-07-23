@@ -208,7 +208,7 @@ export default function CartPage() {
                 <span className="font-medium">{formatPrice(shipping)}</span>
               )}
             </div>
-            {shipping > 0 && (
+            {shipping > 0 && freeShippingThreshold > 0 && subtotal < freeShippingThreshold && (
               <p className="text-xs text-muted-foreground">Add {formatPrice(freeShippingThreshold - subtotal)} more for free shipping.</p>
             )}
           </div>

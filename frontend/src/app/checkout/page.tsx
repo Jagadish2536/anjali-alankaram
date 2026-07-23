@@ -748,7 +748,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Free shipping hint */}
-              {shipping > 0 && (
+              {shipping > 0 && freeShippingThreshold > 0 && subtotal < freeShippingThreshold && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                   Add {formatPrice(freeShippingThreshold - subtotal)} more to get <strong>FREE delivery</strong>!
                 </p>
