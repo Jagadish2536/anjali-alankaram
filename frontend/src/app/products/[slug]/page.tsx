@@ -1572,16 +1572,50 @@ export default function ProductDetailPage() {
             </div>
             <div className="flex justify-center py-6 bg-muted/20">
               <div className="relative">
-                <video
-                  ref={videoRef}
-                  src={product.videoUrl}
-                  autoPlay
-                  loop
-                  muted={isMuted}
-                  playsInline
-                  className="rounded-xl shadow-xl max-w-full"
-                  style={{ width: 360, height: 480, objectFit: 'cover' }}
-                />
+                {(() => {
+                  const rawUrl = product.videoUrl || '';
+                  const safeVideoUrl = rawUrl.startsWith('http://') && !rawUrl.includes('localhost') ? rawUrl.replace(/^http:\/\//i, 'https://') : rawUrl;
+                  return (
+                    <video
+                      ref={(el) => {
+                        (videoRef as any).current = el;
+                        if (el) {
+                          el.muted = isMuted;
+                          el.defaultMuted = isMuted;
+                          el.setAttribute('playsinline', 'true');
+                          el.setAttribute('webkit-playsinline', 'true');
+                          el.setAttribute('x5-playsinline', 'true');
+                          el.setAttribute('x5-video-player-type', 'h5-page');
+                          el.setAttribute('x5-video-player-fullscreen', 'false');
+                          if (isMuted) el.setAttribute('muted', '');
+                        }
+                      }}
+                      autoPlay
+                      loop
+                      muted={isMuted}
+                      playsInline
+                      preload="auto"
+                      controlsList="nodownload"
+                      onClick={() => {
+                        if (videoRef.current) {
+                          if (videoRef.current.paused) videoRef.current.play().catch(() => {});
+                          else videoRef.current.pause();
+                        }
+                      }}
+                      onTouchEnd={() => {
+                        if (videoRef.current && videoRef.current.paused) {
+                          videoRef.current.play().catch(() => {});
+                        }
+                      }}
+                      className="rounded-xl shadow-xl max-w-full cursor-pointer"
+                      style={{ width: 360, height: 480, objectFit: 'cover' }}
+                    >
+                      <source src={safeVideoUrl} type="video/mp4" />
+                      <source src={safeVideoUrl} type="video/webm" />
+                      <source src={safeVideoUrl} />
+                    </video>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={() => setIsMuted(!isMuted)}

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search, ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Save, X, ImageIcon, AlertTriangle, CheckCircle2, AlertCircle, Search, ChevronLeft, ChevronRight, Copy, Check, Layers } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -294,7 +294,13 @@ export default function AdminCategoriesPage() {
           <h1 className="text-3xl font-outfit font-bold">Category Management</h1>
           <p className="text-muted-foreground mt-1">Create and manage your store's departments.</p>
         </div>
-        <div className="flex gap-3 w-full sm:w-auto">
+        <div className="flex gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+          <button
+            onClick={() => router.push('/admin/settings')}
+            className="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border font-bold hover:bg-muted transition-colors text-sm flex items-center justify-center gap-2 text-primary border-primary/20 bg-primary/5"
+          >
+            <Layers className="w-4 h-4" /> Rearrange Display Order
+          </button>
           <button
             onClick={() => fetchCategories()}
             className="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors text-sm"

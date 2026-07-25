@@ -29,6 +29,10 @@ import {
   ImageIcon,
   Landmark,
   Palette,
+  Layers,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpToLine,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -376,6 +380,192 @@ function CouponManagement() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollectionReorderingManagement() {
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const fetchCategories = async () => {
+    try {
+      const { data } = await api.get('/categories');
+      const cats = Array.isArray(data) ? data : data.data || [];
+      cats.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      setCategories(cats);
+    } catch {
+      setMsg({ type: 'err', text: 'Failed to load collections.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const moveCategory = (index: number, direction: 'up' | 'down' | 'top') => {
+    if (index < 0 || index >= categories.length) return;
+    const newCats = [...categories];
+    if (direction === 'top') {
+      const [moved] = newCats.splice(index, 1);
+      newCats.unshift(moved);
+    } else if (direction === 'up' && index > 0) {
+      const temp = newCats[index];
+      newCats[index] = newCats[index - 1];
+      newCats[index - 1] = temp;
+    } else if (direction === 'down' && index < newCats.length - 1) {
+      const temp = newCats[index];
+      newCats[index] = newCats[index + 1];
+      newCats[index + 1] = temp;
+    }
+    setCategories(newCats);
+  };
+
+  const handleSaveOrder = async () => {
+    setSaving(true);
+    try {
+      const items = categories.map((cat, idx) => ({
+        id: cat.id,
+        sortOrder: idx,
+      }));
+      await api.put('/categories/reorder', { items });
+      setMsg({ type: 'ok', text: 'Collection display order updated successfully!' });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.response?.data?.message || 'Failed to save collection order.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
+        <div>
+          <h2 className="text-xl font-bold font-outfit">Shop Collections Display Order</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Arrange how collections appear on the home page and shop view (e.g. show Kurtis first).
+          </p>
+        </div>
+        <button
+          onClick={handleSaveOrder}
+          disabled={saving || categories.length === 0}
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save Collection Order
+        </button>
+      </div>
+
+      {msg && (
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium animate-in fade-in ${msg.type === 'ok' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+          {msg.type === 'ok' ? <Check className="w-4 h-4 text-green-600" /> : <AlertCircle className="w-4 h-4 text-red-600" />}
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="ml-auto"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="text-center py-16 border-2 border-dashed rounded-2xl text-muted-foreground">
+          <Layers className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No active collections found.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-muted/10 px-6 py-3 border-b flex items-center justify-between text-xs font-bold text-muted-foreground uppercase tracking-wide">
+              <span>Position & Collection Name</span>
+              <span>Actions</span>
+            </div>
+            <div className="divide-y">
+              {categories.map((cat, idx) => (
+                <div key={cat.id} className="flex items-center justify-between px-4 sm:px-6 py-3.5 hover:bg-muted/5 transition-colors gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                      #{idx + 1}
+                    </span>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-accent/20 border shrink-0 flex items-center justify-center">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-foreground truncate">{cat.name}</p>
+                      <p className="text-xs text-muted-foreground">{cat._count?.products ?? 0} products</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => moveCategory(idx, 'top')}
+                      className="px-2.5 py-1.5 rounded-lg border text-xs font-bold text-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors flex items-center gap-1"
+                      title="Move to Top"
+                    >
+                      <ArrowUpToLine className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Top</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => moveCategory(idx, 'up')}
+                      className="p-1.5 rounded-lg border hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                      title="Move Up"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === categories.length - 1}
+                      onClick={() => moveCategory(idx, 'down')}
+                      className="p-1.5 rounded-lg border hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                      title="Move Down"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Storefront Preview Box */}
+          <div className="border rounded-2xl p-6 bg-muted/5 space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>👁 Live Storefront Preview (Shop by Collections)</span>
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 p-4 bg-white rounded-xl border shadow-inner">
+              {categories.slice(0, 12).map((cat, i) => (
+                <div key={cat.id} className="flex flex-col items-center text-center space-y-2 group">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-primary/20 bg-muted/20 relative shadow-sm">
+                    {cat.image ? (
+                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs font-bold">
+                        {cat.name.slice(0, 2)}
+                      </div>
+                    )}
+                    <span className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-bl">
+                      #{i + 1}
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium text-foreground line-clamp-1">{cat.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -821,6 +1011,7 @@ export default function AdminSettingsPage() {
 
   const sections = [
     { name: 'General', icon: Settings, desc: 'Store details and contact info.' },
+    { name: 'Shop Collections', icon: Layers, desc: 'Rearrange collections display order.' },
     { name: 'Regional', icon: Globe, desc: 'Tax and shipping settings.' },
     { name: 'Coupons', icon: Tag, desc: 'Create and manage coupon codes.' },
     { name: 'Theme', icon: Palette, desc: 'Customize colours and typography.' },
@@ -860,7 +1051,7 @@ export default function AdminSettingsPage() {
             return (
               <button
                 key={section.name}
-                id={`settings-tab-${section.name.toLowerCase()}`}
+                id={`settings-tab-${section.name.toLowerCase().replace(/\s+/g, '-')}`}
                 onClick={() => setActiveSection(section.name)}
                 className={`flex-shrink-0 flex items-center gap-2 lg:gap-4 p-3 lg:p-4 rounded-xl lg:rounded-2xl border transition-all text-left group ${
                   isActive ? 'bg-white border-primary shadow-sm lg:shadow-md ring-1 ring-primary' : 'bg-white hover:border-primary/50'
@@ -889,6 +1080,9 @@ export default function AdminSettingsPage() {
             })()}
             {activeSection} Settings
           </h2>
+
+          {/* ── SHOP COLLECTIONS REORDERING ──────────────────────────── */}
+          {activeSection === 'Shop Collections' && <CollectionReorderingManagement />}
 
           {/* ── GENERAL ─────────────────────────────────────────────── */}
           {activeSection === 'General' && (

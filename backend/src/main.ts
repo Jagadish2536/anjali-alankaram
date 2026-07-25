@@ -95,10 +95,18 @@ async function bootstrap() {
     express.static(path.join(process.cwd(), 'uploads'), {
       setHeaders: (res, filePath) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        if (filePath.toLowerCase().endsWith('.avif')) {
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range');
+        res.setHeader('Accept-Ranges', 'bytes');
+        const lower = filePath.toLowerCase();
+        if (lower.endsWith('.avif')) {
           res.setHeader('Content-Type', 'image/avif');
+        } else if (lower.endsWith('.mp4')) {
+          res.setHeader('Content-Type', 'video/mp4');
+        } else if (lower.endsWith('.webm')) {
+          res.setHeader('Content-Type', 'video/webm');
+        } else if (lower.endsWith('.mov') || lower.endsWith('.qt')) {
+          res.setHeader('Content-Type', 'video/quicktime');
         }
       },
     }),

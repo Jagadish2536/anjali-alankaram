@@ -14,8 +14,18 @@ interface VideoData {
   images?: string[];
 }
 
-function AutoplayVideo({ src, className }: { src: string; className?: string }) {
+function getSafeVideoUrl(url?: string | null) {
+  if (!url) return '';
+  // Convert http:// to https:// for PWA SSL / Mixed Content policy compliance on iOS
+  if (url.startsWith('http://') && !url.includes('localhost')) {
+    return url.replace(/^http:\/\//i, 'https://');
+  }
+  return url;
+}
+
+function AutoplayVideo({ src, className, onStateChange }: { src: string; className?: string; onStateChange?: (playing: boolean) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const safeSrc = getSafeVideoUrl(src);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -23,38 +33,75 @@ function AutoplayVideo({ src, className }: { src: string; className?: string }) 
 
     video.muted = true;
     video.defaultMuted = true;
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('muted', '');
+
+    const handlePlay = () => onStateChange?.(true);
+    const handlePause = () => onStateChange?.(false);
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
 
     const playPromise = video.play();
     if (playPromise !== undefined) {
-      playPromise.catch(() => {
+      playPromise.then(() => {
+        onStateChange?.(true);
+      }).catch(() => {
+        onStateChange?.(false);
         const triggerPlay = () => {
-          video.play().catch(() => {});
-          document.removeEventListener('click', triggerPlay);
-          document.removeEventListener('touchstart', triggerPlay);
+          if (videoRef.current) {
+            videoRef.current.play().then(() => onStateChange?.(true)).catch(() => {});
+          }
         };
-        document.addEventListener('click', triggerPlay);
-        document.addEventListener('touchstart', triggerPlay);
+        document.addEventListener('click', triggerPlay, { once: true });
+        document.addEventListener('touchstart', triggerPlay, { once: true });
+        document.addEventListener('touchend', triggerPlay, { once: true });
       });
     }
-  }, [src]);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+    };
+  }, [safeSrc]);
 
   return (
     <video
-      ref={videoRef}
-      src={src}
+      ref={(el) => {
+        (videoRef as any).current = el;
+        if (el) {
+          el.muted = true;
+          el.defaultMuted = true;
+          el.setAttribute('playsinline', 'true');
+          el.setAttribute('webkit-playsinline', 'true');
+          el.setAttribute('x5-playsinline', 'true');
+          el.setAttribute('x5-video-player-type', 'h5-page');
+          el.setAttribute('x5-video-player-fullscreen', 'false');
+          el.setAttribute('muted', '');
+        }
+      }}
       autoPlay
       loop
       muted
       playsInline
+      preload="auto"
+      controlsList="nodownload"
       className={className}
-    />
+    >
+      <source src={safeSrc} type="video/mp4" />
+      <source src={safeSrc} type="video/webm" />
+      <source src={safeSrc} />
+    </video>
   );
 }
 
 function VideoCard({ vid, index, getStyle }: { vid: VideoData; index: number; getStyle: (i: number) => any }) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     const card = e.currentTarget;
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -62,6 +109,14 @@ function VideoCard({ vid, index, getStyle }: { vid: VideoData; index: number; ge
     const nX = (x / rect.width) - 0.5;
     const nY = (y / rect.height) - 0.5;
     setTilt({ x: -nY * 14, y: nX * 14 });
+  };
+
+  const attemptPlay = (e?: React.SyntheticEvent) => {
+    const video = videoContainerRef.current?.querySelector('video');
+    if (video) {
+      video.muted = true;
+      video.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
   };
 
   const style = getStyle(index);
@@ -76,11 +131,13 @@ function VideoCard({ vid, index, getStyle }: { vid: VideoData; index: number; ge
     >
       <div className="animate-scale-in flex flex-col items-center">
         {vid.videoUrl ? (
-          <Link
-            href={`/products/${vid.slug}`}
+          <div
+            ref={videoContainerRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-            className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group"
+            onClick={attemptPlay}
+            onTouchEnd={attemptPlay}
+            className="relative w-56 md:w-64 rounded-2xl overflow-hidden shadow-xl cursor-pointer block group select-none"
             style={{ 
               aspectRatio: '9/16', 
               maxHeight: 390,
@@ -91,15 +148,31 @@ function VideoCard({ vid, index, getStyle }: { vid: VideoData; index: number; ge
             <AutoplayVideo
               src={vid.videoUrl}
               className="absolute inset-0 w-full h-full object-cover"
+              onStateChange={setIsPlaying}
             />
             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
-            <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary">
+            
+            {/* Fallback Play Button Overlay if video is paused on iOS PWA */}
+            {!isPlaying && (
+              <div 
+                onClick={attemptPlay}
+                onTouchEnd={attemptPlay}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px] transition-all cursor-pointer z-10"
+              >
+                <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-2xl scale-100 animate-pulse hover:scale-110 transition-transform">
+                  <Play className="w-6 h-6 text-primary fill-primary ml-1" />
+                </div>
+                <span className="text-white text-[11px] font-bold mt-2 drop-shadow">Tap to Play</span>
+              </div>
+            )}
+
+            <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-primary shadow-md">
               <Video className="w-4 h-4 text-white" />
             </div>
             <div className="absolute bottom-3 left-3 right-3">
               <p className="text-white text-xs font-semibold line-clamp-1 drop-shadow-md">{vid.name}</p>
             </div>
-          </Link>
+          </div>
         ) : (
           <a
             href={vid.instagramReelUrl || `/products/${vid.slug}`}

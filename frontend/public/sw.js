@@ -52,6 +52,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip video streaming & HTTP Range requests to allow native 206 Partial Content streaming
+  if (
+    request.headers.get('range') ||
+    request.destination === 'video' ||
+    /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url.pathname)
+  ) {
+    return;
+  }
+
   // Intercept images from S3 / CloudFront, local images, static files, and Google Fonts
   const isCachableAsset = 
     url.hostname === self.location.hostname ||

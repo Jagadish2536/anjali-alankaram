@@ -30,6 +30,17 @@ export class CategoriesController {
     return c;
   }
 
+  @Put('reorder')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reorder categories (Admin)' })
+  async reorder(@Body() body: { items: { id: string; sortOrder: number }[] }) {
+    const res = await this.categoriesService.reorder(body.items || []);
+    RealtimeEventBroker.emit('categories-updated', {});
+    return res;
+  }
+
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER')

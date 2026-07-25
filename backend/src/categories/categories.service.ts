@@ -94,4 +94,16 @@ export class CategoriesService {
       data: { isActive: false },
     });
   }
+
+  async reorder(items: { id: string; sortOrder: number }[]) {
+    if (!Array.isArray(items) || items.length === 0) return { success: true };
+    const updates = items.map(item =>
+      this.prisma.category.update({
+        where: { id: item.id },
+        data: { sortOrder: item.sortOrder },
+      })
+    );
+    await this.prisma.$transaction(updates);
+    return { success: true };
+  }
 }
