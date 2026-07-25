@@ -309,7 +309,13 @@ export class SettingsController {
     try {
       // Use the private send method pattern — forward email to store's support address
       const { SESClient, SendEmailCommand } = await import('@aws-sdk/client-ses');
-      const ses = new SESClient({ region: process.env.AWS_REGION || 'ap-south-2' });
+      const sesRegion = process.env.SES_AWS_REGION || process.env.AWS_REGION || 'ap-south-2';
+      const accessKeyId = process.env.SES_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.SES_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+      const ses = new SESClient({
+        region: sesRegion,
+        ...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
+      });
       await ses.send(new SendEmailCommand({
         Source: `Anjali Alankaram <${process.env.SES_FROM_EMAIL || 'noreply@anjalialankaram.com'}>`,
         Destination: { ToAddresses: [recipientEmail] },

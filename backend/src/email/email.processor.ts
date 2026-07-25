@@ -12,7 +12,21 @@ export class EmailProcessor {
   private fromName: string;
 
   constructor(private config: ConfigService) {
-    this.ses = new SESClient({ region: this.config.get('AWS_REGION', 'ap-south-2') });
+    const sesRegion = this.config.get('SES_AWS_REGION') || this.config.get('AWS_REGION', 'ap-south-2');
+    const accessKeyId = this.config.get('SES_AWS_ACCESS_KEY_ID') || this.config.get('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get('SES_AWS_SECRET_ACCESS_KEY') || this.config.get('AWS_SECRET_ACCESS_KEY');
+
+    this.ses = new SESClient({
+      region: sesRegion,
+      ...(accessKeyId && secretAccessKey
+        ? {
+            credentials: {
+              accessKeyId,
+              secretAccessKey,
+            },
+          }
+        : {}),
+    });
     this.fromEmail = this.config.get('SES_FROM_EMAIL', 'noreply@anjalialankaram.com');
     this.fromName = this.config.get('SES_FROM_NAME', 'Anjali Alankaram');
   }

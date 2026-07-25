@@ -17,9 +17,9 @@ const getEnv = (key, fallback = '') => {
   return match ? match[1] : (process.env[key] || fallback);
 };
 
-const accessKeyId = getEnv('AWS_ACCESS_KEY_ID');
-const secretAccessKey = getEnv('AWS_SECRET_ACCESS_KEY');
-const region = getEnv('AWS_REGION', 'ap-south-2');
+const accessKeyId = getEnv('SES_AWS_ACCESS_KEY_ID') || getEnv('AWS_ACCESS_KEY_ID');
+const secretAccessKey = getEnv('SES_AWS_SECRET_ACCESS_KEY') || getEnv('AWS_SECRET_ACCESS_KEY');
+const region = getEnv('SES_AWS_REGION') || getEnv('AWS_REGION', 'ap-south-2');
 const fromEmail = getEnv('SES_FROM_EMAIL', 'noreply@anjalialankaram.com');
 const fromName = getEnv('SES_FROM_NAME', 'Anjali Alankaram');
 
