@@ -19,6 +19,7 @@ export default function RealtimeSync() {
       eventSource.onmessage = (event) => {
         try {
           const parsed = JSON.parse(event.data);
+          if (parsed?.type === 'ping') return;
           console.log('[SSE] Received realtime update:', parsed);
           
           if (parsed && parsed.type) {

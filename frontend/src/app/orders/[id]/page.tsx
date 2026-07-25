@@ -35,14 +35,7 @@ const ALL_STATUSES = [
     label: 'Order Confirmed',
     icon: Package,
     color: 'indigo',
-    keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING'],
-  },
-  {
-    key: 'PACKED',
-    label: 'Packed',
-    icon: PackageCheck,
-    color: 'lime',
-    keys: ['PACKED', 'READY_FOR_SHIPMENT'],
+    keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING', 'PACKED', 'READY_FOR_SHIPMENT'],
   },
   {
     key: 'SHIPPED',

@@ -83,7 +83,7 @@ export class OrdersService {
         quantity: item.quantity,
         unitPrice,
         totalPrice,
-        imageUrl: item.product.images?.[0],
+        imageUrl: (item.variant as any)?.images?.[0] || item.product.images?.[0],
         // Snapshot return policy at purchase time
         returnEnabled: (item.product as any).returnEnabled ?? true,
         replaceEnabled: (item.product as any).replaceEnabled ?? true,
@@ -199,8 +199,12 @@ export class OrdersService {
       toStatus: initialStatus,
       actorId: userId,
       actorRole: 'CUSTOMER',
-      notes: 'Order placed',
+      notes: `Order placed via ${dto.paymentMethod}`,
     });
+
+    if (initialStatus === 'PAYMENT_VERIFIED') {
+      this.scheduleAutoConfirmTimer(order.id);
+    }
 
     // 12. For COD — immediately confirm inventory and advance pipeline
     if (dto.paymentMethod === 'COD') {
@@ -364,7 +368,7 @@ export class OrdersService {
                 variants: { select: { color: true, colorHex: true, images: true } },
               },
             },
-            variant: { select: { size: true, color: true, sku: true } },
+            variant: { select: { size: true, color: true, colorHex: true, sku: true, images: true } },
           },
         },
         address: true,
@@ -543,8 +547,13 @@ export class OrdersService {
           user: { select: { id: true, name: true, phone: true, email: true, avatar: true } },
           items: {
             include: {
-              product: { select: { id: true, name: true, images: true } },
-              variant: { select: { size: true, color: true, sku: true } },
+              product: {
+                select: {
+                  id: true, name: true, images: true,
+                  variants: { select: { color: true, colorHex: true, images: true } },
+                },
+              },
+              variant: { select: { size: true, color: true, colorHex: true, sku: true, images: true } },
             },
           },
           address: true,
@@ -645,6 +654,7 @@ export class OrdersService {
       await this.inventory.confirm(id).catch(e =>
         this.logger.error(`Inventory confirm failed for ${id}: ${e.message}`)
       );
+      this.scheduleAutoConfirmTimer(id);
     }
 
     if (newStatus === 'CANCELLED') {
@@ -1064,6 +1074,50 @@ export class OrdersService {
     }
 
     return { ...coupon, discountAmount };
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async autoConfirmPaymentVerifiedOrders() {
+    try {
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const pendingOrders = await this.prisma.order.findMany({
+        where: {
+          status: 'PAYMENT_VERIFIED',
+          updatedAt: { lte: fiveMinsAgo },
+        },
+        select: { id: true, orderNumber: true },
+      });
+
+      for (const order of pendingOrders) {
+        this.logger.log(`Auto-confirming order #${order.orderNumber} 5 minutes after payment verification`);
+        await this.updateStatus(order.id, 'CONFIRMED', 'SYSTEM', 'SYSTEM', {
+          notes: 'Auto-confirmed 5 minutes after payment verification',
+        }).catch((err) => {
+          this.logger.error(`Failed to auto-confirm order #${order.orderNumber}: ${err.message}`);
+        });
+      }
+    } catch (e: any) {
+      this.logger.error(`Error in autoConfirmPaymentVerifiedOrders cron: ${e.message}`);
+    }
+  }
+
+  scheduleAutoConfirmTimer(orderId: string) {
+    setTimeout(async () => {
+      try {
+        const order = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          select: { status: true, orderNumber: true },
+        });
+        if (order?.status === 'PAYMENT_VERIFIED') {
+          this.logger.log(`Timer: Auto-confirming order #${order.orderNumber} 5 minutes after payment verification`);
+          await this.updateStatus(orderId, 'CONFIRMED', 'SYSTEM', 'SYSTEM', {
+            notes: 'Auto-confirmed 5 minutes after payment verification',
+          });
+        }
+      } catch (err: any) {
+        this.logger.error(`Timer auto-confirm error for order ${orderId}: ${err?.message}`);
+      }
+    }, 5 * 60 * 1000);
   }
 
   @Cron(CronExpression.EVERY_30_MINUTES)

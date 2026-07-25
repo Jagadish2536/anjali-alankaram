@@ -285,7 +285,7 @@ export default async function Home() {
                       borderRadius: 'clamp(16px, 3vw, 40px)',
                     }}
                   >
-                    <Image src={heroLeftImage || '/placeholder.png'} alt="Look 1" fill className="object-cover object-top" priority />
+                    <Image src={heroLeftImage || '/placeholder.png'} alt="Look 1" fill sizes="(max-width: 768px) 33vw, 220px" className="object-cover object-top" priority />
                   </div>
                 </div>
               </div>
@@ -300,7 +300,7 @@ export default async function Home() {
                       borderRadius: 'clamp(20px, 4vw, 50px)',
                     }}
                   >
-                    <Image src={heroImage || '/placeholder.png'} alt="Look 2" fill className="object-cover object-top" priority />
+                    <Image src={heroImage || '/placeholder.png'} alt="Look 2" fill sizes="(max-width: 768px) 33vw, 220px" className="object-cover object-top" priority />
                   </div>
                 </div>
               </div>
@@ -315,7 +315,7 @@ export default async function Home() {
                       borderRadius: 'clamp(16px, 3vw, 40px)',
                     }}
                   >
-                    <Image src={s.heroImage3Url || '/placeholder.png'} alt="Look 3" fill className="object-cover object-top" priority />
+                    <Image src={s.heroImage3Url || '/placeholder.png'} alt="Look 3" fill sizes="(max-width: 768px) 33vw, 220px" className="object-cover object-top" priority />
                   </div>
                 </div>
               </div>

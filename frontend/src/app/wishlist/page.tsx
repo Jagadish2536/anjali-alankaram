@@ -88,9 +88,9 @@ export default function WishlistPage() {
                 
                 <Link href={`/products/${product.slug}`} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-accent/20 mb-3 block">
                   {product.images?.[0] && product.images[0].trim() !== '' ? (
-                    <Image src={product.images[0]} alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+                    <Image src={product.images[0]} alt={product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
                   ) : (
-                    <Image src="/placeholder.png" alt={product.name} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+                    <Image src="/placeholder.png" alt={product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
                   )}
                   {hasDiscount && (
                     <span className="absolute top-2 left-2 bg-primary text-white text-[11px] font-bold px-2 py-1 rounded shadow z-10">

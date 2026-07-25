@@ -95,7 +95,7 @@ export default function Footer() {
             {/* Logo mark */}
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10 rounded-full border border-white/30 overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
-                <Image src="/logo.png" alt={storeName} fill className="object-contain" />
+                <Image src="/logo.png" alt={storeName} fill sizes="120px" className="object-contain" />
               </div>
               <div>
                 <p className="font-cormorant text-xl font-bold text-white leading-none">{storeName}</p>

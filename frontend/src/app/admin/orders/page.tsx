@@ -1,13 +1,13 @@
 'use client';
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import html2canvas from 'html2canvas';
 import {
   Search, X, Package, Loader2, RefreshCw, Eye, Printer
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { printOrderLabel } from '@/lib/printLabel';
 
 // ── Status config ────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
@@ -34,8 +34,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_FILTER_TABS = [
-  'ALL', 'PENDING_PAYMENT', 'CONFIRMED', 'PACKED', 'SHIPPED',
-  'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED',
+  'ALL', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'PAYMENT_VERIFIED', 'CANCELLED', 'PENDING_PAYMENT',
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -44,112 +43,6 @@ function StatusBadge({ status }: { status: string }) {
       {status?.replace(/_/g, ' ')}
     </span>
   );
-}
-
-// ── Print Label ────────────────────────────────────────────────────
-function printOrderLabel(order: any, storeAddress?: string) {
-  const settings = useSettingsStore.getState().settings;
-  const supportPhone = settings?.supportPhone || '+91 9876543210';
-
-  // Expose download handler globally on parent window so child popup can trigger it
-  (window as any).downloadLabelFromPopup = async (popupWin: Window, orderNum: string, btnElement?: HTMLButtonElement) => {
-    const element = popupWin.document.getElementById('label-content');
-    if (!element) {
-      popupWin.alert('Label content element not found!');
-      return;
-    }
-    if (btnElement) {
-      btnElement.disabled = true;
-      btnElement.innerText = '⌛ Downloading...';
-    }
-    try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      const link = popupWin.document.createElement('a');
-      link.download = `Order-Label-${orderNum}.jpg`;
-      link.href = dataUrl;
-      link.click();
-    } catch (err: any) {
-      popupWin.alert('Download failed: ' + err.message);
-    } finally {
-      if (btnElement) {
-        btnElement.disabled = false;
-        btnElement.innerText = '📥 Download JPG';
-      }
-    }
-  };
-
-  const w = window.open('', '_blank', 'width=600,height=800');
-  if (!w) return;
-  const items = (order.items || []).map((it: any) =>
-    `<tr><td style="padding:4px 8px;border:1px solid #e5e7eb;">${it.productName}</td>
-     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${(it.variantInfo?.size || '')}${it.variantInfo?.color ? ' / ' + it.variantInfo.color : ''}</td>
-     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${it.quantity}</td>
-     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">₹${Number(it.totalPrice || it.unitPrice * it.quantity).toLocaleString('en-IN')}</td></tr>`
-  ).join('');
-  w.document.write(`<!DOCTYPE html><html><head><title>Order Label — ${order.orderNumber}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:24px;}
-  h2{margin:0 0 4px;font-size:18px;}
-  .section{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:12px 0;}
-  .label{font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;}
-  table{width:100%;border-collapse:collapse;margin-top:8px;}
-  th{background:#f3f4f6;padding:6px 8px;font-size:11px;text-align:left;border:1px solid #e5e7eb;}
-  .total-row td{font-weight:700;border-top:2px solid #111;}
-  .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
-  @media print{button{display:none;}}
-  </style>
-  </head><body>
-  <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
-    <button onclick="if (window.opener && window.opener.downloadLabelFromPopup) { window.opener.downloadLabelFromPopup(window, '${order.orderNumber}', this); } else { alert('Parent window reference lost. Please keep the main window open.'); }" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
-    <button onclick="window.close()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">❌ Close</button>
-  </div>
-  <div id="label-content" style="border:2px solid #111;border-radius:8px;padding:20px;background:white;">
-    <h2>📦 Anjali Alankaram</h2>
-    <p style="margin:0;font-size:12px;color:#6b7280;">Order Management Label</p>
-    <hr class="divider"/>
-    <div style="display:grid;grid-template-columns:1fr;gap:16px;">
-      <div class="section">
-        <div class="label">Order Info</div>
-        <p style="margin:6px 0;font-size:16px;font-weight:700;font-family:monospace;">#${order.orderNumber}</p>
-        <p style="margin:2px 0;font-size:12px;">Date: ${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-        <p style="margin:2px 0;font-size:12px;">Payment: ${order.paymentMethod === 'RAZORPAY' ? 'Online (Paid)' : 'Cash on Delivery'}</p>
-        ${order.awbCode ? `<p style="margin:6px 0;font-size:12px;"><strong>AWB:</strong> ${order.awbCode}</p>` : ''}
-        ${order.courierName ? `<p style="margin:2px 0;font-size:12px;"><strong>Courier:</strong> ${order.courierName}</p>` : ''}
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div class="section">
-        <div class="label">From Address</div>
-        <p style="margin:6px 0;font-weight:700;font-size:15px;">Anjali Alankaram</p>
-        <p style="margin:2px 0;line-height:1.4;white-space:pre-line;">${storeAddress || 'Address not set'}</p>
-        <p style="margin:6px 0;font-size:13px;font-weight:700;">📞 Support: ${supportPhone}</p>
-      </div>
-      <div class="section">
-        <div class="label">📍 Delivery Address</div>
-        <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
-        <p style="margin:2px 0;line-height:1.4;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
-        <p style="margin:2px 0;line-height:1.4;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
-        <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
-      </div>
-    </div>
-    <div class="section">
-      <div class="label">Order Items</div>
-      <table>
-        <thead><tr>
-          <th>Product</th><th style="text-align:center;">Variant</th>
-          <th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th>
-        </tr></thead>
-        <tbody>${items}
-        <tr class="total-row">
-          <td colspan="3" style="padding:6px 8px;border:1px solid #e5e7eb;text-align:right;">Total</td>
-          <td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:right;">₹${Number(order.totalAmount).toLocaleString('en-IN')}</td>
-        </tr></tbody>
-      </table>
-    </div>
-  </div>
-  </body></html>`);
-  w.document.close();
 }
 
 function AdminOrdersContent() {
@@ -203,7 +96,7 @@ function AdminOrdersContent() {
             <p className="text-sm text-muted-foreground mt-0.5">{total} total orders</p>
           </div>
           <button onClick={() => fetchOrders(page)}
-            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 text-sm border rounded-xl hover:bg-white transition-colors bg-white shadow-sm bg-white shadow-sm flex items-center gap-2">
+            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 text-sm border rounded-xl hover:bg-white transition-colors bg-white shadow-sm">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
@@ -221,9 +114,14 @@ function AdminOrdersContent() {
         {/* Search */}
         <div className="relative mb-4">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
+          <input
+            id="admin-order-search"
+            name="orderSearch"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             placeholder="Search by order#, customer name or phone…"
-            className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary bg-white shadow-sm" />
+            className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary bg-white shadow-sm"
+          />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import html2canvas from 'html2canvas';
+import { printOrderLabel } from '@/lib/printLabel';
 import Image from 'next/image';
 import {
   ArrowLeft, X, Package, MapPin, CreditCard, Check, Clock, Truck,
@@ -92,7 +92,6 @@ const ALL_STATUSES = [
 const SIMPLE_STATUSES = [
   { id: 'PENDING_PAYMENT', name: 'Pending Payment' },
   { id: 'CONFIRMED', name: 'Order Placed / Confirmed' },
-  { id: 'PACKED', name: 'Product Packed' },
   { id: 'SHIPPED', name: 'Shipped' },
   { id: 'DELIVERED', name: 'Delivered' },
   { id: 'CANCELLED', name: 'Cancelled' },
@@ -100,8 +99,7 @@ const SIMPLE_STATUSES = [
 
 const ADMIN_ORDER_STEPS = [
   { label: 'Order Placed',     keys: ['PENDING_PAYMENT', 'PAYMENT_VERIFIED'] },
-  { label: 'Confirmed',        keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING'] },
-  { label: 'Packed',           keys: ['PACKED', 'READY_FOR_SHIPMENT'] },
+  { label: 'Confirmed',        keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING', 'PACKED', 'READY_FOR_SHIPMENT'] },
   { label: 'Shipped',          keys: ['SHIPPED'] },
   { label: 'In Transit',       keys: ['IN_TRANSIT'] },
   { label: 'Out for Delivery', keys: ['OUT_FOR_DELIVERY'] },
@@ -116,111 +114,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── Print Label ────────────────────────────────────────────────────
-function printOrderLabel(order: any, storeAddress?: string) {
-  const settings = useSettingsStore.getState().settings;
-  const supportPhone = settings?.supportPhone || '+91 9876543210';
 
-  // Expose download handler globally on parent window so child popup can trigger it
-  (window as any).downloadLabelFromPopup = async (popupWin: Window, orderNum: string, btnElement?: HTMLButtonElement) => {
-    const element = popupWin.document.getElementById('label-content');
-    if (!element) {
-      popupWin.alert('Label content element not found!');
-      return;
-    }
-    if (btnElement) {
-      btnElement.disabled = true;
-      btnElement.innerText = '⌛ Downloading...';
-    }
-    try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      const link = popupWin.document.createElement('a');
-      link.download = `Order-Label-${orderNum}.jpg`;
-      link.href = dataUrl;
-      link.click();
-    } catch (err: any) {
-      popupWin.alert('Download failed: ' + err.message);
-    } finally {
-      if (btnElement) {
-        btnElement.disabled = false;
-        btnElement.innerText = '📥 Download JPG';
-      }
-    }
-  };
-
-  const w = window.open('', '_blank', 'width=600,height=800');
-  if (!w) return;
-  const items = (order.items || []).map((it: any) =>
-    `<tr><td style="padding:4px 8px;border:1px solid #e5e7eb;">${it.productName}</td>
-     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${(it.variantInfo?.size || '')}${it.variantInfo?.color ? ' / ' + it.variantInfo.color : ''}</td>
-     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${it.quantity}</td>
-     <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">₹${Number(it.totalPrice || it.unitPrice * it.quantity).toLocaleString('en-IN')}</td></tr>`
-  ).join('');
-  w.document.write(`<!DOCTYPE html><html><head><title>Order Label — ${order.orderNumber}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:24px;}
-  h2{margin:0 0 4px;font-size:18px;}
-  .section{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:12px 0;}
-  .label{font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;}
-  table{width:100%;border-collapse:collapse;margin-top:8px;}
-  th{background:#f3f4f6;padding:6px 8px;font-size:11px;text-align:left;border:1px solid #e5e7eb;}
-  .total-row td{font-weight:700;border-top:2px solid #111;}
-  .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
-  @media print{button{display:none;}}
-  </style>
-  </head><body>
-  <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
-    <button onclick="if (window.opener && window.opener.downloadLabelFromPopup) { window.opener.downloadLabelFromPopup(window, '${order.orderNumber}', this); } else { alert('Parent window reference lost. Please keep the main window open.'); }" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
-    <button onclick="window.close()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">❌ Close</button>
-  </div>
-  <div id="label-content" style="border:2px solid #111;border-radius:8px;padding:20px;background:white;">
-    <h2>📦 Anjali Alankaram</h2>
-    <p style="margin:0;font-size:12px;color:#6b7280;">Order Management Label</p>
-    <hr class="divider"/>
-    <div style="display:grid;grid-template-columns:1fr;gap:16px;">
-      <div class="section">
-        <div class="label">Order Info</div>
-        <p style="margin:6px 0;font-size:16px;font-weight:700;font-family:monospace;">#${order.orderNumber}</p>
-        <p style="margin:2px 0;font-size:12px;">Date: ${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-        <p style="margin:2px 0;font-size:12px;">Payment: ${order.paymentMethod === 'RAZORPAY' ? 'Online (Paid)' : 'Cash on Delivery'}</p>
-        ${order.awbCode ? `<p style="margin:6px 0;font-size:12px;"><strong>AWB:</strong> ${order.awbCode}</p>` : ''}
-        ${order.courierName ? `<p style="margin:2px 0;font-size:12px;"><strong>Courier:</strong> ${order.courierName}</p>` : ''}
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div class="section">
-        <div class="label">From Address</div>
-        <p style="margin:6px 0;font-weight:700;font-size:15px;">Anjali Alankaram</p>
-        <p style="margin:2px 0;line-height:1.4;white-space:pre-line;">${storeAddress || 'Address not set'}</p>
-        <p style="margin:6px 0;font-size:13px;font-weight:700;">📞 Support: ${supportPhone}</p>
-      </div>
-      <div class="section">
-        <div class="label">📍 Delivery Address</div>
-        <p style="margin:6px 0;font-weight:700;font-size:15px;">${order.address?.name || ''}</p>
-        <p style="margin:2px 0;line-height:1.4;">${order.address?.line1 || ''}${order.address?.line2 ? ', ' + order.address.line2 : ''}</p>
-        <p style="margin:2px 0;line-height:1.4;">${order.address?.city || ''}, ${order.address?.state || ''} — <strong>${order.address?.pincode || ''}</strong></p>
-        <p style="margin:6px 0;font-size:15px;font-weight:700;">📞 ${order.address?.phone || ''}</p>
-      </div>
-    </div>
-    <div class="section">
-      <div class="label">Order Items</div>
-      <table>
-        <thead><tr>
-          <th>Product</th><th style="text-align:center;">Variant</th>
-          <th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th>
-        </tr></thead>
-        <tbody>${items}
-        <tr class="total-row">
-          <td colspan="3" style="padding:6px 8px;border:1px solid #e5e7eb;text-align:right;">Total</td>
-          <td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:right;">₹${Number(order.totalAmount).toLocaleString('en-IN')}</td>
-        </tr></tbody>
-      </table>
-    </div>
-  </div>
-  </body></html>`);
-  w.document.close();
-}
 
 // ── History Log component ─────────────────────────────────────────
 function HistoryPanel({ orderId }: { orderId: string }) {
@@ -1029,8 +923,10 @@ export default function OrderDetailPage() {
                 
                 {/* Status selection */}
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Order Status *</label>
+                  <label htmlFor="order-status-select" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Order Status *</label>
                   <select
+                    id="order-status-select"
+                    name="orderStatus"
                     value={selectedStatus}
                     onChange={e => setSelectedStatus(e.target.value)}
                     className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none bg-white font-medium"
@@ -1051,8 +947,10 @@ export default function OrderDetailPage() {
 
                 {/* Courier selection */}
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Delivery Partner</label>
+                  <label htmlFor="delivery-partner-select" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Delivery Partner</label>
                   <select
+                    id="delivery-partner-select"
+                    name="deliveryPartner"
                     value={selectedPartner}
                     onChange={e => handlePartnerChange(e.target.value)}
                     className="w-full border-2 border-border focus:border-primary rounded-xl px-3 py-2.5 text-sm outline-none bg-white font-medium mb-2"
@@ -1065,6 +963,8 @@ export default function OrderDetailPage() {
                   
                   {selectedPartner === 'other' && (
                     <input
+                      id="custom-carrier-input"
+                      name="customCarrier"
                       type="text"
                       placeholder="Enter custom carrier name"
                       value={selectedCourierCustomName}
@@ -1076,11 +976,13 @@ export default function OrderDetailPage() {
 
                 {/* AWB / Tracking code input */}
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">
+                  <label htmlFor="awb-code-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">
                     AWB / Tracking Number
                   </label>
                   <div className="flex gap-2">
                     <input
+                      id="awb-code-input"
+                      name="awbCode"
                       ref={awbRef}
                       value={awbCode}
                       onChange={e => { handleAwbChange(e.target.value); setScanning(false); }}
@@ -1110,8 +1012,10 @@ export default function OrderDetailPage() {
 
                 {/* Tracking URL */}
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Tracking Link</label>
+                  <label htmlFor="tracking-link-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Tracking Link</label>
                   <input
+                    id="tracking-link-input"
+                    name="trackingLink"
                     type="url"
                     value={trackingUrl}
                     readOnly
@@ -1123,8 +1027,10 @@ export default function OrderDetailPage() {
                 {/* Conditional Cancel Reason */}
                 {selectedStatus === 'CANCELLED' && (
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Cancellation Reason *</label>
+                    <label htmlFor="cancel-reason-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Cancellation Reason *</label>
                     <input
+                      id="cancel-reason-input"
+                      name="cancelReason"
                       value={cancelReason}
                       onChange={e => setCancelReason(e.target.value)}
                       placeholder="e.g. Customer cancelled order"
@@ -1137,8 +1043,10 @@ export default function OrderDetailPage() {
                 {/* Conditional Pickup slot */}
                 {(selectedStatus === 'RETURN_APPROVED' || selectedStatus === 'PICKUP_SCHEDULED') && (
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Return Pickup Slot</label>
+                    <label htmlFor="pickup-slot-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Return Pickup Slot</label>
                     <input
+                      id="pickup-slot-input"
+                      name="pickupSlot"
                       value={pickupSlot}
                       onChange={e => setPickupSlot(e.target.value)}
                       placeholder="e.g. 26 May, 10AM - 1PM"
@@ -1149,8 +1057,10 @@ export default function OrderDetailPage() {
 
                 {/* Admin Status Note */}
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Admin Note</label>
+                  <label htmlFor="admin-note-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Admin Note</label>
                   <textarea
+                    id="admin-note-input"
+                    name="adminNote"
                     rows={2.5}
                     value={notes}
                     onChange={e => setNotes(e.target.value)}

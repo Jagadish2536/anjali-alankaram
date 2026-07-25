@@ -8,7 +8,7 @@ import { PaymentsService } from '../payments/payments.service';
 import Redis from 'ioredis';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, interval, merge } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 export class RealtimeEventBroker {
@@ -33,9 +33,13 @@ export class SettingsController {
 
   @Sse('sse')
   sse(): Observable<MessageEvent> {
-    return RealtimeEventBroker.get$().pipe(
-      map(event => ({ data: event } as MessageEvent))
+    const events$ = RealtimeEventBroker.get$().pipe(
+      map(event => ({ data: event } as MessageEvent)),
     );
+    const heartbeat$ = interval(15000).pipe(
+      map(() => ({ data: { type: 'ping', timestamp: Date.now() } } as MessageEvent)),
+    );
+    return merge(events$, heartbeat$);
   }
 
   @Get()
