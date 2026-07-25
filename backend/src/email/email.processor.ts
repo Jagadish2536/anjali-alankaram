@@ -53,14 +53,14 @@ export class EmailProcessor {
         `[Worker: Email] Email sent successfully via SES to ${to} | MessageId: ${result.MessageId}`
       );
     } catch (err: any) {
-      if (err.message && err.message.includes('not verified') && this.fromEmail !== 'jagadishvarma99@gmail.com') {
+      if (err.message && err.message.includes('not verified') && this.fromEmail !== 'anjalialankaram@gmail.com') {
         this.logger.warn(
-          `[Worker: Email] Primary sender ${this.fromEmail} unverified; falling back to verified identity jagadishvarma99@gmail.com...`
+          `[Worker: Email] Primary sender ${this.fromEmail} unverified; falling back to verified identity anjalialankaram@gmail.com...`
         );
         try {
           const fallbackResult = await this.ses.send(
             new SendEmailCommand({
-              Source: `${this.fromName} <jagadishvarma99@gmail.com>`,
+              Source: `${this.fromName} <anjalialankaram@gmail.com>`,
               Destination: { ToAddresses: [to] },
               Message: {
                 Subject: { Data: subject, Charset: 'UTF-8' },
