@@ -53,6 +53,29 @@ export class EmailProcessor {
         `[Worker: Email] Email sent successfully via SES to ${to} | MessageId: ${result.MessageId}`
       );
     } catch (err: any) {
+      if (err.message && err.message.includes('not verified') && this.fromEmail !== 'jagadishvarma99@gmail.com') {
+        this.logger.warn(
+          `[Worker: Email] Primary sender ${this.fromEmail} unverified; falling back to verified identity jagadishvarma99@gmail.com...`
+        );
+        try {
+          const fallbackResult = await this.ses.send(
+            new SendEmailCommand({
+              Source: `${this.fromName} <jagadishvarma99@gmail.com>`,
+              Destination: { ToAddresses: [to] },
+              Message: {
+                Subject: { Data: subject, Charset: 'UTF-8' },
+                Body: { Html: { Data: html, Charset: 'UTF-8' } },
+              },
+            })
+          );
+          this.logger.log(
+            `[Worker: Email] Email sent successfully via fallback identity to ${to} | MessageId: ${fallbackResult.MessageId}`
+          );
+          return;
+        } catch (fallbackErr: any) {
+          this.logger.error(`[Worker: Email] Fallback send failed: ${fallbackErr.message}`);
+        }
+      }
       this.logger.error(
         `[Worker: Email] FAILED to send email to ${to}: "${subject}" | Message: ${err.message}`
       );
