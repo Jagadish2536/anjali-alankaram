@@ -45,16 +45,20 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const BADGE_STATUSES = ['CONFIRMED', 'PAYMENT_VERIFIED', 'PENDING_PAYMENT'];
+
 function AdminOrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const initialStatus = searchParams.get('status') || 'CONFIRMED';
   const [orders, setOrders] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const { settings, fetchSettings } = useSettingsStore();
 
   const fetchOrders = useCallback(async (p = 1) => {
@@ -70,6 +74,9 @@ function AdminOrdersContent() {
       setOrders(result);
       setTotal(data.total ?? result.length);
       setTotalPages(data.totalPages ?? 1);
+      if (data.statusCounts) {
+        setStatusCounts(data.statusCounts);
+      }
       setPage(p);
     } catch { /* ignore */ }
     finally { setIsLoading(false); }
@@ -103,12 +110,25 @@ function AdminOrdersContent() {
 
         {/* Status Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-3 px-3 sm:mx-0 sm:px-0">
-          {STATUS_FILTER_TABS.map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-colors shrink-0 ${
-                statusFilter === s ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-muted-foreground hover:border-gray-300'
-              }`}>{s === 'ALL' ? 'All Orders' : s.replace(/_/g, ' ')}</button>
-          ))}
+          {STATUS_FILTER_TABS.map(s => {
+            const isBadgeStatus = BADGE_STATUSES.includes(s);
+            const count = statusCounts[s] ?? 0;
+            return (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-colors shrink-0 flex items-center gap-1.5 ${
+                  statusFilter === s ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-muted-foreground hover:border-gray-300'
+                }`}>
+                <span>{s === 'ALL' ? 'All Orders' : s.replace(/_/g, ' ')}</span>
+                {isBadgeStatus && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                    statusFilter === s ? 'bg-white text-primary' : 'bg-primary/10 text-primary'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Search */}

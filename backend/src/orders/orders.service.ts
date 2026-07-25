@@ -539,16 +539,7 @@ export class OrdersService {
     if (query?.status && query.status !== 'ALL') {
       where.status = query.status;
     }
-    if (query?.search) {
-      where.OR = [
-        { orderNumber: { contains: query.search, mode: 'insensitive' } },
-        { user: { name: { contains: query.search, mode: 'insensitive' } } },
-        { user: { phone: { contains: query.search } } },
-        { user: { email: { contains: query.search, mode: 'insensitive' } } },
-      ];
-    }
-
-    const [orders, total] = await Promise.all([
+    const [orders, total, statusGroup] = await Promise.all([
       this.prisma.order.findMany({
         where,
         include: {
@@ -573,9 +564,22 @@ export class OrdersService {
         take: limit,
       }),
       this.prisma.order.count({ where }),
+      (this.prisma.order.groupBy as any)({
+        by: ['status'],
+        _count: { id: true },
+      }),
     ]);
 
-    return { orders, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const statusCounts: Record<string, number> = {};
+    if (Array.isArray(statusGroup)) {
+      for (const item of statusGroup) {
+        if (item?.status && item?._count) {
+          statusCounts[item.status] = item._count.id ?? item._count;
+        }
+      }
+    }
+
+    return { orders, total, page, limit, totalPages: Math.ceil(total / limit), statusCounts };
   }
 
   // ─────────────────────────────────────────────

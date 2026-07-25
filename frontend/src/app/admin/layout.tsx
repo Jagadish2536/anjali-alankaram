@@ -32,7 +32,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Dashboard',     icon: LayoutDashboard, href: '/admin',                roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Catalogue',     icon: Package,          href: '/admin/products',       roles: ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'] },
   { name: 'Categories',    icon: Tag,              href: '/admin/categories',     roles: ['ADMIN', 'SUPER_ADMIN', 'STOCK_MANAGER'] },
-  { name: 'Orders',        icon: ShoppingBag,      href: '/admin/orders',         roles: ['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER'] },
+  { name: 'Orders',        icon: ShoppingBag,      href: '/admin/orders?status=CONFIRMED', roles: ['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER'] },
   { name: 'Customers',     icon: Users,             href: '/admin/customers',      roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Reviews',       icon: Star,              href: '/admin/reviews',        roles: ['ADMIN', 'SUPER_ADMIN'] },
   { name: 'Offers',        icon: Percent,           href: '/admin/offers',         roles: ['ADMIN', 'SUPER_ADMIN'] },
@@ -53,6 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [actionableOrdersCount, setActionableOrdersCount] = useState(0);
 
   const userRole = user?.role || '';
   const sidebarItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(userRole));
@@ -61,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname === '/admin' || pathname === '/admin/') {
       return ['ADMIN', 'SUPER_ADMIN'].includes(userRole);
     }
-    const navItem = [...ALL_NAV_ITEMS].reverse().find(item => item.href !== '/admin' && pathname.startsWith(item.href));
+    const navItem = [...ALL_NAV_ITEMS].reverse().find(item => item.href !== '/admin' && pathname.startsWith(item.href.split('?')[0]));
     if (navItem) {
       return navItem.roles.includes(userRole);
     }
@@ -79,13 +80,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch { /* ignore */ }
   };
 
+  const fetchActionableOrdersCount = async () => {
+    try {
+      const res = await api.get('/orders/admin/all?limit=1');
+      if (res.data?.statusCounts) {
+        const { CONFIRMED = 0, PAYMENT_VERIFIED = 0, PENDING_PAYMENT = 0 } = res.data.statusCounts;
+        setActionableOrdersCount(CONFIRMED + PAYMENT_VERIFIED + PENDING_PAYMENT);
+      }
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => { setIsHydrated(true); }, []);
 
   useEffect(() => {
-    if (isHydrated && isAuthenticated && ['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    if (isHydrated && isAuthenticated && ['ADMIN', 'SUPER_ADMIN', 'ORDER_MANAGER'].includes(userRole)) {
       fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 15000);
-      const handleUpdate = () => fetchUnreadCount();
+      fetchActionableOrdersCount();
+      const interval = setInterval(() => {
+        fetchUnreadCount();
+        fetchActionableOrdersCount();
+      }, 15000);
+      const handleUpdate = () => {
+        fetchUnreadCount();
+        fetchActionableOrdersCount();
+      };
       window.addEventListener('notifications-updated', handleUpdate);
       return () => { clearInterval(interval); window.removeEventListener('notifications-updated', handleUpdate); };
     }
@@ -163,7 +181,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </Link>
       <div className="border-b border-gray-100 my-2 mx-2" />
       {sidebarItems.map((item) => {
-        const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+        const baseHref = item.href.split('?')[0];
+        const isActive = pathname === baseHref || (baseHref !== '/admin' && pathname.startsWith(baseHref));
         const Icon = item.icon;
         return (
           <Link
@@ -184,6 +203,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                 </span>
               )}
+              {item.name === 'Orders' && actionableOrdersCount > 0 && collapsed && (
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/75 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+              )}
             </div>
             {!collapsed && (
               <>
@@ -193,6 +218,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     isActive ? 'bg-white text-primary' : 'bg-red-500 text-white'
                   }`}>
                     {unreadCount}
+                  </span>
+                )}
+                {item.name === 'Orders' && actionableOrdersCount > 0 && (
+                  <span className={`ml-auto flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[10px] font-bold ${
+                    isActive ? 'bg-white text-primary' : 'bg-primary/10 text-primary'
+                  }`}>
+                    {actionableOrdersCount}
                   </span>
                 )}
               </>
