@@ -4,21 +4,62 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private ses: SESClient;
+  private fromEmail: string;
+  private fromName: string;
 
   constructor(
     private config: ConfigService,
     private prisma: PrismaService,
     @InjectQueue('email') private readonly emailQueue: Queue,
-  ) {}
+  ) {
+    const sesRegion = this.config.get('SES_AWS_REGION') || this.config.get('AWS_REGION', 'ap-south-2');
+    const accessKeyId = this.config.get('SES_AWS_ACCESS_KEY_ID') || this.config.get('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get('SES_AWS_SECRET_ACCESS_KEY') || this.config.get('AWS_SECRET_ACCESS_KEY');
 
-  // ── Core send (delegates to Bull background queue) ─────────────────────
+    this.ses = new SESClient({
+      region: sesRegion,
+      ...(accessKeyId && secretAccessKey
+        ? {
+            credentials: {
+              accessKeyId,
+              secretAccessKey,
+            },
+          }
+        : {}),
+    });
+    this.fromEmail = this.config.get('SES_FROM_EMAIL', 'anjalialankaram@gmail.com');
+    this.fromName = this.config.get('SES_FROM_NAME', 'Anjali Alankaram');
+  }
+
+  // ── Core send (Direct SES send with Bull queue fallback) ─────────────────────
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (!to) return;
 
-    this.logger.log(`[Queue: Email] Queueing email "${subject}" to ${to}`);
+    this.logger.log(`[EmailService] Sending email "${subject}" to ${to}...`);
+
+    try {
+      const sender = this.fromEmail || 'anjalialankaram@gmail.com';
+      const result = await this.ses.send(
+        new SendEmailCommand({
+          Source: `${this.fromName} <${sender}>`,
+          Destination: { ToAddresses: [to] },
+          Message: {
+            Subject: { Data: subject, Charset: 'UTF-8' },
+            Body: { Html: { Data: html, Charset: 'UTF-8' } },
+          },
+        })
+      );
+      this.logger.log(`[EmailService] Email sent directly via SES to ${to} | MessageId: ${result.MessageId}`);
+      return;
+    } catch (err: any) {
+      this.logger.warn(`[EmailService] Direct SES send failed (${err.message}), delegating to Bull queue...`);
+    }
 
     try {
       await this.emailQueue.add(
