@@ -63,8 +63,8 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   // Submit Forgot Password Request (OTP request)
   const handleForgotPasswordRequest = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!forgotEmailOrPhone.trim()) {
-      setError('Please enter your email or phone number');
+    if (!forgotEmailOrPhone.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmailOrPhone.trim())) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -76,10 +76,10 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
       const { data } = await api.post('/auth/forgot-password/request', {
         emailOrPhone: forgotEmailOrPhone.trim(),
       });
-      setSuccessMessage(data.message || 'Verification code sent successfully');
+      setSuccessMessage(data.message || 'Reset code sent successfully');
       setForgotStep('RESET');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to send verification code. Please try again.');
+      setError(err.response?.data?.message || 'Failed to send reset code. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -161,8 +161,12 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   // Submit Registration
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Email and password are required');
+    if (!name.trim() || !email.trim() || !phone.trim() || !password) {
+      setError('All fields (Full Name, Email Address, Phone Number, and Password) are required');
+      return;
+    }
+    if (phone.replace(/\D/g, '').length !== 10) {
+      setError('Please enter a valid 10-digit phone number');
       return;
     }
     if (password.length < 6) {
@@ -175,9 +179,9 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     
     try {
       const { data } = await api.post('/auth/register', {
-        name: name || undefined,
-        email,
-        phone: phone || undefined,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         password,
       });
       
@@ -429,6 +433,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 <input
                   id="reg-name"
                   type="text"
+                  required
                   placeholder="John Doe"
                   className="w-full h-12 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
                   value={name}
@@ -459,13 +464,14 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
 
             <div>
               <label htmlFor="reg-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                Phone Number (Optional)
+                Phone Number
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
                 <input
                   id="reg-phone"
                   type="tel"
+                  required
                   maxLength={10}
                   placeholder="Enter 10-digit phone number"
                   className="w-full h-12 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
@@ -598,7 +604,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
               <form onSubmit={handleForgotPasswordRequest} className="space-y-5">
                 <div>
                   <label htmlFor="forgot-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    Email Address or WhatsApp Number
+                    Email Address
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-muted-foreground">
@@ -606,9 +612,9 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                     </span>
                     <input
                       id="forgot-email"
-                      type="text"
+                      type="email"
                       required
-                      placeholder="name@example.com or 10-digit WhatsApp number"
+                      placeholder="name@example.com"
                       className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
                       value={forgotEmailOrPhone}
                       onChange={(e) => setForgotEmailOrPhone(e.target.value)}
