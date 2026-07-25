@@ -125,6 +125,8 @@ export default function Navbar() {
             <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-2">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
+                id="navbar-mobile-search"
+                name="searchQuery"
                 ref={searchRef}
                 autoFocus
                 type="text"
@@ -154,6 +156,8 @@ export default function Navbar() {
             <form onSubmit={handleSearch} className="hidden md:flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-2 w-56">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
+                id="navbar-desktop-search"
+                name="searchQuery"
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}

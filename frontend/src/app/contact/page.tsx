@@ -75,8 +75,10 @@ export default function ContactPage() {
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">First Name *</label>
+                  <label htmlFor="contact-first-name" className="block text-sm font-medium mb-2">First Name *</label>
                   <input
+                    id="contact-first-name"
+                    name="firstName"
                     type="text"
                     required
                     value={form.firstName}
@@ -85,8 +87,10 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Last Name</label>
+                  <label htmlFor="contact-last-name" className="block text-sm font-medium mb-2">Last Name</label>
                   <input
+                    id="contact-last-name"
+                    name="lastName"
                     type="text"
                     value={form.lastName}
                     onChange={handleChange('lastName')}
@@ -95,8 +99,10 @@ export default function ContactPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Email Address *</label>
+                <label htmlFor="contact-email" className="block text-sm font-medium mb-2">Email Address *</label>
                 <input
+                  id="contact-email"
+                  name="email"
                   type="email"
                   required
                   value={form.email}
@@ -105,8 +111,10 @@ export default function ContactPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Subject</label>
+                <label htmlFor="contact-subject" className="block text-sm font-medium mb-2">Subject</label>
                 <input
+                  id="contact-subject"
+                  name="subject"
                   type="text"
                   value={form.subject}
                   onChange={handleChange('subject')}
@@ -115,8 +123,10 @@ export default function ContactPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Message *</label>
+                <label htmlFor="contact-message" className="block text-sm font-medium mb-2">Message *</label>
                 <textarea
+                  id="contact-message"
+                  name="message"
                   rows={5}
                   required
                   value={form.message}

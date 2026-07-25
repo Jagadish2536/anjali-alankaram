@@ -450,8 +450,10 @@ function ProductsContent() {
           {displayedCategories.map(cat => {
             const isChecked = selectedCategories.includes(cat.slug) || (cat.slug === 'saree' && selectedCategories.includes('sarees')) || (cat.slug === 'sarees' && selectedCategories.includes('saree'));
             return (
-              <label key={cat.id} className="flex items-center gap-2.5 cursor-pointer group">
+              <label key={cat.id} htmlFor={`cat-filter-${cat.slug}`} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
+                  id={`cat-filter-${cat.slug}`}
+                  name="categoryFilter"
                   type="checkbox"
                   checked={isChecked}
                   onChange={() => toggleCategory(cat.slug)}
@@ -488,8 +490,10 @@ function ProductsContent() {
         <FilterGroup title="Colour">
           <div className="space-y-2 pt-1">
             {availableColors.map(({ name, hex }) => (
-              <label key={name} className="flex items-center gap-2.5 cursor-pointer group">
+              <label key={name} htmlFor={`color-filter-${name}`} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
+                  id={`color-filter-${name}`}
+                  name="colorFilter"
                   type="checkbox"
                   checked={selectedColors.includes(name)}
                   onChange={() => toggleColor(name)}
@@ -517,8 +521,9 @@ function ProductsContent() {
       <FilterGroup title="Discount Range">
         <div className="space-y-2 pt-1">
           {[10, 20, 30, 40, 50, 60, 70, 80, 90].map(val => (
-            <label key={val} className="flex items-center gap-2.5 cursor-pointer group">
+            <label key={val} htmlFor={`discount-filter-${val}`} className="flex items-center gap-2.5 cursor-pointer group">
               <input
+                id={`discount-filter-${val}`}
                 type="radio"
                 name="discount-range"
                 checked={selectedDiscountRange === val}

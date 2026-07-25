@@ -13,16 +13,20 @@ export default function TrackOrderPage() {
       <div className="bg-white border rounded-2xl p-8 shadow-sm">
         <form className="space-y-6">
           <div>
-            <label className="block font-medium mb-2">Order ID or Tracking Number</label>
+            <label htmlFor="track-order-id" className="block font-medium mb-2">Order ID or Tracking Number</label>
             <input 
+              id="track-order-id"
+              name="orderId"
               type="text" 
               placeholder="e.g. ORD-12345 or AWB-98765"
               className="w-full h-14 px-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary outline-none"
             />
           </div>
           <div>
-            <label className="block font-medium mb-2">Registered Email or WhatsApp Number</label>
+            <label htmlFor="track-contact-info" className="block font-medium mb-2">Registered Email or WhatsApp Number</label>
             <input 
+              id="track-contact-info"
+              name="contactInfo"
               type="text" 
               placeholder="Enter email or WhatsApp number"
               className="w-full h-14 px-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary outline-none"

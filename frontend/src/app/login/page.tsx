@@ -365,6 +365,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 </span>
                 <input
                   id="login-email"
+                  name="email"
                   type="text"
                   required
                   placeholder="name@example.com"
@@ -399,6 +400,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 </span>
                 <input
                   id="login-password"
+                  name="password"
                   type="password"
                   required
                   placeholder="••••••••"
@@ -432,6 +434,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 </span>
                 <input
                   id="reg-name"
+                  name="name"
                   type="text"
                   required
                   placeholder="John Doe"
@@ -452,6 +455,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 </span>
                 <input
                   id="reg-email"
+                  name="email"
                   type="email"
                   required
                   placeholder="name@example.com"
@@ -470,6 +474,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
                 <input
                   id="reg-phone"
+                  name="phone"
                   type="tel"
                   required
                   maxLength={10}
@@ -491,6 +496,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                 </span>
                 <input
                   id="reg-password"
+                  name="password"
                   type="password"
                   required
                   placeholder="Min 6 characters"
