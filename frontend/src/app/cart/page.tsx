@@ -7,18 +7,24 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { formatPrice } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { Trash2, Minus, Plus, ArrowRight, Tag, Percent, Copy, Check, Gift, ZoomIn, X } from 'lucide-react';
+import { Trash2, Minus, Plus, ArrowRight, Tag, Percent, Copy, Check, Gift, ZoomIn, X, Loader2 } from 'lucide-react';
 
 export default function CartPage() {
   const { items, subtotal, fetchCart, updateItem, removeItem, isLoading, appliedOffer } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const { settings, fetchSettings } = useSettingsStore();
 
+  const { user } = useAuthStore();
   const [activeOffers, setActiveOffers] = useState<any[]>([]);
   const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
   const [loadingDeals, setLoadingDeals] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
+
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -46,9 +52,37 @@ export default function CartPage() {
     }
   };
 
+  const handleApplyCoupon = async (codeToApply?: string) => {
+    const code = (codeToApply || couponInput).trim();
+    if (!code) return;
+    setValidatingCoupon(true);
+    setCouponError('');
+    try {
+      const { data } = await api.post('/coupons/validate', {
+        code,
+        subtotal,
+        userId: user?.id,
+      });
+      setAppliedCoupon({
+        id: data.coupon?.id,
+        code: data.coupon?.code || code.toUpperCase(),
+        discount: Number(data.discount || 0),
+        type: data.coupon?.type,
+        value: data.coupon?.value,
+      });
+      setCouponInput('');
+    } catch (err: any) {
+      setCouponError(err.response?.data?.message || 'Invalid or expired coupon code');
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
+    setCouponInput(code);
+    handleApplyCoupon(code);
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
@@ -79,14 +113,21 @@ export default function CartPage() {
     );
   }
 
-  const freeShippingThreshold = settings.freeShippingThreshold;
+  const freeShippingThreshold = Number(settings.freeShippingThreshold || 0);
   const shippingEnabled = settings.shippingEnabled ?? true;
-  const shippingCharge = settings.shippingCharge;
+  const shippingCharge = Number(settings.shippingCharge || 0);
+  const platformFee = settings.platformFeeEnabled ? Number(settings.platformFeeAmount || 0) : 0;
 
   const offerDiscount = appliedOffer ? Number(appliedOffer.discount) : 0;
+  const couponDiscount = appliedCoupon ? Number(appliedCoupon.discount) : 0;
+
   const isFreeShipping = !shippingEnabled || (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold);
-  const shipping = isFreeShipping ? 0 : Number(shippingCharge);
-  const total = Math.max(0, subtotal - offerDiscount + shipping);
+  const shipping = isFreeShipping ? 0 : shippingCharge;
+
+  const taxableAmount = Math.max(0, subtotal - offerDiscount - couponDiscount);
+  const gstAmount = settings.gstEnabled && settings.gstRate ? Math.round((taxableAmount * (Number(settings.gstRate) / 100)) * 100) / 100 : 0;
+
+  const total = Math.max(0, taxableAmount + shipping + platformFee + gstAmount);
 
   return (
     <div className="container py-10">
@@ -189,29 +230,113 @@ export default function CartPage() {
         <div className="bg-muted/30 p-6 rounded-2xl h-fit sticky top-24">
           <h2 className="text-xl font-bold mb-6">Order Summary</h2>
           
-          <div className="space-y-4 text-sm mb-6">
+          <div className="space-y-3.5 text-sm mb-6">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Subtotal ({items.length} items)</span>
+              <span className="text-muted-foreground">Subtotal ({items.length} item{items.length > 1 ? 's' : ''})</span>
               <span className="font-medium">{formatPrice(subtotal)}</span>
             </div>
+
+            {/* Offer Discount */}
             {appliedOffer && (
               <div className="flex justify-between text-green-600 font-medium">
-                <span>Offer Discount ({appliedOffer.title})</span>
-                <span>-{formatPrice(offerDiscount)}</span>
+                <span className="flex items-center gap-1">
+                  <Percent className="w-3.5 h-3.5 shrink-0" />
+                  Offer Discount ({appliedOffer.title})
+                </span>
+                <span>− {formatPrice(offerDiscount)}</span>
               </div>
             )}
+
+            {/* Coupon Discount */}
+            {appliedCoupon && (
+              <div className="flex justify-between text-green-600 font-medium">
+                <span className="flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5 shrink-0" />
+                  Coupon Discount ({appliedCoupon.code})
+                </span>
+                <span>− {formatPrice(couponDiscount)}</span>
+              </div>
+            )}
+
+            {/* Platform Fee */}
+            {settings.platformFeeEnabled && platformFee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Platform Fee</span>
+                <span className="font-medium">{formatPrice(platformFee)}</span>
+              </div>
+            )}
+
+            {/* Shipping */}
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Shipping</span>
+              <span className="text-muted-foreground">Shipping Fee</span>
               {shipping === 0 ? (
                 <span className="text-green-600 font-medium">Free</span>
               ) : (
                 <span className="font-medium">{formatPrice(shipping)}</span>
               )}
             </div>
+
+            {/* GST Tax */}
+            {settings.gstEnabled && gstAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">GST ({settings.gstRate}%)</span>
+                <span className="font-medium">{formatPrice(gstAmount)}</span>
+              </div>
+            )}
+
             {shipping > 0 && freeShippingThreshold > 0 && subtotal < freeShippingThreshold && (
-              <p className="text-xs text-muted-foreground">Add {formatPrice(freeShippingThreshold - subtotal)} more for free shipping.</p>
+              <p className="text-xs text-muted-foreground bg-primary/5 p-2 rounded-lg border border-primary/10 mt-1">
+                Add {formatPrice(freeShippingThreshold - subtotal)} more to qualify for <strong>FREE Shipping</strong>!
+              </p>
             )}
           </div>
+
+          {/* Coupon Input Box */}
+          {settings.couponsEnabled && !appliedCoupon && (
+            <div className="mb-6 pt-4 border-t border-border/60">
+              <label htmlFor="cart-coupon-input" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Apply Coupon Code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="cart-coupon-input"
+                  name="couponCode"
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
+                  placeholder="e.g. WELCOME10"
+                  className="flex-1 bg-white border rounded-xl px-3 py-2 text-sm font-mono uppercase outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleApplyCoupon()}
+                  disabled={validatingCoupon || !couponInput.trim()}
+                  className="px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+                >
+                  {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                </button>
+              </div>
+              {couponError && <p className="text-xs text-red-500 mt-1.5 font-medium">{couponError}</p>}
+            </div>
+          )}
+
+          {appliedCoupon && (
+            <div className="mb-6 pt-4 border-t border-border/60 flex items-center justify-between bg-green-50 border-green-200 border rounded-xl p-3">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-green-700" />
+                <div>
+                  <p className="text-xs font-bold text-green-800">Coupon {appliedCoupon.code} Applied</p>
+                  <p className="text-[11px] text-green-700">Saved {formatPrice(couponDiscount)}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAppliedCoupon(null)}
+                className="text-xs text-red-600 hover:underline font-bold"
+              >
+                Remove
+              </button>
+            </div>
+          )}
           
           <div className="border-t pt-4 mb-8">
             <div className="flex justify-between items-center">
@@ -228,7 +353,10 @@ export default function CartPage() {
               Shopping Disabled (Store Maintenance)
             </button>
           ) : (
-            <Link href="/checkout" className="w-full bg-primary text-primary-foreground h-14 rounded-full font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+            <Link 
+              href={appliedCoupon ? `/checkout?coupon=${encodeURIComponent(appliedCoupon.code)}` : '/checkout'} 
+              className="w-full bg-primary text-primary-foreground h-14 rounded-full font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+            >
               Proceed to Checkout <ArrowRight className="w-4 h-4" />
             </Link>
           )}

@@ -188,7 +188,15 @@ export class EmailService {
     orderNumber: string;
     items: { name: string; size: string; qty: number; price: number }[];
     subtotal: number;
-    discount: number;
+    discount?: number;
+    couponCode?: string;
+    couponDiscount?: number;
+    offerTitle?: string;
+    offerDiscount?: number;
+    platformFee?: number;
+    codCharges?: number;
+    giftCharge?: number;
+    gstAmount?: number;
     shipping: number;
     total: number;
     paymentMethod: string;
@@ -239,16 +247,36 @@ export class EmailService {
           <td style="padding:6px 0;color:#666;font-size:14px;">Subtotal</td>
           <td style="padding:6px 0;color:#333;font-size:14px;text-align:right;">₹${data.subtotal.toLocaleString('en-IN')}</td>
         </tr>
-        ${data.discount > 0 ? `<tr>
-          <td style="padding:6px 0;color:#27ae60;font-size:14px;">Discount</td>
-          <td style="padding:6px 0;color:#27ae60;font-size:14px;text-align:right;">−₹${data.discount.toLocaleString('en-IN')}</td>
+        ${(data.offerDiscount || 0) > 0 ? `<tr>
+          <td style="padding:6px 0;color:#27ae60;font-size:14px;">Offer Discount ${data.offerTitle ? `(${data.offerTitle})` : ''}</td>
+          <td style="padding:6px 0;color:#27ae60;font-size:14px;text-align:right;">−₹${Number(data.offerDiscount).toLocaleString('en-IN')}</td>
+        </tr>` : ''}
+        ${((data.couponDiscount || data.discount || 0) > 0) ? `<tr>
+          <td style="padding:6px 0;color:#27ae60;font-size:14px;">Coupon Discount ${data.couponCode ? `(${data.couponCode})` : ''}</td>
+          <td style="padding:6px 0;color:#27ae60;font-size:14px;text-align:right;">−₹${Number(data.couponDiscount || data.discount).toLocaleString('en-IN')}</td>
+        </tr>` : ''}
+        ${(data.platformFee || 0) > 0 ? `<tr>
+          <td style="padding:6px 0;color:#666;font-size:14px;">Platform Fee</td>
+          <td style="padding:6px 0;color:#333;font-size:14px;text-align:right;">₹${Number(data.platformFee).toLocaleString('en-IN')}</td>
+        </tr>` : ''}
+        ${(data.codCharges || 0) > 0 ? `<tr>
+          <td style="padding:6px 0;color:#666;font-size:14px;">COD Charges</td>
+          <td style="padding:6px 0;color:#333;font-size:14px;text-align:right;">₹${Number(data.codCharges).toLocaleString('en-IN')}</td>
+        </tr>` : ''}
+        ${(data.giftCharge || 0) > 0 ? `<tr>
+          <td style="padding:6px 0;color:#666;font-size:14px;">Gift Charges</td>
+          <td style="padding:6px 0;color:#333;font-size:14px;text-align:right;">₹${Number(data.giftCharge).toLocaleString('en-IN')}</td>
         </tr>` : ''}
         <tr>
           <td style="padding:6px 0;color:#666;font-size:14px;">Shipping</td>
           <td style="padding:6px 0;color:#333;font-size:14px;text-align:right;">
-            ${data.shipping === 0 ? '<span style="color:#27ae60;">FREE</span>' : `₹${data.shipping}`}
+            ${data.shipping === 0 ? '<span style="color:#27ae60;">FREE</span>' : `₹${data.shipping.toLocaleString('en-IN')}`}
           </td>
         </tr>
+        ${(data.gstAmount || 0) > 0 ? `<tr>
+          <td style="padding:6px 0;color:#666;font-size:14px;">GST (Taxes)</td>
+          <td style="padding:6px 0;color:#333;font-size:14px;text-align:right;">₹${Number(data.gstAmount).toLocaleString('en-IN')}</td>
+        </tr>` : ''}
         <tr>
           <td style="padding:10px 0;color:#8B0030;font-size:16px;font-weight:bold;border-top:2px solid #8B0030;">Total</td>
           <td style="padding:10px 0;color:#8B0030;font-size:16px;font-weight:bold;text-align:right;border-top:2px solid #8B0030;">
