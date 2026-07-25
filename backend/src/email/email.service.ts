@@ -33,7 +33,7 @@ export class EmailService {
           }
         : {}),
     });
-    this.fromEmail = this.config.get('SES_FROM_EMAIL', 'anjalialankaram@gmail.com');
+    this.fromEmail = this.config.get('SES_FROM_EMAIL', 'noreply@anjalialankaram.com');
     this.fromName = this.config.get('SES_FROM_NAME', 'Anjali Alankaram');
   }
 
@@ -44,7 +44,7 @@ export class EmailService {
     this.logger.log(`[EmailService] Sending email "${subject}" to ${to}...`);
 
     try {
-      const sender = this.fromEmail || 'anjalialankaram@gmail.com';
+      const sender = this.fromEmail || 'noreply@anjalialankaram.com';
       const result = await this.ses.send(
         new SendEmailCommand({
           Source: `${this.fromName} <${sender}>`,
