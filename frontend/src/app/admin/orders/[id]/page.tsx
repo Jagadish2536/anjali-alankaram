@@ -465,28 +465,27 @@ export default function OrderDetailPage() {
   // Image lightbox state
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
-  const fetchOrder = async () => {
-    setLoading(true);
+  const fetchOrder = async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const { data } = await api.get(`/orders/admin/${id}`);
       setOrder(data);
-      setSelectedStatus(data.status || '');
-      setAwbCode(data.awbCode || '');
-      setTrackingUrl(data.trackingUrl || '');
-      // Look up courier base
-      const courierPartner = DELIVERY_PARTNERS.find(p => p.name.toLowerCase() === (data.courierName || '').toLowerCase());
-      setSelectedPartner(courierPartner ? courierPartner.id : data.courierName ? 'other' : '');
-      setSelectedCourierCustomName(courierPartner ? '' : data.courierName || '');
+
+      if (isInitial) {
+        setSelectedStatus(data.status || '');
+        setAwbCode(data.awbCode || '');
+        setTrackingUrl(data.trackingUrl || '');
+        // Look up courier base
+        const courierPartner = DELIVERY_PARTNERS.find(p => p.name.toLowerCase() === (data.courierName || '').toLowerCase());
+        setSelectedPartner(courierPartner ? courierPartner.id : data.courierName ? 'other' : '');
+        setSelectedCourierCustomName(courierPartner ? '' : data.courierName || '');
+      }
 
       // Fetch live transit data if AWB exists
       if (data.awbCode) {
         try {
           const trackRes = await api.get(`/orders/${id}/track`);
           setTransitEvents(trackRes.data.events || []);
-          if (trackRes.data.status && trackRes.data.status !== data.status) {
-            data.status = trackRes.data.status;
-            setSelectedStatus(trackRes.data.status);
-          }
         } catch (err) {
           console.error('Failed to fetch live transit details:', err);
         }
@@ -494,28 +493,16 @@ export default function OrderDetailPage() {
     } catch (e: any) {
       setError(e.response?.data?.message || 'Failed to load order details');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
     if (id) {
-      fetchOrder();
+      fetchOrder(true);
     }
     fetchSettings();
   }, [id, fetchSettings]);
-
-  // Polling for live shipping status updates until order reaches terminal state
-  useEffect(() => {
-    if (!order) return;
-    const terminalStatuses = ['DELIVERED', 'CANCELLED', 'REFUNDED'];
-    if (terminalStatuses.includes(order.status)) {
-      if (pollRef.current) clearInterval(pollRef.current);
-      return;
-    }
-    pollRef.current = setInterval(fetchOrder, 10000); // poll every 10s for fast live updates
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [order?.status, id]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -660,7 +647,7 @@ export default function OrderDetailPage() {
               <Printer className="w-4 h-4" /> Print Label
             </button>
             <button
-              onClick={fetchOrder}
+              onClick={() => fetchOrder(true)}
               className="flex items-center justify-center p-2 border bg-white rounded-xl hover:bg-gray-50 shadow-sm transition-all"
               title="Refresh order"
             >
