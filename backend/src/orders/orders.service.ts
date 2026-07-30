@@ -531,15 +531,25 @@ export class OrdersService {
   }
 
   async findAll(query?: {
-    status?: string; search?: string; page?: number; limit?: number;
+    status?: string; search?: string; page?: any; limit?: any;
   }) {
-    const page = query?.page ?? 1;
-    const limit = query?.limit ?? 50;
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.max(1, Math.min(1000, Number(query?.limit) || 50));
     const skip = (page - 1) * limit;
 
     const where: any = {};
     if (query?.status && query.status !== 'ALL') {
       where.status = query.status;
+    }
+    if (query?.search && query.search.trim()) {
+      const q = query.search.trim();
+      where.OR = [
+        { orderNumber: { contains: q, mode: 'insensitive' } },
+        { user: { name: { contains: q, mode: 'insensitive' } } },
+        { user: { phone: { contains: q, mode: 'insensitive' } } },
+        { address: { name: { contains: q, mode: 'insensitive' } } },
+        { address: { phone: { contains: q, mode: 'insensitive' } } },
+      ];
     }
     const [orders, total, statusGroup] = await Promise.all([
       this.prisma.order.findMany({

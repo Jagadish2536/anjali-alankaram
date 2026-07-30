@@ -71,7 +71,12 @@ function AdminOrdersContent() {
   const checkDateCount = useCallback(async (dateStr: string) => {
     setIsCheckingDateCount(true);
     try {
-      const res = await api.get('/orders/admin/all?status=CONFIRMED&limit=500');
+      let res: any;
+      try {
+        res = await api.get('/orders/admin/all?status=CONFIRMED&limit=500');
+      } catch {
+        res = await api.get('/orders/admin/all?status=CONFIRMED');
+      }
       const result = Array.isArray(res.data) ? res.data : res.data?.orders ?? [];
       const matched = result.filter((o: any) => {
         if (!o.createdAt) return false;
@@ -95,8 +100,17 @@ function AdminOrdersContent() {
   const handlePrintBulkLabels = async () => {
     setIsGeneratingBulk(true);
     try {
-      const res = await api.get('/orders/admin/all?status=CONFIRMED&limit=1000');
+      let res: any;
+      try {
+        res = await api.get('/orders/admin/all?status=CONFIRMED&limit=500');
+      } catch {
+        res = await api.get('/orders/admin/all?status=CONFIRMED');
+      }
       let result = Array.isArray(res.data) ? res.data : res.data?.orders ?? [];
+
+      if (result.length === 0 && orders.length > 0) {
+        result = orders;
+      }
 
       if (bulkOption === 'DATE') {
         result = result.filter((o: any) => {

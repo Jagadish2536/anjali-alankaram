@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { InventoryService } from '../orders/inventory.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 /**
  * Standalone module that exports InventoryService so it can be imported
@@ -8,7 +9,7 @@ import { PrismaModule } from '../prisma/prisma.module';
  * dependency with OrdersModule.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, NotificationsModule],
   providers: [InventoryService],
   exports: [InventoryService],
 })
