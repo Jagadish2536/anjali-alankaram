@@ -560,10 +560,36 @@ export function printLabelHtmlViaIframe(htmlContent: string) {
 // ── Convert image URL to Base64 Data URL (Solves missing image in canvas) ────
 async function convertImageSrcToBase64(src: string): Promise<string> {
   if (!src || src.startsWith('data:')) return src;
+
+  // 1. Primary Method: Fetch Blob + FileReader (Bypasses Canvas Tainting & CORS blocks)
   try {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    const promise = new Promise<string>((resolve) => {
+    const response = await fetch(src, { cache: 'force-cache' });
+    if (response.ok) {
+      const blob = await response.blob();
+      if (blob && blob.size > 0) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result === 'string') resolve(reader.result);
+            else reject(new Error('Invalid reader output'));
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (dataUrl && dataUrl.startsWith('data:image/')) {
+          return dataUrl;
+        }
+      }
+    }
+  } catch (_e) {
+    // If fetch failed due to CORS or network policies, fall back to canvas drawing
+  }
+
+  // 2. Secondary Method: Image object + Canvas conversion with CORS anonymous
+  try {
+    const dataUrl = await new Promise<string>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
@@ -572,22 +598,21 @@ async function convertImageSrcToBase64(src: string): Promise<string> {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0);
-            const dataUrl = canvas.toDataURL('image/png');
-            resolve(dataUrl);
+            resolve(canvas.toDataURL('image/png'));
             return;
           }
-        } catch (_err) {
-          // If canvas export is blocked, fallback to original src
-        }
+        } catch (_err) {}
         resolve(src);
       };
       img.onerror = () => resolve(src);
+      img.src = src;
     });
-    img.src = src;
-    return await promise;
-  } catch {
-    return src;
-  }
+    if (dataUrl && dataUrl.startsWith('data:image/')) {
+      return dataUrl;
+    }
+  } catch (_e) {}
+
+  return src;
 }
 
 // ── Safe Canvas Capture Helper (Avoids 'Unable to find element in cloned iframe') ──
@@ -623,12 +648,17 @@ async function captureElementToCanvas(
     if (images.length > 0) {
       await Promise.all(
         images.map(async (img) => {
-          img.setAttribute('crossorigin', 'anonymous');
+          // Remove onerror attribute so html2canvas never triggers SVG fallback
+          img.removeAttribute('onerror');
+
           const currentSrc = img.getAttribute('src') || img.src;
-          if (currentSrc) {
+          if (currentSrc && !currentSrc.startsWith('data:')) {
             const base64Src = await convertImageSrcToBase64(currentSrc);
-            img.setAttribute('src', base64Src);
-            img.src = base64Src;
+            if (base64Src && base64Src.startsWith('data:image/')) {
+              img.removeAttribute('crossorigin');
+              img.setAttribute('src', base64Src);
+              img.src = base64Src;
+            }
           }
         })
       );
