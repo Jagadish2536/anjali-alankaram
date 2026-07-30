@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { printOrderLabel } from '@/lib/printLabel';
+import { LabelSizeModal } from '@/components/admin/LabelSizeModal';
 import Image from 'next/image';
 import {
   ArrowLeft, X, Package, MapPin, CreditCard, Check, Clock, Truck,
@@ -442,6 +443,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const { settings, fetchSettings } = useSettingsStore();
   const [error, setError] = useState('');
+  const [isLabelSizeModalOpen, setIsLabelSizeModalOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
 
   // Form Fields for Status & Shipment Fulfillment
@@ -641,7 +643,7 @@ export default function OrderDetailPage() {
           
           <div className="flex items-center gap-3">
             <button
-              onClick={() => printOrderLabel(order, settings.storeAddress)}
+              onClick={() => setIsLabelSizeModalOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold border bg-white rounded-xl hover:bg-gray-50 shadow-sm transition-all"
             >
               <Printer className="w-4 h-4" /> Print Label
@@ -1093,6 +1095,13 @@ export default function OrderDetailPage() {
         </div>
 
       </div>
+
+      {/* Label Size Selection & Download Modal */}
+      <LabelSizeModal
+        isOpen={isLabelSizeModalOpen}
+        onClose={() => setIsLabelSizeModalOpen(false)}
+        order={order}
+      />
     </div>
   );
 }

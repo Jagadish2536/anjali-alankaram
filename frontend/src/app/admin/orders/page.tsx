@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { printOrderLabel, printBulkOrderLabels } from '@/lib/printLabel';
+import { LabelSizeModal } from '@/components/admin/LabelSizeModal';
 
 // ── Status config ────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
@@ -67,6 +68,11 @@ function AdminOrdersContent() {
   const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
   const [dateOrderCount, setDateOrderCount] = useState<number | null>(null);
   const [isCheckingDateCount, setIsCheckingDateCount] = useState(false);
+
+  const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
+  const [selectedOrderForLabel, setSelectedOrderForLabel] = useState<any | null>(null);
+  const [bulkOrdersForLabel, setBulkOrdersForLabel] = useState<any[] | null>(null);
+  const [bulkFilterInfo, setBulkFilterInfo] = useState<string>('');
 
   const checkDateCount = useCallback(async (dateStr: string) => {
     setIsCheckingDateCount(true);
@@ -138,8 +144,11 @@ function AdminOrdersContent() {
             })}`
           : 'All Confirmed';
 
-      printBulkOrderLabels(result, settings.storeAddress, filterText);
+      setBulkOrdersForLabel(result);
+      setSelectedOrderForLabel(null);
+      setBulkFilterInfo(filterText);
       setIsBulkModalOpen(false);
+      setIsSizeModalOpen(true);
     } catch (err: any) {
       alert('Failed to generate bulk labels: ' + err.message);
     } finally {
@@ -326,7 +335,11 @@ function AdminOrdersContent() {
                               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors">
                               <Eye className="w-3 h-3" /> Manage
                             </button>
-                            <button onClick={() => printOrderLabel(order, settings.storeAddress)}
+                            <button onClick={() => {
+                              setSelectedOrderForLabel(order);
+                              setBulkOrdersForLabel(null);
+                              setIsSizeModalOpen(true);
+                            }}
                               className="p-1.5 text-muted-foreground hover:text-foreground border rounded-lg hover:bg-gray-50 transition-colors" title="Print label">
                               <Printer className="w-3 h-3" />
                             </button>
@@ -494,6 +507,15 @@ function AdminOrdersContent() {
           </div>
         </div>
       )}
+
+      {/* Label Size Selection & Preview Modal */}
+      <LabelSizeModal
+        isOpen={isSizeModalOpen}
+        onClose={() => setIsSizeModalOpen(false)}
+        order={selectedOrderForLabel}
+        orders={bulkOrdersForLabel || undefined}
+        filterInfo={bulkFilterInfo}
+      />
     </div>
   );
 }
