@@ -1,12 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class InventoryService implements OnModuleInit {
   private readonly logger = new Logger(InventoryService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async onModuleInit() {
     try {
@@ -560,21 +564,45 @@ export class InventoryService implements OnModuleInit {
   }
 
   private async checkLowStock(variantIds: string[]) {
+    if (!variantIds || variantIds.length === 0) return;
+
     // Check threshold from settings
     const settings = await this.prisma.storeSettings.findFirst({
       select: { lowStockThreshold: true },
     });
     const threshold = (settings as any)?.lowStockThreshold ?? 5;
 
-    const lowItems = await this.prisma.productVariant.findMany({
-      where: { id: { in: variantIds }, stock: { lte: threshold } },
-      include: { product: { select: { name: true } } },
+    const variants = await this.prisma.productVariant.findMany({
+      where: { id: { in: variantIds } },
+      include: { product: { select: { id: true, name: true } } },
     });
 
-    if (lowItems.length > 0) {
-      this.logger.warn(
-        `Low stock alert: ${lowItems.map(v => `${v.product.name} (${v.sku}): ${v.stock}`).join(', ')}`,
-      );
+    for (const v of variants) {
+      if (v.stock <= 0) {
+        await this.notificationsService
+          .sendAdminAlert('OUT_OF_STOCK', {
+            productId: v.productId || v.product?.id,
+            variantId: v.id,
+            productName: v.product?.name || 'Product',
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: 0,
+          })
+          .catch((e) => this.logger.error(`Out of stock alert error: ${e.message}`));
+      } else if (v.stock <= threshold) {
+        await this.notificationsService
+          .sendAdminAlert('LOW_STOCK', {
+            productId: v.productId || v.product?.id,
+            variantId: v.id,
+            productName: v.product?.name || 'Product',
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+          })
+          .catch((e) => this.logger.error(`Low stock alert error: ${e.message}`));
+      }
     }
   }
 }

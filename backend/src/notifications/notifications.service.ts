@@ -147,9 +147,12 @@ export class NotificationsService {
     });
   }
 
-  async sendAdminAlert(type: 'CUSTOMER_SIGNUP' | 'ORDER_PLACED' | 'LOW_STOCK', data: any) {
+  async sendAdminAlert(
+    type: 'CUSTOMER_SIGNUP' | 'ORDER_PLACED' | 'LOW_STOCK' | 'OUT_OF_STOCK',
+    data: any,
+  ) {
     const settings = await this.prisma.storeSettings.findFirst();
-    
+
     let shouldNotify = true;
     let title = '';
     let body = '';
@@ -162,10 +165,67 @@ export class NotificationsService {
       shouldNotify = settings ? settings.notifyNewOrder : true;
       title = 'New Order Placed 🛍️';
       body = `Order #${data.orderNumber} of ₹${data.totalAmount} placed by ${data.customerName || 'Customer'}.`;
+
+      // Prevent duplicate ORDER_PLACED alert for the same orderId
+      if (data.orderId) {
+        const existing = await this.prisma.notification.findFirst({
+          where: {
+            title: 'New Order Placed 🛍️',
+            data: { path: ['orderId'], equals: data.orderId },
+          },
+        });
+        if (existing) return;
+      }
     } else if (type === 'LOW_STOCK') {
       shouldNotify = settings ? settings.notifyLowStock : true;
       title = 'Low Stock Warning ⚠️';
-      body = `Product "${data.productName}" (Size: ${data.size}, Color: ${data.color}) has only ${data.stock} left in stock.`;
+      const prodIdStr = data.productId ? `Product ID: ${data.productId} · ` : '';
+      const details = [
+        data.size ? `Size: ${data.size}` : null,
+        data.color ? `Color: ${data.color}` : null,
+        data.sku ? `SKU: ${data.sku}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      body = `${prodIdStr}"${data.productName}"${details ? ` (${details})` : ''} has only ${data.stock} item(s) remaining in stock.`;
+
+      // Prevent spamming low stock alert within 1 hour for the same variant
+      if (data.variantId) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const existing = await this.prisma.notification.findFirst({
+          where: {
+            title: 'Low Stock Warning ⚠️',
+            createdAt: { gte: oneHourAgo },
+            data: { path: ['variantId'], equals: data.variantId },
+          },
+        });
+        if (existing) return;
+      }
+    } else if (type === 'OUT_OF_STOCK') {
+      shouldNotify = settings ? settings.notifyLowStock : true;
+      title = 'Out of Stock Alert 🔴';
+      const prodIdStr = data.productId ? `Product ID: ${data.productId} · ` : '';
+      const details = [
+        data.size ? `Size: ${data.size}` : null,
+        data.color ? `Color: ${data.color}` : null,
+        data.sku ? `SKU: ${data.sku}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      body = `${prodIdStr}"${data.productName}"${details ? ` (${details})` : ''} is now OUT OF STOCK (Stock: 0).`;
+
+      // Prevent spamming out of stock alert within 1 hour for the same variant
+      if (data.variantId) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const existing = await this.prisma.notification.findFirst({
+          where: {
+            title: 'Out of Stock Alert 🔴',
+            createdAt: { gte: oneHourAgo },
+            data: { path: ['variantId'], equals: data.variantId },
+          },
+        });
+        if (existing) return;
+      }
     }
 
     if (!shouldNotify) return;

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { 
   Bell, 
   BellOff, 
@@ -11,7 +12,9 @@ import {
   Loader2,
   Trash2,
   Search,
-  RefreshCw
+  RefreshCw,
+  PackageX,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -91,24 +94,28 @@ export default function AdminNotificationsPage() {
   };
 
   const getNotificationIcon = (n: Notification) => {
-    // Check type of notification, or details inside data
     const data = n.data || {};
-    const typeStr = n.type;
-    
-    // Determine icon based on message title, data type, or type field
-    if (n.title.toLowerCase().includes('order') || data.orderId) {
+    const titleLower = n.title.toLowerCase();
+
+    if (titleLower.includes('out of stock')) {
+      return {
+        icon: PackageX,
+        bg: 'bg-red-50 text-red-600 border-red-100',
+      };
+    }
+    if (titleLower.includes('order') || data.orderId) {
       return {
         icon: ShoppingBag,
         bg: 'bg-blue-50 text-blue-600 border-blue-100',
       };
     }
-    if (n.title.toLowerCase().includes('stock') || data.variantId) {
+    if (titleLower.includes('stock') || data.variantId) {
       return {
         icon: AlertTriangle,
         bg: 'bg-amber-50 text-amber-600 border-amber-100',
       };
     }
-    if (n.title.toLowerCase().includes('customer') || n.title.toLowerCase().includes('register') || data.customerId) {
+    if (titleLower.includes('customer') || titleLower.includes('register') || data.customerId) {
       return {
         icon: UserPlus,
         bg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -259,6 +266,28 @@ export default function AdminNotificationsPage() {
                       <p className="text-sm text-muted-foreground leading-relaxed break-words">
                         {n.body}
                       </p>
+                      {n.data?.productId && (
+                        <div className="mt-2.5">
+                          <Link
+                            href={`/admin/products?editProductId=${n.data.productId}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors"
+                          >
+                            <span>View Product</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      )}
+                      {n.data?.orderId && (
+                        <div className="mt-2.5">
+                          <Link
+                            href={`/admin/orders/${n.data.orderId}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
+                          >
+                            <span>View Order</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      )}
                     </div>
 
                     {/* Action Button */}

@@ -34,41 +34,7 @@ export function getItemImageUrl(it: any): string {
   return img;
 }
 
-export function printOrderLabel(order: any, storeAddress?: string) {
-  const settings = useSettingsStore.getState().settings;
-  const supportPhone = settings?.supportPhone || '+91 8919045363';
-
-  // Expose download handler globally on parent window so child popup can trigger it
-  (window as any).downloadLabelFromPopup = async (popupWin: Window, orderNum: string, btnElement?: HTMLButtonElement) => {
-    const element = popupWin.document.getElementById('label-content');
-    if (!element) {
-      popupWin.alert('Label content element not found!');
-      return;
-    }
-    if (btnElement) {
-      btnElement.disabled = true;
-      btnElement.innerText = '⌛ Downloading...';
-    }
-    try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      const link = popupWin.document.createElement('a');
-      link.download = `Order-Label-${orderNum}.jpg`;
-      link.href = dataUrl;
-      link.click();
-    } catch (err: any) {
-      popupWin.alert('Download failed: ' + err.message);
-    } finally {
-      if (btnElement) {
-        btnElement.disabled = false;
-        btnElement.innerText = '📥 Download JPG';
-      }
-    }
-  };
-
-  const w = window.open('', '_blank', 'width=650,height=900');
-  if (!w) return;
-
+export function generateSingleLabelCardHtml(order: any, storeAddress?: string, supportPhone?: string): string {
   const subtotal = order.subtotal
     ? Number(order.subtotal)
     : (order.items || []).reduce(
@@ -115,26 +81,7 @@ export function printOrderLabel(order: any, storeAddress?: string) {
     })
     .join('');
 
-  w.document.write(`<!DOCTYPE html><html><head><title>Order Label — ${order.orderNumber}</title>
-  <style>
-    body{font-family:Inter,Arial,sans-serif;font-size:13px;color:#111;margin:24px;background:#f3f4f6;}
-    h2{margin:0 0 4px;font-size:18px;color:#111827;}
-    .section{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:12px 0;}
-    .label{font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;}
-    table{width:100%;border-collapse:collapse;margin-top:8px;}
-    th{background:#f3f4f6;padding:6px 8px;font-size:11px;font-weight:700;text-align:left;border:1px solid #e5e7eb;color:#374151;}
-    .total-row td{font-weight:800;border-top:2px solid #111;background:#f9fafb;}
-    .summary-row td{font-size:12px;}
-    .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
-    @media print{button{display:none !important;}}
-  </style>
-  </head><body>
-  <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
-    <button onclick="if (window.opener && window.opener.downloadLabelFromPopup) { window.opener.downloadLabelFromPopup(window, '${order.orderNumber}', this); } else { alert('Parent window reference lost. Please keep the main window open.'); }" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
-    <button onclick="window.close()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">❌ Close</button>
-  </div>
-  <div id="label-content" style="border:2px solid #111;border-radius:8px;padding:20px;background:white;max-width:580px;margin:0 auto;">
+  return `<div id="label-content-${order.orderNumber}" class="label-card" style="border:2px solid #111;border-radius:8px;padding:20px;background:white;max-width:580px;margin:0 auto 24px auto;box-sizing:border-box;">
     <h2>📦 Anjali Alankaram</h2>
     <p style="margin:0;font-size:12px;color:#6b7280;">Order Management Label</p>
     <hr class="divider"/>
@@ -153,7 +100,7 @@ export function printOrderLabel(order: any, storeAddress?: string) {
         <div class="label">From Address</div>
         <p style="margin:6px 0;font-weight:700;font-size:15px;">Anjali Alankaram</p>
         <p style="margin:2px 0;line-height:1.4;white-space:pre-line;">${storeAddress || 'Address not set'}</p>
-        <p style="margin:6px 0;font-size:13px;font-weight:700;">📞 Support: ${supportPhone}</p>
+        <p style="margin:6px 0;font-size:13px;font-weight:700;">📞 Support: ${supportPhone || '+91 8919045363'}</p>
       </div>
       <div class="section">
         <div class="label">📍 Delivery Address</div>
@@ -253,7 +200,120 @@ export function printOrderLabel(order: any, storeAddress?: string) {
         </tbody>
       </table>
     </div>
+  </div>`;
+}
+
+export function printOrderLabel(order: any, storeAddress?: string) {
+  const settings = useSettingsStore.getState().settings;
+  const supportPhone = settings?.supportPhone || '+91 8919045363';
+
+  // Expose download handler globally on parent window so child popup can trigger it
+  (window as any).downloadLabelFromPopup = async (popupWin: Window, orderNum: string, btnElement?: HTMLButtonElement) => {
+    const element = popupWin.document.getElementById(`label-content-${orderNum}`) || popupWin.document.getElementById('label-content');
+    if (!element) {
+      popupWin.alert('Label content element not found!');
+      return;
+    }
+    if (btnElement) {
+      btnElement.disabled = true;
+      btnElement.innerText = '⌛ Downloading...';
+    }
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const link = popupWin.document.createElement('a');
+      link.download = `Order-Label-${orderNum}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err: any) {
+      popupWin.alert('Download failed: ' + err.message);
+    } finally {
+      if (btnElement) {
+        btnElement.disabled = false;
+        btnElement.innerText = '📥 Download JPG';
+      }
+    }
+  };
+
+  const w = window.open('', '_blank', 'width=650,height=900');
+  if (!w) return;
+
+  const cardHtml = generateSingleLabelCardHtml(order, storeAddress, supportPhone);
+
+  w.document.write(`<!DOCTYPE html><html><head><title>Order Label — ${order.orderNumber}</title>
+  <style>
+    body{font-family:Inter,Arial,sans-serif;font-size:13px;color:#111;margin:24px;background:#f3f4f6;}
+    h2{margin:0 0 4px;font-size:18px;color:#111827;}
+    .section{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:12px 0;}
+    .label{font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;}
+    table{width:100%;border-collapse:collapse;margin-top:8px;}
+    th{background:#f3f4f6;padding:6px 8px;font-size:11px;font-weight:700;text-align:left;border:1px solid #e5e7eb;color:#374151;}
+    .total-row td{font-weight:800;border-top:2px solid #111;background:#f9fafb;}
+    .summary-row td{font-size:12px;}
+    .divider{border:none;border-top:2px dashed #e5e7eb;margin:16px 0;}
+    @media print{button{display:none !important;}}
+  </style>
+  </head><body>
+  <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
+    <button onclick="window.print()" style="padding:8px 20px;background:#2e576b;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">🖨 Print Label</button>
+    <button onclick="if (window.opener && window.opener.downloadLabelFromPopup) { window.opener.downloadLabelFromPopup(window, '${order.orderNumber}', this); } else { alert('Parent window reference lost. Please keep the main window open.'); }" style="padding:8px 20px;background:#10b981;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">📥 Download JPG</button>
+    <button onclick="window.close()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;">❌ Close</button>
   </div>
+  ${cardHtml}
+  </body></html>`);
+  w.document.close();
+}
+
+export function printBulkOrderLabels(orders: any[], storeAddress?: string, filterInfo?: string) {
+  if (!orders || orders.length === 0) {
+    alert('No orders available to print labels.');
+    return;
+  }
+
+  const settings = useSettingsStore.getState().settings;
+  const supportPhone = settings?.supportPhone || '+91 8919045363';
+
+  const w = window.open('', '_blank', 'width=800,height=950');
+  if (!w) return;
+
+  const labelsHtml = orders
+    .map(
+      (order) => `
+    <div class="label-page">
+      ${generateSingleLabelCardHtml(order, storeAddress, supportPhone)}
+    </div>
+  `,
+    )
+    .join('');
+
+  w.document.write(`<!DOCTYPE html><html><head><title>Bulk Confirmed Order Labels (${orders.length})</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; font-size: 13px; color: #111; margin: 24px; background: #f3f4f6; }
+    h2 { margin: 0 0 4px; font-size: 18px; color: #111827; }
+    .section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin: 12px 0; }
+    .label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #6b7280; letter-spacing: .05em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th { background: #f3f4f6; padding: 6px 8px; font-size: 11px; font-weight: 700; text-align: left; border: 1px solid #e5e7eb; color: #374151; }
+    .total-row td { font-weight: 800; border-top: 2px solid #111; background: #f9fafb; }
+    .summary-row td { font-size: 12px; }
+    .divider { border: none; border-top: 2px dashed #e5e7eb; margin: 16px 0; }
+    .action-header { margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: white; padding: 12px 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .label-page { page-break-after: always; break-after: page; margin-bottom: 30px; }
+    @media print {
+      .action-header { display: none !important; }
+      body { background: white !important; margin: 0 !important; }
+      .label-page { margin-bottom: 0 !important; page-break-after: always !important; break-after: page !important; }
+    }
+  </style>
+  </head><body>
+  <div class="action-header">
+    <button onclick="window.print()" style="padding:10px 24px;background:#2e576b;color:white;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">🖨 Print / Save PDF (${orders.length} Labels)</button>
+    <button onclick="window.close()" style="padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">❌ Close</button>
+    <span style="font-weight:600;color:#374151;font-size:13px;margin-left:auto;">
+      Total: <strong>${orders.length}</strong> Confirmed Order Label(s) ${filterInfo ? `(${filterInfo})` : ''}
+    </span>
+  </div>
+  ${labelsHtml}
   </body></html>`);
   w.document.close();
 }

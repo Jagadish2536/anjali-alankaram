@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import {
   TrendingUp, Users, ShoppingBag, Clock, ArrowUpRight,
   Package, CheckCircle2, RefreshCw, Download, Eye,
-  ShoppingCart, AlertCircle, Star, RotateCcw, Radio,
+  ShoppingCart, AlertCircle, Star, PackageX, Radio,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState({
     totalSales: 0, totalOrders: 0, totalCustomers: 0, pendingOrders: 0,
-    deliveredOrders: 0, cancelledOrders: 0, returnRequested: 0, lowStock: 0,
+    deliveredOrders: 0, cancelledOrders: 0, returnRequested: 0, lowStock: 0, outOfStock: 0,
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
       const [dashRes, usersRes, productsRes] = await Promise.all([
         api.get('/admin/dashboard'),
         api.get('/users').catch(() => ({ data: [] })),
-        api.get('/products?limit=100').catch(() => ({ data: { products: [] } })),
+        api.get('/products?limit=500').catch(() => ({ data: { products: [] } })),
       ]);
 
       const dash = dashRes.data;
@@ -123,6 +123,11 @@ export default function AdminDashboard() {
       const allProducts: any[] = Array.isArray(productsRes.data?.data)
         ? productsRes.data.data
         : (Array.isArray(productsRes.data) ? productsRes.data : []);
+
+      const calculatedOutOfStock = allProducts.filter((p: any) =>
+        p.status === 'OUT_OF_STOCK' ||
+        (p.variants && p.variants.length > 0 && p.variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0) === 0)
+      ).length;
 
       // Stats from dashboard endpoint
       setStats({
@@ -134,6 +139,7 @@ export default function AdminDashboard() {
         cancelledOrders: dash.stats?.cancelledOrders || 0,
         returnRequested: dash.stats?.returnRequested || 0,
         lowStock: dash.stats?.lowStock || 0,
+        outOfStock: dash.stats?.outOfStock ?? calculatedOutOfStock,
       });
 
       // Chart data from dashboard endpoint (7-day revenue)
@@ -184,13 +190,13 @@ export default function AdminDashboard() {
 
   const statCards = [
     { name: 'Total Revenue', value: formatPrice(stats.totalSales), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/admin/orders' },
-    { name: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/orders' },
+    { name: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/orders?status=ALL' },
     { name: 'Total Customers', value: stats.totalCustomers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', link: '/admin/customers' },
-    { name: 'Pending Orders', value: stats.pendingOrders, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', link: '/admin/orders?status=PENDING' },
+    { name: 'Pending Orders', value: stats.pendingOrders, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', link: '/admin/orders?status=CONFIRMED' },
     { name: 'Delivered', value: stats.deliveredOrders, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/orders?status=DELIVERED' },
     { name: 'Cancelled', value: stats.cancelledOrders, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', link: '/admin/orders?status=CANCELLED' },
-    { name: 'Return Requests', value: stats.returnRequested, icon: RotateCcw, color: 'text-yellow-600', bg: 'bg-yellow-50', link: '/admin/orders?status=RETURN_REQUESTED' },
-    { name: 'Low Stock Items', value: stats.lowStock, icon: Package, color: 'text-rose-600', bg: 'bg-rose-50', link: '/admin/products' },
+    { name: 'Out of Stock Items', value: stats.outOfStock, icon: PackageX, color: 'text-red-600', bg: 'bg-red-50', link: '/admin/products?filter=out-of-stock' },
+    { name: 'Low Stock Items', value: stats.lowStock, icon: Package, color: 'text-rose-600', bg: 'bg-rose-50', link: '/admin/products?filter=low-stock' },
   ];
 
   return (

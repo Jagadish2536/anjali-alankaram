@@ -2,12 +2,12 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  Search, X, Package, Loader2, RefreshCw, Eye, Printer
+  Search, X, Package, Loader2, RefreshCw, Eye, Printer, Calendar, FileText
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { printOrderLabel } from '@/lib/printLabel';
+import { printOrderLabel, printBulkOrderLabels } from '@/lib/printLabel';
 
 // ── Status config ────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
@@ -61,6 +61,78 @@ function AdminOrdersContent() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const { settings, fetchSettings } = useSettingsStore();
 
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkOption, setBulkOption] = useState<'ALL' | 'DATE'>('ALL');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
+  const [dateOrderCount, setDateOrderCount] = useState<number | null>(null);
+  const [isCheckingDateCount, setIsCheckingDateCount] = useState(false);
+
+  const checkDateCount = useCallback(async (dateStr: string) => {
+    setIsCheckingDateCount(true);
+    try {
+      const res = await api.get('/orders/admin/all?status=CONFIRMED&limit=500');
+      const result = Array.isArray(res.data) ? res.data : res.data?.orders ?? [];
+      const matched = result.filter((o: any) => {
+        if (!o.createdAt) return false;
+        const d = new Date(o.createdAt).toISOString().split('T')[0];
+        return d === dateStr;
+      });
+      setDateOrderCount(matched.length);
+    } catch {
+      setDateOrderCount(0);
+    } finally {
+      setIsCheckingDateCount(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isBulkModalOpen && bulkOption === 'DATE' && selectedDate) {
+      checkDateCount(selectedDate);
+    }
+  }, [isBulkModalOpen, bulkOption, selectedDate, checkDateCount]);
+
+  const handlePrintBulkLabels = async () => {
+    setIsGeneratingBulk(true);
+    try {
+      const res = await api.get('/orders/admin/all?status=CONFIRMED&limit=1000');
+      let result = Array.isArray(res.data) ? res.data : res.data?.orders ?? [];
+
+      if (bulkOption === 'DATE') {
+        result = result.filter((o: any) => {
+          if (!o.createdAt) return false;
+          const d = new Date(o.createdAt).toISOString().split('T')[0];
+          return d === selectedDate;
+        });
+      }
+
+      if (result.length === 0) {
+        alert(
+          bulkOption === 'DATE'
+            ? `No confirmed orders found for date ${selectedDate}.`
+            : 'No confirmed orders found.',
+        );
+        return;
+      }
+
+      const filterText =
+        bulkOption === 'DATE'
+          ? `Date: ${new Date(selectedDate).toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}`
+          : 'All Confirmed';
+
+      printBulkOrderLabels(result, settings.storeAddress, filterText);
+      setIsBulkModalOpen(false);
+    } catch (err: any) {
+      alert('Failed to generate bulk labels: ' + err.message);
+    } finally {
+      setIsGeneratingBulk(false);
+    }
+  };
+
   const fetchOrders = useCallback(async (p = 1) => {
     setIsLoading(true);
     try {
@@ -102,10 +174,18 @@ function AdminOrdersContent() {
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">{total} total orders</p>
           </div>
-          <button onClick={() => fetchOrders(page)}
-            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 text-sm border rounded-xl hover:bg-white transition-colors bg-white shadow-sm">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setIsBulkModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+            >
+              <Printer className="w-4 h-4" /> Download Labels PDF
+            </button>
+            <button onClick={() => fetchOrders(page)}
+              className="flex items-center gap-2 px-4 py-2 text-sm border rounded-xl hover:bg-white transition-colors bg-white shadow-sm">
+              <RefreshCw className="w-4 h-4" /> Refresh
+            </button>
+          </div>
         </div>
 
         {/* Status Filter Tabs */}
@@ -271,6 +351,135 @@ function AdminOrdersContent() {
           </>
         )}
       </div>
+
+      {/* Bulk Print Labels Modal */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-gray-100 space-y-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h3 className="text-lg font-outfit font-black text-foreground flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-primary" /> Print Confirmed Order Labels
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Download or print shipping labels for confirmed orders
+                </p>
+              </div>
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+                className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Option 1: All Confirmed Orders */}
+              <label
+                onClick={() => setBulkOption('ALL')}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  bulkOption === 'ALL'
+                    ? 'border-primary bg-primary/[0.03] shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="bulkOption"
+                  checked={bulkOption === 'ALL'}
+                  onChange={() => setBulkOption('ALL')}
+                  className="mt-1 text-primary focus:ring-primary"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-foreground">
+                      1. Download all confirmed orders print labels
+                    </span>
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-extrabold rounded-full shrink-0">
+                      {statusCounts['CONFIRMED'] ?? 0} Orders
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Print labels for all currently active confirmed orders in one consolidated PDF document.
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 2: Select Specific Date */}
+              <label
+                onClick={() => setBulkOption('DATE')}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  bulkOption === 'DATE'
+                    ? 'border-primary bg-primary/[0.03] shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="bulkOption"
+                  checked={bulkOption === 'DATE'}
+                  onChange={() => setBulkOption('DATE')}
+                  className="mt-1 text-primary focus:ring-primary"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-foreground">
+                      2. Select specific date of confirmed orders
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Filter confirmed orders created on a specific date for printing.
+                  </p>
+
+                  {bulkOption === 'DATE' && (
+                    <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row sm:items-center gap-3">
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="px-3 py-1.5 border rounded-lg text-sm bg-white font-medium outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                      />
+                      {isCheckingDateCount ? (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> Checking count...
+                        </span>
+                      ) : dateOrderCount !== null ? (
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                          {dateOrderCount} confirmed label(s) found
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t pt-4">
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+                className="px-4 py-2 text-sm font-bold text-muted-foreground hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePrintBulkLabels}
+                disabled={isGeneratingBulk || (bulkOption === 'DATE' && dateOrderCount === 0)}
+                className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm active:scale-95"
+              >
+                {isGeneratingBulk ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer className="w-4 h-4" /> Download / Print Labels PDF
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -137,6 +137,7 @@ export class AdminController implements OnModuleInit {
       statusBreakdown,
       recentOrders,
       lowStockVariants,
+      outOfStockProducts,
       dailyRevenue,
     ] = await Promise.all([
       // Total customers (CUSTOMER role only)
@@ -181,6 +182,16 @@ export class AdminController implements OnModuleInit {
       // Low stock variants
       this.prisma.productVariant.count({
         where: { stock: { lte: 5 }, isActive: true },
+      }),
+
+      // Out of stock products count
+      this.prisma.product.count({
+        where: {
+          OR: [
+            { status: 'OUT_OF_STOCK' },
+            { variants: { none: { stock: { gt: 0 } } } },
+          ],
+        },
       }),
 
       // Last 7 days daily revenue
@@ -239,6 +250,7 @@ export class AdminController implements OnModuleInit {
         cancelledOrders: Number(cancelledOrders),
         returnRequested: Number(returnRequested),
         lowStock: lowStockVariants,
+        outOfStock: outOfStockProducts,
       },
       statusBreakdown,
       recentOrders,

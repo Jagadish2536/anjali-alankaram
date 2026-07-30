@@ -218,12 +218,14 @@ export class OrdersService {
         .catch(() => {});
     }
 
-    this.notificationsService
-      .sendAdminAlert('ORDER_PLACED', {
-        orderId: order.id, orderNumber, totalAmount: order.totalAmount,
-        customerName: address.name || 'Customer',
-      })
-      .catch(() => {});
+    if (initialStatus === 'PAYMENT_VERIFIED') {
+      this.notificationsService
+        .sendAdminAlert('ORDER_PLACED', {
+          orderId: order.id, orderNumber, totalAmount: order.totalAmount,
+          customerName: address.name || 'Customer',
+        })
+        .catch(() => {});
+    }
 
     // Email confirmation via AWS SES
     if (dto.paymentMethod === 'COD') {

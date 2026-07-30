@@ -43,6 +43,16 @@ export class PaymentsService implements OnModuleInit {
         .sendOrderNotification(order.userId, 'ORDER_PLACED', order.id, order.orderNumber)
         .catch(() => {});
 
+      // 2. Send admin alert notification (only when payment is verified)
+      await this.notificationsService
+        .sendAdminAlert('ORDER_PLACED', {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          totalAmount: order.totalAmount,
+          customerName: order.user?.name || order.address?.name || 'Customer',
+        })
+        .catch(() => {});
+
       // 2. Send email confirmation
       if (order.user?.email) {
         await this.emailService.sendOrderConfirmation(order.user.email, {
