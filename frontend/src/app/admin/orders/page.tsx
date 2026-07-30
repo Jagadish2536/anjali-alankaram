@@ -63,8 +63,14 @@ function AdminOrdersContent() {
   const { settings, fetchSettings } = useSettingsStore();
 
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [bulkOption, setBulkOption] = useState<'ALL' | 'DATE'>('ALL');
+  const [bulkOption, setBulkOption] = useState<'ALL' | 'DATE_SINGLE' | 'DATE_RANGE'>('ALL');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
   const [dateOrderCount, setDateOrderCount] = useState<number | null>(null);
   const [isCheckingDateCount, setIsCheckingDateCount] = useState(false);
@@ -74,34 +80,46 @@ function AdminOrdersContent() {
   const [bulkOrdersForLabel, setBulkOrdersForLabel] = useState<any[] | null>(null);
   const [bulkFilterInfo, setBulkFilterInfo] = useState<string>('');
 
-  const checkDateCount = useCallback(async (dateStr: string) => {
+  const checkDateCount = useCallback(async () => {
     setIsCheckingDateCount(true);
     try {
       let res: any;
       try {
         res = await api.get('/orders/admin/all?status=CONFIRMED&limit=500');
-      } catch {
+      } catch (_e) {
         res = await api.get('/orders/admin/all?status=CONFIRMED');
       }
       const result = Array.isArray(res.data) ? res.data : res.data?.orders ?? [];
-      const matched = result.filter((o: any) => {
-        if (!o.createdAt) return false;
-        const d = new Date(o.createdAt).toISOString().split('T')[0];
-        return d === dateStr;
-      });
-      setDateOrderCount(matched.length);
-    } catch {
+      
+      if (bulkOption === 'DATE_SINGLE') {
+        const matched = result.filter((o: any) => {
+          if (!o.createdAt) return false;
+          const d = new Date(o.createdAt).toISOString().split('T')[0];
+          return d === selectedDate;
+        });
+        setDateOrderCount(matched.length);
+      } else if (bulkOption === 'DATE_RANGE') {
+        const matched = result.filter((o: any) => {
+          if (!o.createdAt) return false;
+          const d = new Date(o.createdAt).toISOString().split('T')[0];
+          return d >= fromDate && d <= toDate;
+        });
+        setDateOrderCount(matched.length);
+      } else {
+        setDateOrderCount(result.length);
+      }
+    } catch (_e) {
       setDateOrderCount(0);
     } finally {
       setIsCheckingDateCount(false);
     }
-  }, []);
+  }, [bulkOption, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
-    if (isBulkModalOpen && bulkOption === 'DATE' && selectedDate) {
-      checkDateCount(selectedDate);
+    if (isBulkModalOpen) {
+      checkDateCount();
     }
-  }, [isBulkModalOpen, bulkOption, selectedDate, checkDateCount]);
+  }, [isBulkModalOpen, bulkOption, selectedDate, fromDate, toDate, checkDateCount]);
 
   const handlePrintBulkLabels = async () => {
     setIsGeneratingBulk(true);
@@ -109,7 +127,7 @@ function AdminOrdersContent() {
       let res: any;
       try {
         res = await api.get('/orders/admin/all?status=CONFIRMED&limit=500');
-      } catch {
+      } catch (_e) {
         res = await api.get('/orders/admin/all?status=CONFIRMED');
       }
       let result = Array.isArray(res.data) ? res.data : res.data?.orders ?? [];
@@ -118,31 +136,37 @@ function AdminOrdersContent() {
         result = orders;
       }
 
-      if (bulkOption === 'DATE') {
+      if (bulkOption === 'DATE_SINGLE') {
         result = result.filter((o: any) => {
           if (!o.createdAt) return false;
           const d = new Date(o.createdAt).toISOString().split('T')[0];
           return d === selectedDate;
         });
+      } else if (bulkOption === 'DATE_RANGE') {
+        result = result.filter((o: any) => {
+          if (!o.createdAt) return false;
+          const d = new Date(o.createdAt).toISOString().split('T')[0];
+          return d >= fromDate && d <= toDate;
+        });
       }
 
       if (result.length === 0) {
         alert(
-          bulkOption === 'DATE'
+          bulkOption === 'DATE_SINGLE'
             ? `No confirmed orders found for date ${selectedDate}.`
+            : bulkOption === 'DATE_RANGE'
+            ? `No confirmed orders found between ${fromDate} and ${toDate}.`
             : 'No confirmed orders found.',
         );
         return;
       }
 
-      const filterText =
-        bulkOption === 'DATE'
-          ? `Date: ${new Date(selectedDate).toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}`
-          : 'All Confirmed';
+      let filterText = 'All Confirmed';
+      if (bulkOption === 'DATE_SINGLE') {
+        filterText = `Date: ${selectedDate}`;
+      } else if (bulkOption === 'DATE_RANGE') {
+        filterText = `From ${fromDate} to ${toDate}`;
+      }
 
       setBulkOrdersForLabel(result);
       setSelectedOrderForLabel(null);
@@ -173,15 +197,24 @@ function AdminOrdersContent() {
         setStatusCounts(data.statusCounts);
       }
       setPage(p);
-    } catch { /* ignore */ }
-    finally { setIsLoading(false); }
+    } catch (err) {
+      /* ignore */
+    } finally {
+      setIsLoading(false);
+    }
   }, [search, statusFilter]);
 
-  useEffect(() => { fetchOrders(1); }, [statusFilter]);
   useEffect(() => {
-    const t = setTimeout(() => fetchOrders(1), 400);
+    fetchOrders(1);
+  }, [statusFilter, fetchOrders]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchOrders(1);
+    }, 400);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, fetchOrders]);
+
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
@@ -432,11 +465,11 @@ function AdminOrdersContent() {
                 </div>
               </label>
 
-              {/* Option 2: Select Specific Date */}
+              {/* Option 2: Select Specific Single Date */}
               <label
-                onClick={() => setBulkOption('DATE')}
+                onClick={() => setBulkOption('DATE_SINGLE')}
                 className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  bulkOption === 'DATE'
+                  bulkOption === 'DATE_SINGLE'
                     ? 'border-primary bg-primary/[0.03] shadow-sm'
                     : 'border-gray-200 hover:border-gray-300 bg-white'
                 }`}
@@ -444,21 +477,21 @@ function AdminOrdersContent() {
                 <input
                   type="radio"
                   name="bulkOption"
-                  checked={bulkOption === 'DATE'}
-                  onChange={() => setBulkOption('DATE')}
+                  checked={bulkOption === 'DATE_SINGLE'}
+                  onChange={() => setBulkOption('DATE_SINGLE')}
                   className="mt-1 text-primary focus:ring-primary"
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-foreground">
-                      2. Select specific date of confirmed orders
+                      2. Select specific single date
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Filter confirmed orders created on a specific date for printing.
+                    Filter confirmed orders created on a specific single date.
                   </p>
 
-                  {bulkOption === 'DATE' && (
+                  {bulkOption === 'DATE_SINGLE' && (
                     <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row sm:items-center gap-3">
                       <input
                         type="date"
@@ -472,9 +505,74 @@ function AdminOrdersContent() {
                         </span>
                       ) : dateOrderCount !== null ? (
                         <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                          {dateOrderCount} confirmed label(s) found
+                          {dateOrderCount} label(s) found
                         </span>
                       ) : null}
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              {/* Option 3: Select Date Range (From Date to To Date) */}
+              <label
+                onClick={() => setBulkOption('DATE_RANGE')}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  bulkOption === 'DATE_RANGE'
+                    ? 'border-primary bg-primary/[0.03] shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="bulkOption"
+                  checked={bulkOption === 'DATE_RANGE'}
+                  onChange={() => setBulkOption('DATE_RANGE')}
+                  className="mt-1 text-primary focus:ring-primary"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-foreground">
+                      3. Select date range (From Date → To Date)
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Filter confirmed orders created between a custom date range.
+                  </p>
+
+                  {bulkOption === 'DATE_RANGE' && (
+                    <div className="mt-3 pt-3 border-t space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <span className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">From Date:</span>
+                          <input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            className="w-full px-3 py-1.5 border rounded-lg text-sm bg-white font-medium outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">To Date:</span>
+                          <input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            className="w-full px-3 py-1.5 border rounded-lg text-sm bg-white font-medium outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        {isCheckingDateCount ? (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> Checking count...
+                          </span>
+                        ) : dateOrderCount !== null ? (
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                            {dateOrderCount} label(s) found in date range
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -490,7 +588,7 @@ function AdminOrdersContent() {
               </button>
               <button
                 onClick={handlePrintBulkLabels}
-                disabled={isGeneratingBulk || (bulkOption === 'DATE' && dateOrderCount === 0)}
+                disabled={isGeneratingBulk || (bulkOption !== 'ALL' && dateOrderCount === 0)}
                 className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm active:scale-95"
               >
                 {isGeneratingBulk ? (

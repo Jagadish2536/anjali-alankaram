@@ -86,12 +86,11 @@ export function LabelSizeModal({
     setIsProcessing(true);
     setActionType('jpg');
     try {
-      const elementToCapture = previewRef.current.querySelector('.label-card') as HTMLElement || previewRef.current;
       const fileName = isBulk
         ? `Bulk-Order-Labels-${selectedSize}-${Date.now()}.jpg`
         : `Order-Label-#${targetOrders[0]?.orderNumber}-${selectedSize}.jpg`;
 
-      await downloadLabelElementAsJpg(elementToCapture, fileName);
+      await downloadLabelElementAsJpg(previewRef.current, fileName);
     } catch (err: any) {
       alert('Download JPG failed: ' + err.message);
     } finally {
@@ -105,12 +104,11 @@ export function LabelSizeModal({
     setIsProcessing(true);
     setActionType('pdf');
     try {
-      const elementToCapture = previewRef.current.querySelector('.label-card') as HTMLElement || previewRef.current;
       const fileName = isBulk
         ? `Bulk-Order-Labels-${selectedSize}-${Date.now()}.pdf`
         : `Order-Label-#${targetOrders[0]?.orderNumber}-${selectedSize}.pdf`;
 
-      await downloadLabelElementAsPdf(elementToCapture, fileName, selectedSize);
+      await downloadLabelElementAsPdf(previewRef.current, fileName, selectedSize);
     } catch (err: any) {
       alert('Download PDF failed: ' + err.message);
     } finally {
