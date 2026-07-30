@@ -82,13 +82,11 @@ export function LabelSizeModal({
   };
 
   const handleDownloadJpg = async () => {
-    if (!previewRef.current) return;
+    if (isBulk || !previewRef.current) return;
     setIsProcessing(true);
     setActionType('jpg');
     try {
-      const fileName = isBulk
-        ? `Bulk-Order-Labels-${selectedSize}-${Date.now()}.jpg`
-        : `Order-Label-#${targetOrders[0]?.orderNumber}-${selectedSize}.jpg`;
+      const fileName = `Order-Label-#${targetOrders[0]?.orderNumber}-${selectedSize}.jpg`;
 
       await downloadLabelElementAsJpg(previewRef.current, fileName);
     } catch (err: any) {
@@ -243,16 +241,21 @@ export function LabelSizeModal({
               Cancel
             </button>
 
-            {/* Download JPG */}
+            {/* Download JPG (Enabled only for Single Orders) */}
             <button
               onClick={handleDownloadJpg}
-              disabled={isProcessing}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 transition-all shadow-sm active:scale-95"
+              disabled={isProcessing || isBulk}
+              title={isBulk ? "Download JPG is available for single order labels only. Use Download PDF for bulk orders." : "Download label as JPG image"}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold border rounded-xl transition-all shadow-sm active:scale-95 ${
+                isBulk
+                  ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200'
+                  : 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 disabled:opacity-50'
+              }`}
             >
               {isProcessing && actionType === 'jpg' ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Preparing JPG...</>
               ) : (
-                <><ImageIcon className="w-4 h-4" /> Download JPG</>
+                <><ImageIcon className="w-4 h-4" /> Download JPG {isBulk && '(Single Only)'}</>
               )}
             </button>
 

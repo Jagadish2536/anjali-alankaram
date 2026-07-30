@@ -38,6 +38,7 @@ export const LABEL_SIZES: LabelSizeOption[] = [
 ];
 
 export function getItemImageUrl(it: any): string {
+  if (!it) return '';
   let img = '';
   if (it.variant?.images && Array.isArray(it.variant.images) && it.variant.images.length > 0 && it.variant.images[0]) {
     img = it.variant.images[0];
@@ -52,8 +53,17 @@ export function getItemImageUrl(it: any): string {
   if (!img && it.imageUrl) {
     img = it.imageUrl;
   }
+  if (!img && it.image) {
+    img = it.image;
+  }
+  if (!img && it.productImage) {
+    img = it.productImage;
+  }
   if (!img && it.product?.images && Array.isArray(it.product.images) && it.product.images.length > 0 && it.product.images[0]) {
     img = it.product.images[0];
+  }
+  if (!img && it.product?.featuredImage) {
+    img = it.product.featuredImage;
   }
   
   if (!img) return '';
@@ -293,7 +303,7 @@ function generateA4CardHtml(order: any, storeAddress?: string, supportPhone?: st
       <td style="padding:8px;border:1px solid #e5e7eb;text-align:center;vertical-align:middle;width:48px;">
         ${
           imgUrl
-            ? `<img src="${imgUrl}" alt="Item" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;" onerror="this.style.display='none';"/>`
+            ? `<img src="${imgUrl}" alt="Item" crossorigin="anonymous" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;" onerror="this.style.display='none';"/>`
             : `<span style="font-size:9px;color:#9ca3af;">—</span>`
         }
       </td>
@@ -488,6 +498,97 @@ export function printLabelHtmlViaIframe(htmlContent: string) {
   }, 400);
 }
 
+// ── Convert image URL to Base64 Data URL (Solves missing image in canvas) ────
+async function convertImageSrcToBase64(src: string): Promise<string> {
+  if (!src || src.startsWith('data:')) return src;
+  try {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const promise = new Promise<string>((resolve) => {
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width || 100;
+          canvas.height = img.naturalHeight || img.height || 100;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+            return;
+          }
+        } catch (_err) {
+          // If canvas export is blocked, fallback to original src
+        }
+        resolve(src);
+      };
+      img.onerror = () => resolve(src);
+    });
+    img.src = src;
+    return await promise;
+  } catch {
+    return src;
+  }
+}
+
+// ── Safe Canvas Capture Helper (Avoids 'Unable to find element in cloned iframe') ──
+async function captureElementToCanvas(
+  targetElement: HTMLElement,
+  targetWidthPx?: number
+): Promise<HTMLCanvasElement> {
+  if (typeof window === 'undefined') {
+    throw new Error('Canvas capture requires window context.');
+  }
+
+  const tempContainer = document.createElement('div');
+  tempContainer.style.position = 'absolute';
+  tempContainer.style.left = '-9999px';
+  tempContainer.style.top = '0';
+  tempContainer.style.zIndex = '-99999';
+  tempContainer.style.background = '#ffffff';
+
+  const width = targetWidthPx || targetElement.offsetWidth || 400;
+  tempContainer.style.width = `${width}px`;
+
+  const clone = targetElement.cloneNode(true) as HTMLElement;
+  clone.style.transform = 'none';
+  clone.style.margin = '0';
+  clone.style.boxSizing = 'border-box';
+  clone.style.maxWidth = 'none';
+
+  tempContainer.appendChild(clone);
+  document.body.appendChild(tempContainer);
+
+  try {
+    const images = Array.from(clone.querySelectorAll('img'));
+    if (images.length > 0) {
+      await Promise.all(
+        images.map(async (img) => {
+          img.setAttribute('crossorigin', 'anonymous');
+          const currentSrc = img.getAttribute('src') || img.src;
+          if (currentSrc) {
+            const base64Src = await convertImageSrcToBase64(currentSrc);
+            img.setAttribute('src', base64Src);
+            img.src = base64Src;
+          }
+        })
+      );
+    }
+
+    return await html2canvas(clone, {
+      scale: 2.5,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      windowWidth: width,
+    });
+  } finally {
+    if (tempContainer.parentNode) {
+      tempContainer.parentNode.removeChild(tempContainer);
+    }
+  }
+}
+
 // ── Cross-Platform JPG Download Helper (iOS & Android PWA Supported!) ────────
 export async function downloadLabelElementAsJpg(
   containerElement: HTMLElement,
@@ -497,7 +598,7 @@ export async function downloadLabelElementAsJpg(
     const cards = Array.from(containerElement.querySelectorAll('.label-card')) as HTMLElement[];
     const targetElement = cards.length > 0 ? cards[0] : containerElement;
 
-    const canvas = await html2canvas(targetElement, { scale: 2.5, useCORS: true, allowTaint: true });
+    const canvas = await captureElementToCanvas(targetElement);
     
     return new Promise((resolve) => {
       canvas.toBlob(async (blob) => {
@@ -574,6 +675,7 @@ export async function downloadLabelElementAsPdf(
 
     const jsPDF = jsPDFModule.jsPDF || (jsPDFModule as any).default;
     const option = LABEL_SIZES.find((s) => s.id === size) || LABEL_SIZES[0];
+    const targetWidthPx = size === 'a4' ? 794 : 378;
 
     // Create jsPDF document matching exact dimensions
     const pdf = new jsPDF({
@@ -585,12 +687,7 @@ export async function downloadLabelElementAsPdf(
     // Iterate through EVERY label card and add each to its own page!
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i];
-      const canvas = await html2canvas(card, {
-        scale: 2.5,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
-      });
+      const canvas = await captureElementToCanvas(card, targetWidthPx);
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
