@@ -39,34 +39,94 @@ export const LABEL_SIZES: LabelSizeOption[] = [
 
 export function getItemImageUrl(it: any): string {
   if (!it) return '';
+
+  const extractUrl = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed) return '';
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) {
+            return extractUrl(parsed[0]);
+          }
+        } catch {}
+      }
+      return trimmed;
+    }
+    if (Array.isArray(val) && val.length > 0) {
+      return extractUrl(val[0]);
+    }
+    if (typeof val === 'object' && val !== null) {
+      return extractUrl(val.url || val.src || val.image || val.imageUrl);
+    }
+    return '';
+  };
+
   let img = '';
-  if (it.variant?.images && Array.isArray(it.variant.images) && it.variant.images.length > 0 && it.variant.images[0]) {
-    img = it.variant.images[0];
+
+  // 1. Direct item properties
+  img = extractUrl(it.imageUrl) ||
+        extractUrl(it.image) ||
+        extractUrl(it.productImage) ||
+        extractUrl(it.itemImage) ||
+        extractUrl(it.thumbnail);
+
+  // 2. Variant-specific image
+  if (!img && it.variant) {
+    img = extractUrl(it.variant.images) || extractUrl(it.variant.image) || extractUrl(it.variant.imageUrl);
   }
-  const color = it.variantInfo?.color || it.variant?.color;
-  if (!img && color && it.product?.variants && Array.isArray(it.product.variants)) {
-    const match = it.product.variants.find((v: any) => v.color === color && v.images && v.images.length > 0);
-    if (match?.images?.[0]) {
-      img = match.images[0];
+  if (!img && it.variantInfo) {
+    let vInfo = it.variantInfo;
+    if (typeof vInfo === 'string') {
+      try { vInfo = JSON.parse(vInfo); } catch {}
+    }
+    if (typeof vInfo === 'object' && vInfo !== null) {
+      img = extractUrl(vInfo.images) || extractUrl(vInfo.image) || extractUrl(vInfo.imageUrl);
     }
   }
-  if (!img && it.imageUrl) {
-    img = it.imageUrl;
+
+  // 3. Match color/size variant in item.product.variants
+  const color = (it.variantInfo && typeof it.variantInfo === 'object' ? it.variantInfo.color : '') ||
+                (typeof it.variantInfo === 'string' && it.variantInfo.includes('color') ? (JSON.parse(it.variantInfo || '{}').color || '') : '') ||
+                it.variant?.color;
+
+  if (!img && it.product?.variants) {
+    let variantsList = it.product.variants;
+    if (typeof variantsList === 'string') {
+      try { variantsList = JSON.parse(variantsList); } catch {}
+    }
+    if (Array.isArray(variantsList) && variantsList.length > 0) {
+      if (color) {
+        const match = variantsList.find((v: any) => v && (v.color === color || v.name === color));
+        if (match) {
+          img = extractUrl(match.images) || extractUrl(match.image) || extractUrl(match.imageUrl);
+        }
+      }
+      if (!img) {
+        for (const v of variantsList) {
+          const vImg = extractUrl(v?.images) || extractUrl(v?.image) || extractUrl(v?.imageUrl);
+          if (vImg) {
+            img = vImg;
+            break;
+          }
+        }
+      }
+    }
   }
-  if (!img && it.image) {
-    img = it.image;
+
+  // 4. Product level images
+  if (!img && it.product) {
+    img = extractUrl(it.product.images) ||
+          extractUrl(it.product.featuredImage) ||
+          extractUrl(it.product.image) ||
+          extractUrl(it.product.imageUrl) ||
+          extractUrl(it.product.thumbnail);
   }
-  if (!img && it.productImage) {
-    img = it.productImage;
-  }
-  if (!img && it.product?.images && Array.isArray(it.product.images) && it.product.images.length > 0 && it.product.images[0]) {
-    img = it.product.images[0];
-  }
-  if (!img && it.product?.featuredImage) {
-    img = it.product.featuredImage;
-  }
-  
+
   if (!img) return '';
+
   if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:')) {
     return img;
   }
@@ -154,7 +214,6 @@ function generate4x6CardHtml(order: any, storeAddress?: string, supportPhone?: s
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px;">
       <div>
         <h2 style="margin:0;font-size:15px;font-weight:900;letter-spacing:-0.02em;text-transform:uppercase;color:#111827;">📦 ANJALI ALANKARAM</h2>
-        <p style="margin:2px 0 0 0;font-size:9.5px;color:#4b5563;font-weight:600;">E-Commerce Shipping Label (4" x 6")</p>
       </div>
       <div style="text-align:right;">
         <span style="font-family:monospace;font-size:14px;font-weight:800;background:#111;color:#fff;padding:3px 6px;border-radius:4px;word-break:break-all;">#${order.orderNumber}</span>
@@ -303,7 +362,7 @@ function generateA4CardHtml(order: any, storeAddress?: string, supportPhone?: st
       <td style="padding:8px;border:1px solid #e5e7eb;text-align:center;vertical-align:middle;width:48px;">
         ${
           imgUrl
-            ? `<img src="${imgUrl}" alt="Item" crossorigin="anonymous" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;" onerror="this.style.display='none';"/>`
+            ? `<img src="${imgUrl}" alt="Item" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;display:inline-block;" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2238%22 height=%2238%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%221.5%22><rect width=%2218%22 height=%2218%22 x=%223%22 y=%223%22 rx=%222%22/><circle cx=%229%22 cy=%229%22 r=%222%22/><path d=%22m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21%22/></svg>';"/>`
             : `<span style="font-size:9px;color:#9ca3af;">—</span>`
         }
       </td>
@@ -592,13 +651,16 @@ async function captureElementToCanvas(
 // ── Cross-Platform JPG Download Helper (iOS & Android PWA Supported!) ────────
 export async function downloadLabelElementAsJpg(
   containerElement: HTMLElement,
-  filename: string
+  filename: string,
+  onProgress?: (current: number, total: number) => void
 ): Promise<{ success: boolean; shared?: boolean }> {
   try {
+    if (onProgress) onProgress(10, 100);
     const cards = Array.from(containerElement.querySelectorAll('.label-card')) as HTMLElement[];
     const targetElement = cards.length > 0 ? cards[0] : containerElement;
 
     const canvas = await captureElementToCanvas(targetElement);
+    if (onProgress) onProgress(70, 100);
     
     return new Promise((resolve) => {
       canvas.toBlob(async (blob) => {
@@ -643,6 +705,7 @@ export async function downloadLabelElementAsJpg(
         setTimeout(() => {
           if (link.parentNode) link.parentNode.removeChild(link);
           URL.revokeObjectURL(url);
+          if (onProgress) onProgress(100, 100);
           resolve({ success: true });
         }, 1000);
       }, 'image/jpeg', 0.95);
@@ -657,7 +720,8 @@ export async function downloadLabelElementAsJpg(
 export async function downloadLabelElementAsPdf(
   containerElement: HTMLElement,
   filename: string,
-  size: LabelSize = '4x6'
+  size: LabelSize = '4x6',
+  onProgress?: (current: number, total: number) => void
 ): Promise<{ success: boolean; shared?: boolean }> {
   try {
     // Find all individual label cards inside the preview container
@@ -665,6 +729,8 @@ export async function downloadLabelElementAsPdf(
     if (cards.length === 0) {
       cards = [containerElement];
     }
+
+    if (onProgress) onProgress(0, cards.length);
 
     let jsPDFModule;
     try {
@@ -696,6 +762,7 @@ export async function downloadLabelElementAsPdf(
       }
 
       pdf.addImage(imgData, 'JPEG', 0, 0, option.widthMm, option.heightMm);
+      if (onProgress) onProgress(i + 1, cards.length);
     }
 
     const pdfBlob = pdf.output('blob');

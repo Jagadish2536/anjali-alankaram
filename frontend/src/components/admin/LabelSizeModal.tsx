@@ -30,6 +30,8 @@ export function LabelSizeModal({
   const [selectedSize, setSelectedSize] = useState<LabelSize>('4x6');
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionType, setActionType] = useState<'print' | 'pdf' | 'jpg' | 'share' | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [downloadSuccess, setDownloadSuccess] = useState<{ type: 'pdf' | 'jpg'; message: string } | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const previewRef = useRef<HTMLDivElement>(null);
   const { settings, fetchSettings } = useSettingsStore();
@@ -42,6 +44,8 @@ export function LabelSizeModal({
   }, [fetchSettings]);
 
   useEffect(() => {
+    setDownloadSuccess(null);
+    setDownloadProgress(null);
     if (isOpen && targetOrders.length > 0) {
       const storeAddress = settings?.storeAddress || '';
       const supportPhone = settings?.supportPhone || '+91 8919045363';
@@ -65,6 +69,7 @@ export function LabelSizeModal({
   const handlePrint = () => {
     setIsProcessing(true);
     setActionType('print');
+    setDownloadSuccess(null);
     try {
       const storeAddress = settings?.storeAddress || '';
       const supportPhone = settings?.supportPhone || '+91 8919045363';
@@ -85,15 +90,29 @@ export function LabelSizeModal({
     if (isBulk || !previewRef.current) return;
     setIsProcessing(true);
     setActionType('jpg');
+    setDownloadSuccess(null);
+    setDownloadProgress({ current: 0, total: 100 });
     try {
       const fileName = `Order-Label-#${targetOrders[0]?.orderNumber}-${selectedSize}.jpg`;
 
-      await downloadLabelElementAsJpg(previewRef.current, fileName);
+      const res = await downloadLabelElementAsJpg(
+        previewRef.current,
+        fileName,
+        (current, total) => setDownloadProgress({ current, total })
+      );
+
+      if (res?.success) {
+        setDownloadSuccess({
+          type: 'jpg',
+          message: 'JPG Image Downloaded Successfully!'
+        });
+      }
     } catch (err: any) {
       alert('Download JPG failed: ' + err.message);
     } finally {
       setIsProcessing(false);
       setActionType(null);
+      setDownloadProgress(null);
     }
   };
 
@@ -101,17 +120,32 @@ export function LabelSizeModal({
     if (!previewRef.current) return;
     setIsProcessing(true);
     setActionType('pdf');
+    setDownloadSuccess(null);
+    setDownloadProgress({ current: 0, total: targetOrders.length });
     try {
       const fileName = isBulk
         ? `Bulk-Order-Labels-${selectedSize}-${Date.now()}.pdf`
         : `Order-Label-#${targetOrders[0]?.orderNumber}-${selectedSize}.pdf`;
 
-      await downloadLabelElementAsPdf(previewRef.current, fileName, selectedSize);
+      const res = await downloadLabelElementAsPdf(
+        previewRef.current,
+        fileName,
+        selectedSize,
+        (current, total) => setDownloadProgress({ current, total })
+      );
+
+      if (res?.success) {
+        setDownloadSuccess({
+          type: 'pdf',
+          message: 'PDF Document Downloaded Successfully!'
+        });
+      }
     } catch (err: any) {
       alert('Download PDF failed: ' + err.message);
     } finally {
       setIsProcessing(false);
       setActionType(null);
+      setDownloadProgress(null);
     }
   };
 
@@ -226,6 +260,69 @@ export function LabelSizeModal({
             </div>
           </div>
         </div>
+
+        {/* Progress & Completion Feedback Banner */}
+        {((isProcessing && (actionType === 'pdf' || actionType === 'jpg')) || downloadSuccess) && (
+          <div className="px-6 py-3 border-t bg-slate-50 shrink-0 animate-in fade-in duration-200">
+            {isProcessing && (actionType === 'pdf' || actionType === 'jpg') && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-900">
+                  <span className="flex items-center gap-2">
+                    <Loader2 className={`w-4 h-4 animate-spin shrink-0 ${actionType === 'pdf' ? 'text-blue-600' : 'text-emerald-600'}`} />
+                    {actionType === 'pdf'
+                      ? (downloadProgress && downloadProgress.total > 0
+                        ? `Generating PDF... (${downloadProgress.current} of ${downloadProgress.total} labels processed)`
+                        : 'Preparing PDF generator...')
+                      : (downloadProgress
+                        ? `Generating JPG Image... ${downloadProgress.current}%`
+                        : 'Preparing JPG image...')}
+                  </span>
+                  {downloadProgress && downloadProgress.total > 0 && (
+                    <span className={`font-mono text-xs font-extrabold ${actionType === 'pdf' ? 'text-blue-700' : 'text-emerald-700'}`}>
+                      {actionType === 'pdf'
+                        ? `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%`
+                        : `${downloadProgress.current}%`}
+                    </span>
+                  )}
+                </div>
+                <div className={`w-full h-2.5 rounded-full overflow-hidden p-0.5 border ${actionType === 'pdf' ? 'bg-blue-100 border-blue-200' : 'bg-emerald-100 border-emerald-200'}`}>
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ease-out shadow-sm ${actionType === 'pdf' ? 'bg-blue-600' : 'bg-emerald-600'}`}
+                    style={{
+                      width: `${
+                        actionType === 'pdf'
+                          ? (downloadProgress && downloadProgress.total > 0
+                            ? Math.max(4, Math.round((downloadProgress.current / downloadProgress.total) * 100))
+                            : 100)
+                          : (downloadProgress ? Math.max(4, downloadProgress.current) : 100)
+                      }%`
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {downloadSuccess && (
+              <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-300 p-3 rounded-xl text-xs shadow-sm">
+                <div className="flex items-center gap-2.5 text-emerald-950">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <strong className="font-bold block text-emerald-950">{downloadSuccess.message}</strong>
+                    <span className="text-emerald-800 text-[11px]">
+                      Your {downloadSuccess.type.toUpperCase()} file has been created and saved to your device. Please check your browser's download folder.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDownloadSuccess(null)}
+                  className="px-3 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-bold rounded-lg transition-colors shrink-0"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Modal Footer: Action Buttons */}
         <div className="px-6 py-4 border-t bg-gray-50/80 shrink-0 flex flex-wrap items-center justify-between gap-3">
