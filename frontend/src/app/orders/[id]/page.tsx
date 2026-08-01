@@ -433,110 +433,79 @@ function ReplacementModal({ order, onConfirm, onCancel, loading }: {
   );
 }
 
-// ─── Shiprocket Live Tracking Widget ────────────────────────────────────────
+// ─── Live Tracking Widget (AfterShip-powered) ───────────────────────────────
 
-function ShiprocketTrackingWidget({ awbCode, lastRefreshed }: { awbCode: string; lastRefreshed?: Date | null }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [widgetLoaded, setWidgetLoaded] = useState(false);
-  const [widgetError, setWidgetError] = useState(false);
+const STATUS_ICON: Record<string, string> = {
+  'Delivered': '✅',
+  'Out for Delivery': '🚚',
+  'Out For Delivery': '🚚',
+  'In Transit': '📦',
+  'InTransit': '📦',
+  'Picked Up': '📬',
+  'Departure Scan': '✈️',
+  'Arrival scan': '📍',
+  'Arrival Scan': '📍',
+  'Acceptance scan': '🔖',
+  'Acceptance Scan': '🔖',
+  'Info Received': '🗒️',
+  'Softdata Upload': '🗒️',
+  'Booked': '🔖',
+  'Mis Route': '⚠️',
+  'Exception': '⚠️',
+  'Returned': '↩️',
+};
 
-  useEffect(() => {
-    if (!awbCode || !containerRef.current) return;
+interface TrackEvent {
+  status: string;
+  location: string;
+  timestamp: string;
+  description: string;
+}
 
-    // Create a unique wrapper div for the widget
-    const widgetRoot = containerRef.current;
+function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
+  awbCode: string;
+  courierName?: string;
+  lastRefreshed?: Date | null;
+}) {
+  const [events, setEvents]   = useState<TrackEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(false);
 
-    // Load Shiprocket Post-Ship CSS
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'https://kr-shipmultichannel-mum.s3-ap-south-1.amazonaws.com/shiprocket-fronted/shiprocket_post_ship.css';
-    document.head.appendChild(css);
+  const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.anjalialankaram.com/api/v1';
 
-    // Create a temporary div in document body for Shiprocket widget to mount
-    const mountId = `sr-widget-${awbCode.replace(/\s/g, '')}`;
-    let mountDiv = document.getElementById(mountId);
-    if (!mountDiv) {
-      mountDiv = document.createElement('div');
-      mountDiv.id = mountId;
-      mountDiv.setAttribute('data-awb', awbCode.trim());
-      widgetRoot.appendChild(mountDiv);
+  const fetchTracking = async () => {
+    if (!awbCode) return;
+    setLoading(true);
+    setError(false);
+    try {
+      const res  = await fetch(`${API}/orders/${encodeURIComponent(awbCode.trim())}/track`);
+      const data = await res.json();
+      if (data.events && data.events.length > 0) {
+        setEvents(data.events);
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Inject AWB input & trigger via script
-    const initScript = document.createElement('script');
-    initScript.textContent = `
-      (function() {
-        var awb = '${awbCode.trim()}';
-        // Set AWB into any tracking input Shiprocket renders
-        function tryInit() {
-          var inputs = document.querySelectorAll('input[type="text"], .post-ship-input, #trackingNumber, input[placeholder*="track"], input[placeholder*="AWB"]');
-          inputs.forEach(function(inp) { inp.value = awb; });
-          var btns = document.querySelectorAll('.post-ship-btn, [class*="track-btn"], button[type="submit"]');
-          btns.forEach(function(btn) { btn.click(); });
-        }
-        setTimeout(tryInit, 1500);
-        setTimeout(tryInit, 3000);
-      })();
-    `;
+  useEffect(() => { fetchTracking(); }, [awbCode]);
 
-    // Load Shiprocket Post-Ship JS with onload callback
-    const script = document.createElement('script');
-    script.src = 'https://kr-shipmultichannel-mum.s3-ap-south-1.amazonaws.com/shiprocket-fronted/shiprocket_post_ship.js';
-    script.async = true;
-    script.onload = () => {
-      setWidgetLoaded(true);
-      // Brand color overrides
-      setTimeout(() => {
-        try {
-          const btns = document.querySelectorAll<HTMLElement>('.post-ship-btn, .post-ship-box-wrp button');
-          btns.forEach(b => { b.style.backgroundColor = '#745BE7'; b.style.color = '#ffffff'; });
-          const box = document.querySelector<HTMLElement>('.post-ship-box-wrp');
-          if (box) box.style.backgroundColor = '#ECECEC';
-          const h1 = document.querySelector<HTMLElement>('.post-ship-box-wrp h1');
-          if (h1) h1.style.color = '#000000';
-        } catch {}
-        // Auto-trigger tracking with AWB
-        try {
-          const input = document.querySelector<HTMLInputElement>('.post-ship-box-wrp input[type="text"]');
-          if (input) {
-            input.value = awbCode.trim();
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-          const btn = document.querySelector<HTMLButtonElement>('.post-ship-btn, .post-ship-box-wrp button');
-          if (btn) btn.click();
-        } catch {}
-      }, 800);
-    };
-    script.onerror = () => setWidgetError(true);
-    widgetRoot.appendChild(script);
-
-    return () => {
-      try { document.head.removeChild(css); } catch {}
-    };
-  }, [awbCode]);
-
-  if (widgetError) {
-    return (
-      <div className="mt-8 pt-6 border-t">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Live Tracking</h3>
-        </div>
-        <a
-          href={`https://anjalialankaram.shiprocket.co/tracking/${awbCode}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-3 bg-[#745BE7]/10 border border-[#745BE7]/20 rounded-xl text-[#745BE7] font-bold text-sm hover:bg-[#745BE7]/15 transition-colors w-fit"
-        >
-          <ExternalLink className="w-4 h-4" />
-          View Live Tracking on Shiprocket →
-        </a>
-      </div>
-    );
-  }
+  const courierTrackUrl = () => {
+    const c = (courierName || '').toLowerCase();
+    if (c.includes('india post') || awbCode?.match(/^[A-Z]{2}\d{9}IN$/i))
+      return `https://www.indiapost.gov.in/_layouts/15/dop.online.tracking/trackconsignment.aspx`;
+    if (c.includes('dtdc') || awbCode?.startsWith('7D'))
+      return `https://www.dtdc.in/tracking/tracking-results.xhtml?shipmentNumber=${awbCode}`;
+    return `https://anjalialankaram.shiprocket.co/tracking/${awbCode}`;
+  };
 
   return (
     <div className="mt-8 pt-6 border-t">
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -547,27 +516,99 @@ function ShiprocketTrackingWidget({ awbCode, lastRefreshed }: { awbCode: string;
             <span className="text-[10px] text-muted-foreground">
               Updated {Math.round((Date.now() - lastRefreshed.getTime()) / 60000) < 1
                 ? 'just now'
-                : `${Math.round((Date.now() - lastRefreshed.getTime()) / 60000)}m ago`
-              }
+                : `${Math.round((Date.now() - lastRefreshed.getTime()) / 60000)}m ago`}
             </span>
           )}
+          <button
+            onClick={fetchTracking}
+            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+          >
+            <Loader2 className={`w-3 h-3 ${loading ? 'animate-spin' : 'hidden'}`} />
+            Refresh
+          </button>
           <a
-            href={`https://anjalialankaram.shiprocket.co/tracking/${awbCode}`}
+            href={courierTrackUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
           >
-            Open on Shiprocket <ExternalLink className="w-3 h-3" />
+            Track on {courierName || 'Courier'} <ExternalLink className="w-3 h-3" />
           </a>
         </div>
       </div>
-      {!widgetLoaded && (
+
+      {/* Loading */}
+      {loading && (
         <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin text-primary" />
           Loading live tracking data…
         </div>
       )}
-      <div ref={containerRef} className="min-h-[100px]" />
+
+      {/* Error / No data */}
+      {!loading && error && (
+        <div className="py-4 text-sm text-muted-foreground">
+          <p className="mb-3">Tracking data is being fetched from the courier. Check back in a few minutes.</p>
+          <a
+            href={courierTrackUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl text-primary font-bold text-sm hover:bg-primary/15 transition-colors w-fit"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Track on {courierName || 'Courier'} →
+          </a>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {!loading && !error && events.length > 0 && (
+        <div className="space-y-0">
+          {events.map((e, i) => {
+            const icon   = STATUS_ICON[e.status] || '📍';
+            const isFirst = i === 0;
+            const time   = new Date(e.timestamp);
+            const dateStr = time.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            return (
+              <div key={i} className="flex gap-3 group">
+                {/* Timeline line */}
+                <div className="flex flex-col items-center">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 transition-all
+                    ${isFirst
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                      : 'bg-muted border-border text-muted-foreground'
+                    }`}>
+                    {icon}
+                  </div>
+                  {i < events.length - 1 && (
+                    <div className="w-0.5 flex-1 bg-border min-h-[24px] my-1" />
+                  )}
+                </div>
+                {/* Content */}
+                <div className={`pb-4 flex-1 ${isFirst ? 'opacity-100' : 'opacity-70'}`}>
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className={`text-sm font-semibold ${isFirst ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {e.status}
+                      </p>
+                      {e.location && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          📍 {e.location}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted-foreground">{dateStr}</p>
+                      <p className="text-xs font-medium text-foreground">{timeStr}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1055,9 +1096,13 @@ export default function OrderDetailPage() {
               </div>
             )}
 
-            {/* ── Shiprocket Live Tracking Widget ── */}
+            {/* ── Live Tracking (AfterShip-powered) ── */}
             {order.awbCode && (
-              <ShiprocketTrackingWidget awbCode={order.awbCode} lastRefreshed={lastRefreshed} />
+              <LiveTrackingWidget
+                awbCode={order.awbCode}
+                courierName={order.courierName}
+                lastRefreshed={lastRefreshed}
+              />
             )}
 
             {!isCancelled && !isReturnFlow && order.status !== 'DELIVERED' && (
