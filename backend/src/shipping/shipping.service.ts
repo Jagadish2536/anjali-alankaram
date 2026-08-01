@@ -108,16 +108,105 @@ class ShiprocketProvider implements ShippingProvider {
   async trackShipment(awb: string): Promise<TrackingEvent[]> {
     const token = await this.getToken();
     if (!token) return [];
-    const res = await axios.get(
-      `https://apiv2.shiprocket.in/v1/external/courier/track/awb/${awb}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    return res.data?.tracking_data?.shipment_track_activities?.map((a: any) => ({
-      status: a['sr-status-label'],
-      location: a.location,
-      timestamp: new Date(a.date),
-      description: a.activity,
-    })) ?? [];
+    try {
+      const res = await axios.get(
+        `https://apiv2.shiprocket.in/v1/external/courier/track/awb/${awb}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return res.data?.tracking_data?.shipment_track_activities?.map((a: any) => ({
+        status: a['sr-status-label'],
+        location: a.location,
+        timestamp: new Date(a.date),
+        description: a.activity,
+      })) ?? [];
+    } catch (e: any) {
+      this.logger.error(`Shiprocket track failed for ${awb}: ${e.message}`);
+      return [];
+    }
+  }
+}
+
+// ─── AfterShip Provider ─────────────────────────────────────
+// Supports DTDC, India Post, Delhivery, BlueDart, Ekart, XpressBees
+// and 900+ couriers. AWBs do NOT need to be booked through Shiprocket.
+
+class AfterShipProvider {
+  private readonly API_BASE = 'https://api.aftership.com/tracking/2024-07';
+  private logger = new Logger('AfterShipProvider');
+  // In-memory cache of AWB → AfterShip tracking ID (to avoid re-creation)
+  private idCache: Map<string, string> = new Map();
+
+  constructor(private apiKey: string) {}
+
+  async trackShipment(awb: string, slug?: string): Promise<TrackingEvent[]> {
+    if (!this.apiKey) return [];
+    const headers = {
+      'as-api-key': this.apiKey,
+      'Content-Type': 'application/json',
+      'aftership-api-version': '2024-07',
+    };
+
+    // Detect slug from AWB pattern if not provided
+    if (!slug) slug = this.detectSlug(awb);
+
+    // Step 1: Try fetching existing tracking
+    const cachedId = this.idCache.get(awb.toUpperCase());
+    if (cachedId) {
+      try {
+        const res = await axios.get(`${this.API_BASE}/trackings/${cachedId}`, { headers });
+        return this.parseCheckpoints(res.data?.data?.checkpoints);
+      } catch {}
+    }
+
+    // Step 2: Create tracking (or get existing)
+    try {
+      const createRes = await axios.post(`${this.API_BASE}/trackings`, {
+        tracking_number: awb,
+        ...(slug && { slug }),
+      }, { headers });
+
+      const trackingId = createRes.data?.data?.id;
+      if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
+      const checkpoints = createRes.data?.data?.checkpoints;
+      if (checkpoints?.length) return this.parseCheckpoints(checkpoints);
+
+      // New tracking created — AfterShip needs a moment to fetch from courier
+      // Try again after 1.5s
+      await new Promise(r => setTimeout(r, 1500));
+      const getRes = await axios.get(`${this.API_BASE}/trackings/${trackingId}`, { headers });
+      return this.parseCheckpoints(getRes.data?.data?.checkpoints);
+    } catch (e: any) {
+      if (e.response?.data?.meta?.code === 409) {
+        // Already exists — fetch by slug + number
+        try {
+          const getRes = await axios.get(`${this.API_BASE}/trackings?tracking_numbers=${awb}${slug ? '&slug=' + slug : ''}`, { headers });
+          const trackings = getRes.data?.data?.trackings || [];
+          if (trackings[0]?.id) this.idCache.set(awb.toUpperCase(), trackings[0].id);
+          return this.parseCheckpoints(trackings[0]?.checkpoints);
+        } catch {}
+      }
+      this.logger.error(`AfterShip track failed for ${awb}: ${e.message}`);
+      return [];
+    }
+  }
+
+  private detectSlug(awb: string): string | undefined {
+    const a = awb.toUpperCase();
+    if (/^\d{2}[A-Z]\d{9}[A-Z0-9]{1,2}$/.test(a) || /^[A-Z]{2}\d{9}IN$/.test(a)) return 'india-post';
+    if (/^[A-Z]\d{7,10}$/.test(a) || a.startsWith('7D') || a.startsWith('D')) return 'dtdc';
+    return undefined;
+  }
+
+  private parseCheckpoints(checkpoints: any[]): TrackingEvent[] {
+    if (!checkpoints?.length) return [];
+    return checkpoints
+      .map((c: any) => ({
+        status: c.subtag_message || c.message || c.tag,
+        location: c.location || c.city || '',
+        timestamp: new Date(c.checkpoint_time),
+        description: c.message || '',
+      }))
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 }
 
@@ -128,12 +217,15 @@ export class ShippingService {
   private readonly logger = new Logger(ShippingService.name);
   private provider: ShippingProvider;
 
+  private afterShip: AfterShipProvider | null = null;
+
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
   ) {
     const email = config.get('SHIPROCKET_EMAIL');
     const password = config.get('SHIPROCKET_PASSWORD');
+    const afterShipKey = config.get('AFTERSHIP_API_KEY');
 
     if (email && password) {
       this.provider = new ShiprocketProvider(email, password);
@@ -141,6 +233,13 @@ export class ShippingService {
     } else {
       this.provider = new MockShippingProvider();
       this.logger.warn('Using Mock shipping provider (no Shiprocket credentials)');
+    }
+
+    if (afterShipKey) {
+      this.afterShip = new AfterShipProvider(afterShipKey);
+      this.logger.log('AfterShip tracking provider initialized');
+    } else {
+      this.logger.warn('AFTERSHIP_API_KEY not set — AfterShip tracking unavailable');
     }
   }
 
@@ -201,19 +300,31 @@ export class ShippingService {
 
   async trackShipment(awb: string): Promise<TrackingEvent[]> {
     if (!awb || !awb.trim()) return [];
-
     const cleanAwb = awb.trim().toUpperCase();
 
-    // ── 1. Always try Shiprocket live API first ──────────────────────
+    // ── 1. AfterShip (primary) ─ works for DTDC, India Post, any courier ────
+    if (this.afterShip) {
+      try {
+        const events = await this.afterShip.trackShipment(cleanAwb);
+        if (events && events.length > 0) {
+          this.logger.log(`AfterShip tracking for AWB ${cleanAwb}: ${events.length} events`);
+          return events;
+        }
+      } catch (e: any) {
+        this.logger.warn(`AfterShip tracking failed for ${cleanAwb}: ${e.message}`);
+      }
+    }
+
+    // ── 2. Shiprocket (for orders booked via Shiprocket) ──────────────
     if (this.provider instanceof ShiprocketProvider) {
       try {
         const liveEvents = await this.provider.trackShipment(cleanAwb);
         if (liveEvents && liveEvents.length > 0) {
-          this.logger.log(`Live Shiprocket tracking for AWB ${cleanAwb}: ${liveEvents.length} events`);
+          this.logger.log(`Shiprocket tracking for AWB ${cleanAwb}: ${liveEvents.length} events`);
           return liveEvents;
         }
-      } catch (e) {
-        this.logger.warn(`Shiprocket live tracking failed for ${cleanAwb}: ${e.message}`);
+      } catch (e: any) {
+        this.logger.warn(`Shiprocket tracking failed for ${cleanAwb}: ${e.message}`);
       }
     }
 
