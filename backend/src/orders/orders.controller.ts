@@ -33,6 +33,12 @@ export class OrdersController {
     return this.ordersService.findByUser(req.user.id);
   }
 
+  @Get('active-tracking')
+  @ApiOperation({ summary: 'Get my orders currently in transit with live tracking event' })
+  async getActiveTracking(@Req() req: any) {
+    return this.ordersService.getActiveShipments(req.user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get order details with status history' })
   async findOne(@Req() req: any, @Param('id') id: string) {

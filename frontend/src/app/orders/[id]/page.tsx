@@ -435,7 +435,7 @@ function ReplacementModal({ order, onConfirm, onCancel, loading }: {
 
 // ─── Shiprocket Live Tracking Widget ────────────────────────────────────────
 
-function ShiprocketTrackingWidget({ awbCode }: { awbCode: string }) {
+function ShiprocketTrackingWidget({ awbCode, lastRefreshed }: { awbCode: string; lastRefreshed?: Date | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [widgetLoaded, setWidgetLoaded] = useState(false);
   const [widgetError, setWidgetError] = useState(false);
@@ -523,7 +523,7 @@ function ShiprocketTrackingWidget({ awbCode }: { awbCode: string }) {
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Live Tracking</h3>
         </div>
         <a
-          href={`https://shiprocket.co/tracking/${awbCode}`}
+          href={`https://anjalialankaram.shiprocket.co/tracking/${awbCode}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-4 py-3 bg-[#745BE7]/10 border border-[#745BE7]/20 rounded-xl text-[#745BE7] font-bold text-sm hover:bg-[#745BE7]/15 transition-colors w-fit"
@@ -542,14 +542,24 @@ function ShiprocketTrackingWidget({ awbCode }: { awbCode: string }) {
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           Live Tracking
         </h3>
-        <a
-          href={`https://shiprocket.co/tracking/${awbCode}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
-        >
-          Open on Shiprocket <ExternalLink className="w-3 h-3" />
-        </a>
+        <div className="flex items-center gap-3">
+          {lastRefreshed && (
+            <span className="text-[10px] text-muted-foreground">
+              Updated {Math.round((Date.now() - lastRefreshed.getTime()) / 60000) < 1
+                ? 'just now'
+                : `${Math.round((Date.now() - lastRefreshed.getTime()) / 60000)}m ago`
+              }
+            </span>
+          )}
+          <a
+            href={`https://anjalialankaram.shiprocket.co/tracking/${awbCode}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+          >
+            Open on Shiprocket <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
       </div>
       {!widgetLoaded && (
         <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
@@ -589,6 +599,8 @@ export default function OrderDetailPage() {
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
   const [retryLoading, setRetryLoading] = useState(false);
   const countdownRef = useRef<any>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const liveRefreshRef = useRef<any>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
@@ -614,9 +626,23 @@ export default function OrderDetailPage() {
           console.error('Failed to fetch transit details:', err);
         }
       }
+      setLastRefreshed(new Date());
     } catch { /* ignore */ }
     finally { setIsLoading(false); }
   }, [params.id]);
+
+  // Auto-refresh every 90s when order is in active transit
+  useEffect(() => {
+    if (!order) return;
+    const ACTIVE = ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'];
+    if (!ACTIVE.includes(order.status)) {
+      if (liveRefreshRef.current) clearInterval(liveRefreshRef.current);
+      return;
+    }
+    liveRefreshRef.current = setInterval(() => fetchOrder(), 90000);
+    return () => { if (liveRefreshRef.current) clearInterval(liveRefreshRef.current); };
+  }, [order?.status, fetchOrder]);
+
 
   useEffect(() => {
     if (!isAuthenticated) { router.push('/login'); return; }
@@ -1019,7 +1045,7 @@ export default function OrderDetailPage() {
                   </button>
                 </span>
                 <a
-                  href={`https://shiprocket.co/tracking/${order.awbCode}`}
+                  href={`https://anjalialankaram.shiprocket.co/tracking/${order.awbCode}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary font-bold hover:underline flex items-center gap-1 ml-auto"
@@ -1031,7 +1057,7 @@ export default function OrderDetailPage() {
 
             {/* ── Shiprocket Live Tracking Widget ── */}
             {order.awbCode && (
-              <ShiprocketTrackingWidget awbCode={order.awbCode} />
+              <ShiprocketTrackingWidget awbCode={order.awbCode} lastRefreshed={lastRefreshed} />
             )}
 
             {!isCancelled && !isReturnFlow && order.status !== 'DELIVERED' && (

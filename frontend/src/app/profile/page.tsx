@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import {
   ChevronRight, Package, MapPin, Tag, Trash2, LogOut,
-  User, CheckCircle2, Loader2, Plus, Pencil, X, Check,
+  User, CheckCircle2, Loader2, Plus, Pencil, X, Check, ExternalLink, Truck,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -136,6 +136,10 @@ export default function ProfilePage() {
   // Orders
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  // Live tracking map: orderId → { lastEvent, lastEventTime, status, trackingUrl }
+  const [liveTracking, setLiveTracking] = useState<Record<string, any>>({});
+  const [liveUpdating, setLiveUpdating] = useState(false);
+  const pollRef = useRef<any>(null);
 
   // Addresses
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -172,6 +176,33 @@ export default function ProfilePage() {
     try { const { data } = await api.get('/orders'); setOrders(data); }
     catch { /* ignore */ } finally { setOrdersLoading(false); }
   };
+
+  // Poll live tracking every 60s while on orders tab
+  const refreshLiveTracking = useCallback(async () => {
+    try {
+      setLiveUpdating(true);
+      const { data } = await api.get('/orders/active-tracking');
+      const map: Record<string, any> = {};
+      (data || []).forEach((item: any) => { map[item.id] = item; });
+      setLiveTracking(map);
+      // Merge updated statuses back into orders list
+      setOrders(prev => prev.map(o => {
+        if (map[o.id]) return { ...o, status: map[o.id].status };
+        return o;
+      }));
+    } catch { /* ignore */ }
+    finally { setLiveUpdating(false); }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'orders') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    refreshLiveTracking();
+    pollRef.current = setInterval(refreshLiveTracking, 60000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [tab, refreshLiveTracking]);
 
   const loadAddresses = async () => {
     setAddrLoading(true);
@@ -498,36 +529,79 @@ export default function ProfilePage() {
                 <Link href="/products" className="inline-block mt-4 text-primary font-bold text-sm hover:underline">Explore Products →</Link>
               </div>
             ) : (
-              <div className="divide-y">
-                {orders.map((order: any) => (
-                  <Link href={`/orders/${order.id}`} key={order.id}
-                    className="flex items-center justify-between py-4 hover:bg-gray-50 -mx-4 px-4 transition-colors group">
-                    <div className="flex items-center gap-4">
-                      {(() => {
-                        const img = order.items?.[0]?.product?.images?.[0];
-                        const src = (img && img.trim() !== '') ? img : '/placeholder.png';
-                        return (
-                          <img src={src} alt="" className="w-14 h-16 object-cover rounded border" />
-                        );
-                      })()}
-                      <div>
-                        <p className="font-bold text-sm group-hover:text-primary transition-colors">
-                          Order #{order.orderNumber}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {order.items?.length} item{order.items?.length !== 1 ? 's' : ''} · ₹{order.totalAmount}
-                        </p>
-                        <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                        <span className={`inline-block mt-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          order.status === 'DELIVERED' ? 'bg-green-50 text-green-700' :
-                          order.status === 'CANCELLED' ? 'bg-red-50 text-red-600' :
-                          'bg-blue-50 text-blue-700'
-                        }`}>{order.status?.replace(/_/g, ' ')}</span>
+          <div className="divide-y">
+                {orders.map((order: any) => {
+                  const live = liveTracking[order.id];
+                  const isActive = ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(order.status);
+                  return (
+                    <Link href={`/orders/${order.id}`} key={order.id}
+                      className="flex items-center justify-between py-4 hover:bg-gray-50 -mx-4 px-4 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        {(() => {
+                          const img = order.items?.[0]?.product?.images?.[0];
+                          const src = (img && img.trim() !== '') ? img : '/placeholder.png';
+                          return (
+                            <img src={src} alt="" className="w-14 h-16 object-cover rounded border" />
+                          );
+                        })()}
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm group-hover:text-primary transition-colors">
+                            Order #{order.orderNumber}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {order.items?.length} item{order.items?.length !== 1 ? 's' : ''} · ₹{order.totalAmount}
+                          </p>
+                          <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+
+                          {/* Status badge */}
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
+                              order.status === 'DELIVERED'       ? 'bg-green-50 text-green-700' :
+                              order.status === 'CANCELLED'       ? 'bg-red-50 text-red-600' :
+                              order.status === 'OUT_FOR_DELIVERY'? 'bg-blue-50 text-blue-700' :
+                              order.status === 'IN_TRANSIT'      ? 'bg-sky-50 text-sky-700' :
+                              order.status === 'SHIPPED'         ? 'bg-cyan-50 text-cyan-700' :
+                              'bg-gray-50 text-gray-500'
+                            }`}>
+                              {isActive && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+                              )}
+                              {order.status?.replace(/_/g, ' ')}
+                            </span>
+                            {isActive && liveUpdating && !live && (
+                              <Loader2 className="w-3 h-3 animate-spin text-gray-300" />
+                            )}
+                          </div>
+
+                          {/* Live tracking event */}
+                          {live?.lastEvent && (
+                            <p className="text-[10px] text-primary font-semibold mt-1 truncate max-w-[220px]">
+                              <Truck className="w-3 h-3 inline mr-1" />
+                              {live.lastEvent}
+                            </p>
+                          )}
+
+                          {/* AWB + Track link for active orders */}
+                          {order.awbCode && isActive && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-gray-400 font-mono">{order.awbCode}</span>
+                              <a
+                                href={`https://anjalialankaram.shiprocket.co/tracking/${order.awbCode}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary hover:underline"
+                              >
+                                Track <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors" />
-                  </Link>
-                ))}
+                      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors shrink-0" />
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

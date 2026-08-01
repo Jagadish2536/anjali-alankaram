@@ -426,26 +426,17 @@ export class OrdersService {
     if (order && events && events.length > 0) {
       const sortedEvents = [...events].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       const latest = sortedEvents[0];
-      const statusText = (latest.status || '').toLowerCase();
-
-      let targetStatus: any = null;
-      if (statusText.includes('deliver')) {
-        targetStatus = 'DELIVERED';
-      } else if (statusText.includes('out for delivery')) {
-        targetStatus = 'OUT_FOR_DELIVERY';
-      } else if (statusText.includes('transit') || statusText.includes('dispatched') || statusText.includes('hub') || statusText.includes('route') || statusText.includes('received')) {
-        targetStatus = 'IN_TRANSIT';
-      }
+      const targetStatus = this.mapShiprocketStatus(latest.status);
 
       if (targetStatus && order.status !== targetStatus) {
         const statusPriority: Record<string, number> = {
           'SHIPPED': 1,
           'IN_TRANSIT': 2,
           'OUT_FOR_DELIVERY': 3,
-          'DELIVERED': 4
+          'DELIVERED': 4,
         };
         const currentPri = statusPriority[order.status] || 0;
-        const targetPri = statusPriority[targetStatus] || 0;
+        const targetPri  = statusPriority[targetStatus] || 0;
 
         if (targetPri > currentPri) {
           const oldStatus = order.status;
@@ -458,15 +449,17 @@ export class OrdersService {
               },
             });
             order.status = targetStatus;
-            
             await this.statusHistory.append({
               orderId: order.id,
               toStatus: targetStatus,
               fromStatus: oldStatus,
               actorRole: 'SYSTEM',
-              notes: `Auto-updated to ${targetStatus} via courier delivery tracking`,
+              notes: `Auto-updated to ${targetStatus} via live Shiprocket tracking (event: "${latest.status}")`,
             });
-          } catch {}
+            this.logger.log(`Order ${order.orderNumber}: ${oldStatus} → ${targetStatus} (event: "${latest.status}")`);
+          } catch (err: any) {
+            this.logger.error(`Status update failed for ${order.orderNumber}: ${err.message}`);
+          }
         }
       }
     }
@@ -1094,36 +1087,106 @@ export class OrdersService {
     }, 5 * 60 * 1000);
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async autoUpdateShippedOrders() {
-    this.logger.log('Running background auto-update for shipped orders...');
+    this.logger.log('Running background auto-update for shipped orders (every 10 min)...');
     try {
       const activeOrders = await this.prisma.order.findMany({
         where: {
-          status: {
-            in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'],
-          },
-          awbCode: {
-            not: null,
-          },
+          status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+          awbCode: { not: null },
         },
-        select: {
-          id: true,
-          orderNumber: true,
-        },
+        select: { id: true, orderNumber: true, updatedAt: true },
       });
 
-      this.logger.log(`Found ${activeOrders.length} active orders to track.`);
+      this.logger.log(`Found ${activeOrders.length} active shipments to sync.`);
       for (const order of activeOrders) {
+        // Skip if synced within last 8 minutes to avoid hammering Shiprocket API
+        const minsAgo = (Date.now() - new Date(order.updatedAt).getTime()) / 60000;
+        if (minsAgo < 8) {
+          this.logger.debug(`Skipping ${order.orderNumber} — updated ${minsAgo.toFixed(1)} min ago`);
+          continue;
+        }
         try {
           await this.trackOrder(order.id);
-        } catch (err) {
-          this.logger.error(`Failed to track order ${order.orderNumber} in background: ${err.message}`);
+        } catch (err: any) {
+          this.logger.error(`Failed to track order ${order.orderNumber}: ${err.message}`);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error in autoUpdateShippedOrders cron: ${e.message}`);
     }
+  }
+
+  // ─── Active shipments for frontend polling ──────────────────────
+  async getActiveShipments(userId: string) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        userId,
+        status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+        awbCode: { not: null },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        awbCode: true,
+        courierName: true,
+        updatedAt: true,
+      },
+    });
+
+    // For each active order, get the latest tracking event description
+    const results = await Promise.all(
+      orders.map(async (order) => {
+        try {
+          const events = await this.shippingService.trackShipment(order.awbCode!);
+          const latest = events?.[0]; // already sorted newest-first
+          return {
+            ...order,
+            lastEvent: latest ? `${latest.status}${latest.location ? ' • ' + latest.location : ''}` : null,
+            lastEventTime: latest?.timestamp || null,
+            trackingUrl: `https://anjalialankaram.shiprocket.co/tracking/${order.awbCode}`,
+          };
+        } catch {
+          return {
+            ...order,
+            lastEvent: null,
+            lastEventTime: null,
+            trackingUrl: `https://anjalialankaram.shiprocket.co/tracking/${order.awbCode}`,
+          };
+        }
+      }),
+    );
+    return results;
+  }
+
+  // ─── Shiprocket status label → DB OrderStatus mapping ─────────────
+  private mapShiprocketStatus(label: string): OrderStatus | null {
+    if (!label) return null;
+    const s = label.toLowerCase().trim();
+
+    // DELIVERED
+    if (s.includes('delivered') && !s.includes('out for')) return 'DELIVERED';
+    if (s === 'delivery done') return 'DELIVERED';
+
+    // OUT_FOR_DELIVERY
+    if (s.includes('out for delivery')) return 'OUT_FOR_DELIVERY';
+    if (s.includes('with delivery') || s.includes('delivery boy')) return 'OUT_FOR_DELIVERY';
+
+    // IN_TRANSIT
+    if (s.includes('in transit') || s.includes('in-transit')) return 'IN_TRANSIT';
+    if (s.includes('reached') || s.includes('at destination')) return 'IN_TRANSIT';
+    if (s.includes('hub') || s.includes('sorting')) return 'IN_TRANSIT';
+    if (s.includes('dispatched') || s.includes('picked up')) return 'IN_TRANSIT';
+    if (s.includes('on route') || s.includes('en route')) return 'IN_TRANSIT';
+    if (s.includes('received at') || s.includes('arrived at')) return 'IN_TRANSIT';
+
+    // SHIPPED (initial scan events)
+    if (s.includes('accepted') || s.includes('booked') || s.includes('softdata')) return 'SHIPPED';
+    if (s.includes('pickup done') || s.includes('pickup successful')) return 'SHIPPED';
+
+    return null;
   }
 
   private getTrackingUrlHelper(courierName: string, awb: string): string {
