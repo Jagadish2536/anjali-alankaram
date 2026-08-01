@@ -433,7 +433,137 @@ function ReplacementModal({ order, onConfirm, onCancel, loading }: {
   );
 }
 
+// ─── Shiprocket Live Tracking Widget ────────────────────────────────────────
+
+function ShiprocketTrackingWidget({ awbCode }: { awbCode: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const [widgetError, setWidgetError] = useState(false);
+
+  useEffect(() => {
+    if (!awbCode || !containerRef.current) return;
+
+    // Create a unique wrapper div for the widget
+    const widgetRoot = containerRef.current;
+
+    // Load Shiprocket Post-Ship CSS
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://kr-shipmultichannel-mum.s3-ap-south-1.amazonaws.com/shiprocket-fronted/shiprocket_post_ship.css';
+    document.head.appendChild(css);
+
+    // Create a temporary div in document body for Shiprocket widget to mount
+    const mountId = `sr-widget-${awbCode.replace(/\s/g, '')}`;
+    let mountDiv = document.getElementById(mountId);
+    if (!mountDiv) {
+      mountDiv = document.createElement('div');
+      mountDiv.id = mountId;
+      mountDiv.setAttribute('data-awb', awbCode.trim());
+      widgetRoot.appendChild(mountDiv);
+    }
+
+    // Inject AWB input & trigger via script
+    const initScript = document.createElement('script');
+    initScript.textContent = `
+      (function() {
+        var awb = '${awbCode.trim()}';
+        // Set AWB into any tracking input Shiprocket renders
+        function tryInit() {
+          var inputs = document.querySelectorAll('input[type="text"], .post-ship-input, #trackingNumber, input[placeholder*="track"], input[placeholder*="AWB"]');
+          inputs.forEach(function(inp) { inp.value = awb; });
+          var btns = document.querySelectorAll('.post-ship-btn, [class*="track-btn"], button[type="submit"]');
+          btns.forEach(function(btn) { btn.click(); });
+        }
+        setTimeout(tryInit, 1500);
+        setTimeout(tryInit, 3000);
+      })();
+    `;
+
+    // Load Shiprocket Post-Ship JS with onload callback
+    const script = document.createElement('script');
+    script.src = 'https://kr-shipmultichannel-mum.s3-ap-south-1.amazonaws.com/shiprocket-fronted/shiprocket_post_ship.js';
+    script.async = true;
+    script.onload = () => {
+      setWidgetLoaded(true);
+      // Brand color overrides
+      setTimeout(() => {
+        try {
+          const btns = document.querySelectorAll<HTMLElement>('.post-ship-btn, .post-ship-box-wrp button');
+          btns.forEach(b => { b.style.backgroundColor = '#745BE7'; b.style.color = '#ffffff'; });
+          const box = document.querySelector<HTMLElement>('.post-ship-box-wrp');
+          if (box) box.style.backgroundColor = '#ECECEC';
+          const h1 = document.querySelector<HTMLElement>('.post-ship-box-wrp h1');
+          if (h1) h1.style.color = '#000000';
+        } catch {}
+        // Auto-trigger tracking with AWB
+        try {
+          const input = document.querySelector<HTMLInputElement>('.post-ship-box-wrp input[type="text"]');
+          if (input) {
+            input.value = awbCode.trim();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          const btn = document.querySelector<HTMLButtonElement>('.post-ship-btn, .post-ship-box-wrp button');
+          if (btn) btn.click();
+        } catch {}
+      }, 800);
+    };
+    script.onerror = () => setWidgetError(true);
+    widgetRoot.appendChild(script);
+
+    return () => {
+      try { document.head.removeChild(css); } catch {}
+    };
+  }, [awbCode]);
+
+  if (widgetError) {
+    return (
+      <div className="mt-8 pt-6 border-t">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Live Tracking</h3>
+        </div>
+        <a
+          href={`https://shiprocket.co/tracking/${awbCode}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-3 bg-[#745BE7]/10 border border-[#745BE7]/20 rounded-xl text-[#745BE7] font-bold text-sm hover:bg-[#745BE7]/15 transition-colors w-fit"
+        >
+          <ExternalLink className="w-4 h-4" />
+          View Live Tracking on Shiprocket →
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 pt-6 border-t">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          Live Tracking
+        </h3>
+        <a
+          href={`https://shiprocket.co/tracking/${awbCode}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+        >
+          Open on Shiprocket <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+      {!widgetLoaded && (
+        <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+          Loading live tracking data…
+        </div>
+      )}
+      <div ref={containerRef} className="min-h-[100px]" />
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────
+
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -888,69 +1018,20 @@ export default function OrderDetailPage() {
                     )}
                   </button>
                 </span>
-                {order.trackingUrl && (
-                  <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-primary font-bold hover:underline flex items-center gap-1 ml-auto">
-                    Track Package <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
+                <a
+                  href={`https://shiprocket.co/tracking/${order.awbCode}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary font-bold hover:underline flex items-center gap-1 ml-auto"
+                >
+                  Track Live <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
             )}
 
-            {/* Live transit details */}
-            {order.awbCode && transitEvents.length > 0 && (
-              <div className="mt-8 pt-6 border-t">
-                <h3 className="text-base font-bold text-red-900 font-outfit uppercase tracking-wider mb-6">
-                  Routing Steps
-                </h3>
-                <div className="bg-white border rounded-2xl p-4 sm:p-6 shadow-sm divide-y divide-gray-100">
-                  {transitEvents.map((ev, i) => {
-                    const dateObj = new Date(ev.timestamp);
-                    const formattedDate = dateObj.toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
-                    });
-                    const formattedTime = dateObj.toLocaleTimeString('en-GB', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      hour12: false
-                    });
-
-                    return (
-                      <div key={i} className="flex items-stretch gap-4 py-4 first:pt-0 last:pb-0">
-                        {/* Date & Time */}
-                        <div className="w-20 sm:w-24 shrink-0 flex flex-col justify-center text-slate-800">
-                          <span className="text-xs sm:text-sm font-bold tracking-tight">{formattedDate}</span>
-                          <span className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-mono font-medium">{formattedTime}</span>
-                        </div>
-
-                        {/* Thick vertical green separator */}
-                        <div className="w-[3px] bg-green-500 rounded-full shrink-0 self-stretch my-1" />
-
-                        {/* Check Circle Icon */}
-                        <div className="flex items-center justify-center shrink-0 pl-1">
-                          <div className="w-6 h-6 rounded-full bg-green-50 border border-green-500 flex items-center justify-center text-green-500 shadow-sm shrink-0">
-                            <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                          </div>
-                        </div>
-
-                        {/* Event details */}
-                        <div className="flex-1 min-w-0 pl-1 flex flex-col justify-center">
-                          <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">{ev.status}</p>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 font-medium leading-relaxed">
-                            {ev.description || ev.location}
-                          </p>
-                          {ev.location && (
-                            <p className="text-[10px] text-primary/80 font-bold mt-1">📍 {ev.location}</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            {/* ── Shiprocket Live Tracking Widget ── */}
+            {order.awbCode && (
+              <ShiprocketTrackingWidget awbCode={order.awbCode} />
             )}
 
             {!isCancelled && !isReturnFlow && order.status !== 'DELIVERED' && (
