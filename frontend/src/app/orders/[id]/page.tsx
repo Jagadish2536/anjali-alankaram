@@ -506,14 +506,14 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
   return (
     <div className="mt-8 pt-6 border-t">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           Live Tracking
         </h3>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {lastRefreshed && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground hidden sm:inline">
               Updated {Math.round((Date.now() - lastRefreshed.getTime()) / 60000) < 1
                 ? 'just now'
                 : `${Math.round((Date.now() - lastRefreshed.getTime()) / 60000)}m ago`}
@@ -521,7 +521,7 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
           )}
           <button
             onClick={fetchTracking}
-            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 touch-manipulation"
           >
             <Loader2 className={`w-3 h-3 ${loading ? 'animate-spin' : 'hidden'}`} />
             Refresh
@@ -572,12 +572,12 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
             const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
             return (
               <div key={i} className="flex gap-3 group">
-                {/* Timeline line */}
-                <div className="flex flex-col items-center">
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 transition-all
+                {/* Timeline dot + line */}
+                <div className="flex flex-col items-center flex-shrink-0">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 transition-all
                     ${isFirst
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                      : 'bg-muted border-border text-muted-foreground'
+                      ? 'bg-primary/10 border-primary shadow-sm'
+                      : 'bg-muted border-border'
                     }`}>
                     {icon}
                   </div>
@@ -586,21 +586,21 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
                   )}
                 </div>
                 {/* Content */}
-                <div className={`pb-4 flex-1 ${isFirst ? 'opacity-100' : 'opacity-70'}`}>
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div>
-                      <p className={`text-sm font-semibold ${isFirst ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <div className={`pb-4 flex-1 min-w-0 ${isFirst ? 'opacity-100' : 'opacity-70'}`}>
+                  <div className="flex items-start justify-between gap-x-2 gap-y-0.5 flex-wrap">
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold truncate ${isFirst ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {e.status}
                       </p>
                       {e.location && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          📍 {e.location}
+                        <p className="text-xs text-muted-foreground flex items-start gap-1 mt-0.5 leading-snug">
+                          📍 <span className="break-words">{e.location}</span>
                         </p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs text-muted-foreground">{dateStr}</p>
-                      <p className="text-xs font-medium text-foreground">{timeStr}</p>
+                      <p className="text-[10px] text-muted-foreground whitespace-nowrap">{dateStr}</p>
+                      <p className="text-xs font-medium text-foreground whitespace-nowrap">{timeStr}</p>
                     </div>
                   </div>
                 </div>
