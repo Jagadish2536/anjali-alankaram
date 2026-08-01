@@ -20,6 +20,9 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ForgotPasswordRequestDto } from './dto/forgot-password-request.dto';
 import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
 
+import { SendPhoneOtpDto } from './dto/send-phone-otp.dto';
+import { VerifyPhoneOtpDto } from './dto/verify-phone-otp.dto';
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -53,11 +56,25 @@ export class AuthController {
     return this.authService.verifyOtp(dto.email, dto.code);
   }
 
+  @Post('phone-otp/send')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP to phone number via SMS or WhatsApp (MSG91)' })
+  async sendPhoneOtp(@Body() dto: SendPhoneOtpDto) {
+    return this.authService.sendPhoneOtp(dto.phone, dto.channel);
+  }
+
+  @Post('phone-otp/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify phone OTP and login/register' })
+  async verifyPhoneOtp(@Body() dto: VerifyPhoneOtpDto) {
+    return this.authService.verifyPhoneOtp(dto.phone, dto.code);
+  }
+
   @Post('forgot-password/request')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request a password reset OTP' })
+  @ApiOperation({ summary: 'Request a password reset OTP via Email, SMS, or WhatsApp' })
   async forgotPasswordRequest(@Body() dto: ForgotPasswordRequestDto) {
-    return this.authService.forgotPasswordRequest(dto.emailOrPhone);
+    return this.authService.forgotPasswordRequest(dto.emailOrPhone, dto.channel);
   }
 
   @Post('forgot-password/reset')

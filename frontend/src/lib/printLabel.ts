@@ -362,7 +362,7 @@ function generateA4CardHtml(order: any, storeAddress?: string, supportPhone?: st
       <td style="padding:8px;border:1px solid #e5e7eb;text-align:center;vertical-align:middle;width:48px;">
         ${
           imgUrl
-            ? `<img src="${imgUrl}" alt="Item" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;display:inline-block;" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2238%22 height=%2238%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%221.5%22><rect width=%2218%22 height=%2218%22 x=%223%22 y=%223%22 rx=%222%22/><circle cx=%229%22 cy=%229%22 r=%222%22/><path d=%22m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21%22/></svg>';"/>`
+            ? `<img src="${imgUrl}" alt="Item" crossorigin="anonymous" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;display:inline-block;" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2238%22 height=%2238%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%221.5%22><rect width=%2218%22 height=%2218%22 x=%223%22 y=%223%22 rx=%222%22/><circle cx=%229%22 cy=%229%22 r=%222%22/><path d=%22m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21%22/></svg>';"/>`
             : `<span style="font-size:9px;color:#9ca3af;">—</span>`
         }
       </td>
@@ -561,9 +561,14 @@ export function printLabelHtmlViaIframe(htmlContent: string) {
 async function convertImageSrcToBase64(src: string): Promise<string> {
   if (!src || src.startsWith('data:')) return src;
 
+  let fullUrl = src;
+  if (fullUrl.startsWith('/') && typeof window !== 'undefined') {
+    fullUrl = `${window.location.origin}${fullUrl}`;
+  }
+
   // 1. Primary Method: Fetch Blob + FileReader (Bypasses Canvas Tainting & CORS blocks)
   try {
-    const response = await fetch(src, { cache: 'force-cache' });
+    const response = await fetch(fullUrl, { cache: 'force-cache' });
     if (response.ok) {
       const blob = await response.blob();
       if (blob && blob.size > 0) {
@@ -582,7 +587,7 @@ async function convertImageSrcToBase64(src: string): Promise<string> {
       }
     }
   } catch (_e) {
-    // If fetch failed due to CORS or network policies, fall back to canvas drawing
+    // Fall back to canvas drawing
   }
 
   // 2. Secondary Method: Image object + Canvas conversion with CORS anonymous
@@ -602,17 +607,17 @@ async function convertImageSrcToBase64(src: string): Promise<string> {
             return;
           }
         } catch (_err) {}
-        resolve(src);
+        resolve(fullUrl);
       };
-      img.onerror = () => resolve(src);
-      img.src = src;
+      img.onerror = () => resolve(fullUrl);
+      img.src = fullUrl;
     });
     if (dataUrl && dataUrl.startsWith('data:image/')) {
       return dataUrl;
     }
   } catch (_e) {}
 
-  return src;
+  return fullUrl;
 }
 
 // ── Safe Canvas Capture Helper (Avoids 'Unable to find element in cloned iframe') ──
@@ -622,6 +627,47 @@ async function captureElementToCanvas(
 ): Promise<HTMLCanvasElement> {
   if (typeof window === 'undefined') {
     throw new Error('Canvas capture requires window context.');
+  }
+
+  // First, convert all images inside the LIVE RENDERED DOM target element to Base64 Data URIs directly!
+  // This extracts loaded pixels from the browser's active DOM memory before cloning.
+  const originalImages = Array.from(targetElement.querySelectorAll('img')) as HTMLImageElement[];
+  if (originalImages.length > 0) {
+    await Promise.all(
+      originalImages.map(async (origImg) => {
+        origImg.removeAttribute('onerror');
+        const srcAttr = origImg.getAttribute('src') || origImg.src;
+
+        // Try extracting already rendered pixels directly from loaded DOM image element
+        try {
+          if (origImg.complete && origImg.naturalWidth > 0) {
+            const canvas = document.createElement('canvas');
+            canvas.width = origImg.naturalWidth;
+            canvas.height = origImg.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(origImg, 0, 0);
+              const dataUrl = canvas.toDataURL('image/png');
+              if (dataUrl && dataUrl.startsWith('data:image/')) {
+                origImg.setAttribute('src', dataUrl);
+                origImg.src = dataUrl;
+                return;
+              }
+            }
+          }
+        } catch (_e) {
+          // Canvas tainted, fall back to fetch/base64
+        }
+
+        if (srcAttr && !srcAttr.startsWith('data:')) {
+          const base64Src = await convertImageSrcToBase64(srcAttr);
+          if (base64Src && base64Src.startsWith('data:image/')) {
+            origImg.setAttribute('src', base64Src);
+            origImg.src = base64Src;
+          }
+        }
+      })
+    );
   }
 
   const tempContainer = document.createElement('div');
@@ -644,20 +690,18 @@ async function captureElementToCanvas(
   document.body.appendChild(tempContainer);
 
   try {
-    const images = Array.from(clone.querySelectorAll('img'));
-    if (images.length > 0) {
+    const cloneImages = Array.from(clone.querySelectorAll('img')) as HTMLImageElement[];
+    if (cloneImages.length > 0) {
       await Promise.all(
-        images.map(async (img) => {
-          // Remove onerror attribute so html2canvas never triggers SVG fallback
-          img.removeAttribute('onerror');
-
-          const currentSrc = img.getAttribute('src') || img.src;
+        cloneImages.map(async (cImg) => {
+          cImg.removeAttribute('onerror');
+          const currentSrc = cImg.getAttribute('src') || cImg.src;
           if (currentSrc && !currentSrc.startsWith('data:')) {
             const base64Src = await convertImageSrcToBase64(currentSrc);
             if (base64Src && base64Src.startsWith('data:image/')) {
-              img.removeAttribute('crossorigin');
-              img.setAttribute('src', base64Src);
-              img.src = base64Src;
+              cImg.removeAttribute('crossorigin');
+              cImg.setAttribute('src', base64Src);
+              cImg.src = base64Src;
             }
           }
         })

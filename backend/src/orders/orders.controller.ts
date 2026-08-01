@@ -7,6 +7,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'ORDER_MANAGER'];
@@ -38,10 +39,11 @@ export class OrdersController {
     return this.ordersService.findOne(id, req.user.id);
   }
 
+  @Public()
   @Get(':id/track')
   @ApiOperation({ summary: 'Track order shipment status' })
   async trackOrder(@Req() req: any, @Param('id') id: string) {
-    return this.ordersService.trackOrder(id, req.user.id, req.user.role);
+    return this.ordersService.trackOrder(id, req?.user?.id, req?.user?.role);
   }
 
   @Get(':id/history')

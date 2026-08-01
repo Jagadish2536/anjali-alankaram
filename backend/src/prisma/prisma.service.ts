@@ -16,8 +16,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    await this.$connect();
-    this.logger.log('Database connected');
+    try {
+      await this.$connect();
+      this.logger.log('Database connected successfully');
+    } catch (e: any) {
+      this.logger.error(`Database connection warning: ${e.message}`);
+    }
 
     // Automatic slow query logging
     const slowThreshold = process.env.NODE_ENV === 'production' ? 250 : 500;

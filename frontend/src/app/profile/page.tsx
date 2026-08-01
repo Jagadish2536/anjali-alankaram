@@ -124,6 +124,8 @@ export default function ProfilePage() {
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
   });
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+  const [whatsappNotificationsEnabled, setWhatsappNotificationsEnabled] = useState(true);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isEditingPassword, setIsEditingPassword] = useState(false);
@@ -151,6 +153,8 @@ export default function ProfilePage() {
       email: user?.email || '',
       phone: user?.phone?.replace('+91', '') || '',
     });
+    setEmailNotificationsEnabled((user as any)?.emailNotificationsEnabled ?? true);
+    setWhatsappNotificationsEnabled((user as any)?.whatsappNotificationsEnabled ?? true);
     setIsEditingPhone(false);
     setIsEditingEmail(false);
     setIsEditingPassword(false);
@@ -187,6 +191,8 @@ export default function ProfilePage() {
         name: form.name || undefined,
         email: form.email || undefined,
         phone: form.phone || undefined,
+        emailNotificationsEnabled,
+        whatsappNotificationsEnabled,
       };
 
       if (isEditingPassword) {
@@ -420,6 +426,55 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
+
+            {/* Notification Preferences Toggle Section */}
+            <div className="border border-gray-200 rounded-sm p-5 mb-6 bg-white space-y-4">
+              <h3 className="text-xs font-black tracking-widest text-gray-500 uppercase">Notification Preferences</h3>
+              
+              <div className="flex items-center justify-between gap-4 pt-1">
+                <div>
+                  <p className="text-sm font-bold text-gray-800">Email Order Notifications</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Receive order placement, confirmation, and tracking alerts via Email</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    emailNotificationsEnabled ? 'bg-primary' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      emailNotificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="border-t pt-3 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold text-gray-800">WhatsApp Order Notifications</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Receive real-time order confirmation, shipping & delivery alerts via WhatsApp</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWhatsappNotificationsEnabled(!whatsappNotificationsEnabled)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    whatsappNotificationsEnabled ? 'bg-emerald-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      whatsappNotificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <p className="text-[11px] text-gray-400 bg-gray-50 p-2.5 rounded border border-gray-100 italic">
+                * Note: Essential security OTPs (Login verification and Password Reset) are always delivered regardless of notification preference settings.
+              </p>
+            </div>
 
             {/* Save */}
             <button onClick={handleSave} disabled={saving}

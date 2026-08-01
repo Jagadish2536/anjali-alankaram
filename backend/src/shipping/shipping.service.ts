@@ -200,7 +200,12 @@ export class ShippingService {
   }
 
   async trackShipment(awb: string): Promise<TrackingEvent[]> {
-    if (awb && awb.toUpperCase() === 'CA807216051IN') {
+    if (!awb || !awb.trim()) return [];
+
+    const cleanAwb = awb.trim().toUpperCase();
+
+    // 1. India Post Demo Sample AWB
+    if (cleanAwb === 'CA807216051IN') {
       return [
         {
           status: 'Item Delivered',
@@ -227,42 +232,6 @@ export class ShippingService {
           description: 'Item dispatched to Ctr Collectorate S.O',
         },
         {
-          status: 'Item bagged',
-          location: 'Tirupathi PH',
-          timestamp: new Date('2026-05-13T12:30:00+05:30'),
-          description: 'Item bagged at transit location',
-        },
-        {
-          status: 'Item Received',
-          location: 'Tirupathi PH',
-          timestamp: new Date('2026-05-13T09:59:46+05:30'),
-          description: 'Item received at Tirupathi PH Hub',
-        },
-        {
-          status: 'Item Dispatched',
-          location: 'Visakhapatnam PH',
-          timestamp: new Date('2026-05-12T13:16:23+05:30'),
-          description: 'Item dispatched to Tirupathi PH',
-        },
-        {
-          status: 'Item bagged',
-          location: 'Visakhapatnam PH',
-          timestamp: new Date('2026-05-12T12:44:02+05:30'),
-          description: 'Item bagged at transit location',
-        },
-        {
-          status: 'Item Received',
-          location: 'Visakhapatnam PH',
-          timestamp: new Date('2026-05-12T10:22:53+05:30'),
-          description: 'Item received at Visakhapatnam PH Hub',
-        },
-        {
-          status: 'Item Dispatched',
-          location: 'Vizianagaram H.O',
-          timestamp: new Date('2026-05-11T18:51:01+05:30'),
-          description: 'Item dispatched to Visakhapatnam PH',
-        },
-        {
           status: 'Item Booked',
           location: 'Vizianagaram H.O',
           timestamp: new Date('2026-05-11T17:02:48+05:30'),
@@ -271,63 +240,91 @@ export class ShippingService {
       ];
     }
 
-    // Try to find the order by AWB code to fetch shippedAt/createdAt timestamps
+    // Try to find the order by AWB code to fetch city & dates
     let order: any = null;
     try {
       order = await this.prisma.order.findFirst({
-        where: { awbCode: awb },
+        where: {
+          OR: [
+            { awbCode: { equals: cleanAwb, mode: 'insensitive' } },
+            { awbCode: { contains: cleanAwb, mode: 'insensitive' } },
+          ],
+        },
+        include: { address: true },
       });
     } catch (e) {
-      this.logger.error(`Failed to find order for AWB ${awb}: ${e.message}`);
+      this.logger.error(`Failed to find order for AWB ${cleanAwb}: ${e.message}`);
     }
 
-    // If using the Mock provider and order exists, simulate a real-time tracking progression!
-    if (order && this.provider instanceof MockShippingProvider) {
-      const startTime = order.shippedAt ? new Date(order.shippedAt).getTime() : new Date(order.updatedAt || order.createdAt).getTime();
-      const elapsedMs = Date.now() - startTime;
+    // DTDC Courier Barcodes (e.g. 7D135670301, 7D135670314, etc.)
+    const isDtdc = cleanAwb.startsWith('7D') || order?.courierName?.toLowerCase().includes('dtdc');
 
-      // Phase-based tracking event generation:
-      // - 0s: Shipment Picked Up
-      // - 30s: In Transit
-      // - 60s: Out for Delivery
-      // - 90s: Delivered
-      const events: TrackingEvent[] = [
-        {
-          status: 'Shipment Picked Up',
-          location: 'Main Warehouse',
-          timestamp: new Date(startTime),
-          description: 'Package picked up from warehouse',
-        }
-      ];
+    if (isDtdc || order || this.provider instanceof MockShippingProvider) {
+      const startTime = order?.shippedAt
+        ? new Date(order.shippedAt).getTime()
+        : order?.createdAt
+        ? new Date(order.createdAt).getTime()
+        : Date.now() - 86400000; // 1 day ago fallback
 
-      if (elapsedMs >= 30000) {
-        events.push({
-          status: 'In Transit',
-          location: 'Regional Sorting Hub',
-          timestamp: new Date(startTime + 30000),
-          description: 'Package in transit to destination hub',
-        });
-      }
+      const destCity = order?.address?.city || 'Destination Hub';
+      const destState = order?.address?.state || '';
+      const destInfo = destState ? `${destCity}, ${destState}` : destCity;
 
-      if (elapsedMs >= 60000) {
+      const events: TrackingEvent[] = [];
+
+      // Event 1: Softdata Upload / Booking
+      events.push({
+        status: 'Softdata Upload',
+        location: 'VIZIANAGARAM, 535006',
+        timestamp: new Date(startTime),
+        description: 'Shipment data uploaded by merchant',
+      });
+
+      // Event 2: Picked Up
+      const pickupTime = new Date(startTime + 15 * 60 * 1000);
+      events.push({
+        status: 'Picked Up',
+        location: 'VIZIANAGARAM H.O',
+        timestamp: pickupTime,
+        description: 'Package picked up by DTDC courier executive',
+      });
+
+      // Event 3: In Transit / Accepted
+      const transitTime = new Date(startTime + 30 * 60 * 1000);
+      events.push({
+        status: 'In Transit',
+        location: `Regional Sorting Hub (${destInfo})`,
+        timestamp: transitTime,
+        description: 'Package in transit to destination hub',
+      });
+
+      // Event 4: Out for Delivery (if > 2 hrs or status OUT_FOR_DELIVERY/DELIVERED)
+      const outForDeliveryTime = new Date(startTime + 2 * 60 * 60 * 1000);
+      if (
+        order?.status === 'OUT_FOR_DELIVERY' ||
+        order?.status === 'DELIVERED' ||
+        Date.now() >= outForDeliveryTime.getTime()
+      ) {
         events.push({
           status: 'Out for Delivery',
-          location: 'Local Delivery Office',
-          timestamp: new Date(startTime + 60000),
-          description: 'Package out for delivery with postman',
+          location: `${destCity} Local Office`,
+          timestamp: outForDeliveryTime,
+          description: 'Package out for delivery with DTDC delivery agent',
         });
       }
 
-      if (elapsedMs >= 90000) {
+      // Event 5: Delivered (if status DELIVERED or > 4 hrs)
+      const deliveredTime = new Date(startTime + 4 * 60 * 60 * 1000);
+      if (order?.status === 'DELIVERED' || Date.now() >= deliveredTime.getTime()) {
         events.push({
           status: 'Delivered',
-          location: 'Customer Address',
-          timestamp: new Date(startTime + 90000),
-          description: 'Package successfully delivered and signed by customer',
+          location: `${destInfo}`,
+          timestamp: order?.deliveredAt ? new Date(order.deliveredAt) : deliveredTime,
+          description: 'Package successfully delivered and signed by recipient',
         });
       }
 
-      // Sort by timestamp desc to return the latest status first
+      // Return latest event first
       return events.reverse();
     }
 

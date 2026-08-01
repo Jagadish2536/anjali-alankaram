@@ -49,6 +49,85 @@ export class AuthService {
     return { message: 'OTP sent successfully' };
   }
 
+  async sendPhoneOtp(phone: string, channel: 'sms' | 'whatsapp' = 'sms'): Promise<{ message: string }> {
+    const rawDigits = phone.replace(/\D/g, '');
+    const cleanTenDigit = rawDigits.length > 10 ? rawDigits.slice(-10) : rawDigits;
+    if (cleanTenDigit.length !== 10) {
+      throw new BadRequestException('Please enter a valid 10-digit phone number');
+    }
+    const formattedPhone = `+91${cleanTenDigit}`;
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Invalidate previous OTPs for this phone
+    await this.prisma.otpCode.updateMany({
+      where: { phone: formattedPhone, used: false },
+      data: { used: true },
+    });
+
+    // Save new OTP
+    await this.prisma.otpCode.create({
+      data: { phone: formattedPhone, code, expiresAt },
+    });
+
+    // Send via MSG91 (SMS or WhatsApp channel)
+    await this.sendSmsViaMSG91(cleanTenDigit, code, false, channel);
+    this.logger.log(`🔑 [DEV/OTP-${channel.toUpperCase()}] Generated login OTP for ${formattedPhone}: ${code}`);
+
+    return { message: `OTP sent successfully via ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}` };
+  }
+
+  async verifyPhoneOtp(phone: string, code: string) {
+    const rawDigits = phone.replace(/\D/g, '');
+    const cleanTenDigit = rawDigits.length > 10 ? rawDigits.slice(-10) : rawDigits;
+    const formattedPhone = `+91${cleanTenDigit}`;
+
+    const otp = await this.prisma.otpCode.findFirst({
+      where: {
+        phone: formattedPhone,
+        code: code.trim(),
+        used: false,
+        expiresAt: { gte: new Date() },
+      },
+    });
+
+    if (!otp) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    // Mark OTP as used
+    await this.prisma.otpCode.update({
+      where: { id: otp.id },
+      data: { used: true },
+    });
+
+    // Find or create user
+    let user = await this.prisma.user.findUnique({ where: { phone: formattedPhone } });
+    let isNewUser = false;
+    if (!user) {
+      isNewUser = true;
+      user = await this.prisma.user.create({
+        data: { phone: formattedPhone, isPhoneVerified: true },
+      });
+    } else if (!user.isPhoneVerified) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isPhoneVerified: true },
+      });
+    }
+
+    if (isNewUser) {
+      this.notificationsService.sendAdminAlert('CUSTOMER_SIGNUP', {
+        customerId: user.id,
+        customerName: user.name || 'New User',
+        customerPhone: user.phone,
+      }).catch((err) => console.error('Failed to send admin signup alert', err));
+    }
+
+    return this.generateTokens(user);
+  }
+
   async verifyOtp(email: string, code: string) {
     const formattedEmail = email.toLowerCase().trim();
     const otp = await this.prisma.otpCode.findFirst({
@@ -195,6 +274,8 @@ export class AuthService {
       role: user.role,
       isPhoneVerified: user.isPhoneVerified,
       isEmailVerified: user.isEmailVerified,
+      emailNotificationsEnabled: user.emailNotificationsEnabled ?? true,
+      whatsappNotificationsEnabled: user.whatsappNotificationsEnabled ?? true,
       hasPassword: !!user.password,
     };
   }
@@ -282,20 +363,23 @@ export class AuthService {
   }
 
   // ── Forgot Password ────────────────────────────────────
-  async forgotPasswordRequest(emailOrPhone: string): Promise<{ message: string }> {
+  async forgotPasswordRequest(
+    emailOrPhone: string,
+    channel: 'email' | 'sms' | 'whatsapp' = 'email',
+  ): Promise<{ message: string }> {
     const cleanIdentifier = emailOrPhone.trim();
-    const isPhone = /^[6-9]\d{9}$/.test(cleanIdentifier) || /^\+91[6-9]\d{9}$/.test(cleanIdentifier);
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanIdentifier);
+    const isInputPhone = /^[6-9]\d{9}$/.test(cleanIdentifier) || /^\+91[6-9]\d{9}$/.test(cleanIdentifier);
+    const isInputEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanIdentifier);
 
-    if (!isPhone && !isEmail) {
+    if (!isInputPhone && !isInputEmail) {
       throw new BadRequestException('Please enter a valid email address or 10-digit phone number');
     }
 
     let user = null;
-    let formattedPhone = null;
-    let formattedEmail = null;
+    let formattedPhone: string | null = null;
+    let formattedEmail: string | null = null;
 
-    if (isPhone) {
+    if (isInputPhone) {
       formattedPhone = cleanIdentifier.startsWith('+91') ? cleanIdentifier : `+91${cleanIdentifier}`;
       user = await this.prisma.user.findUnique({ where: { phone: formattedPhone } });
     } else {
@@ -310,40 +394,44 @@ export class AuthService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Invalidate previous OTPs for this identifier
-    if (isPhone) {
-      await this.prisma.otpCode.updateMany({
-        where: { phone: formattedPhone, used: false },
-        data: { used: true },
-      });
-    } else {
-      await this.prisma.otpCode.updateMany({
-        where: { email: formattedEmail, used: false },
-        data: { used: true },
-      });
-    }
+    // Invalidate previous OTPs for this user
+    await this.prisma.otpCode.updateMany({
+      where: { userId: user.id, used: false },
+      data: { used: true },
+    });
 
     // Save new OTP
     await this.prisma.otpCode.create({
       data: {
-        phone: formattedPhone,
-        email: formattedEmail,
+        phone: formattedPhone || user.phone,
+        email: formattedEmail || user.email,
         code,
         expiresAt,
         userId: user.id,
       },
     });
 
-    // Send via SMS or email
-    if (isPhone) {
-      await this.sendSmsViaMSG91(formattedPhone.replace('+91', ''), code, true);
+    // Send via requested channel (SMS / WhatsApp / Email)
+    if (channel === 'sms' || channel === 'whatsapp' || (isInputPhone && channel !== 'email')) {
+      const targetPhone = formattedPhone || user.phone;
+      if (!targetPhone) {
+        throw new BadRequestException('No registered phone number found for this account to send OTP via SMS/WhatsApp');
+      }
+      const rawTenDigits = targetPhone.replace(/\D/g, '').slice(-10);
+      const selectedChannel = channel === 'whatsapp' ? 'whatsapp' : 'sms';
+      await this.sendSmsViaMSG91(rawTenDigits, code, true, selectedChannel);
+      this.logger.log(`🔑 [DEV/OTP-${selectedChannel.toUpperCase()}] Password reset OTP for ${targetPhone}: ${code}`);
+      return { message: `Reset code sent successfully via ${selectedChannel === 'whatsapp' ? 'WhatsApp' : 'SMS'}` };
     } else {
-      // Send via AWS SES
-      await this.emailService.sendOtpEmail(formattedEmail, code, 'reset');
-      this.logger.log(`🔑 [DEV/OTP] Generated password reset OTP for ${formattedEmail}: ${code}`);
+      // Send via AWS SES Email
+      const targetEmail = formattedEmail || user.email;
+      if (!targetEmail) {
+        throw new BadRequestException('No registered email address found for this account to send OTP via Email');
+      }
+      await this.emailService.sendOtpEmail(targetEmail, code, 'reset');
+      this.logger.log(`🔑 [DEV/OTP-EMAIL] Password reset OTP for ${targetEmail}: ${code}`);
+      return { message: 'Reset code sent successfully via Email' };
     }
-
-    return { message: 'Reset code sent successfully' };
   }
 
   async forgotPasswordReset(dto: ForgotPasswordResetDto): Promise<{ message: string }> {
@@ -433,14 +521,21 @@ export class AuthService {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        emailNotificationsEnabled: user.emailNotificationsEnabled ?? true,
+        whatsappNotificationsEnabled: user.whatsappNotificationsEnabled ?? true,
         hasPassword: !!user.password,
       },
     };
   }
 
-  private async sendSmsViaMSG91(phone: string, code: string, isForgotPassword = false): Promise<void> {
+  private async sendSmsViaMSG91(
+    phone: string,
+    code: string,
+    isForgotPassword = false,
+    channel: 'sms' | 'whatsapp' = 'sms',
+  ): Promise<void> {
     const authKey = this.config.get('MSG91_AUTH_KEY');
-    const templateId = isForgotPassword 
+    const templateId = isForgotPassword
       ? (this.config.get('MSG91_FORGOT_PASSWORD_TEMPLATE_ID') || this.config.get('MSG91_TEMPLATE_ID'))
       : this.config.get('MSG91_TEMPLATE_ID');
     const whatsappTemplateName = isForgotPassword
@@ -448,58 +543,65 @@ export class AuthService {
       : this.config.get('MSG91_WHATSAPP_OTP_TEMPLATE_NAME');
     const whatsappSender = this.config.get('MSG91_WHATSAPP_SENDER');
 
-    if (!authKey || process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] WhatsApp OTP for ${phone}: ${code} [Template: ${whatsappTemplateName || 'none'}, DLT/SMS Template: ${templateId || 'none'}]`);
-      return;
-    }
-
     // Clean phone number: remove non-digits, ensure it has 91 prefix
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length === 10) {
       cleanPhone = `91${cleanPhone}`;
     }
 
-    // If WhatsApp Template Name and WhatsApp Sender are configured, send via WhatsApp Outbound API
-    if (whatsappTemplateName && whatsappSender) {
-      try {
-        await axios.post(
-          'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/',
-          {
-            integrated_number: whatsappSender,
-            recipient_number: cleanPhone,
-            content_type: 'template',
-            template: {
-              name: whatsappTemplateName,
-              language: {
-                code: 'en',
-              },
-              components: [
-                {
-                  type: 'body',
-                  parameters: [
-                    {
-                      type: 'text',
-                      text: code,
-                    },
-                  ],
+    if (!authKey || process.env.NODE_ENV === 'development') {
+      this.logger.log(
+        `[DEV/MSG91-${channel.toUpperCase()}] OTP for ${cleanPhone}: ${code} [Template: ${channel === 'whatsapp' ? whatsappTemplateName : templateId}]`,
+      );
+      return;
+    }
+
+    // 1. WhatsApp Channel
+    if (channel === 'whatsapp') {
+      if (!whatsappTemplateName || !whatsappSender) {
+        this.logger.warn(`MSG91 WhatsApp not fully configured. Missing MSG91_WHATSAPP_OTP_TEMPLATE_NAME or MSG91_WHATSAPP_SENDER.`);
+      } else {
+        try {
+          await axios.post(
+            'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/',
+            {
+              integrated_number: whatsappSender,
+              recipient_number: cleanPhone,
+              content_type: 'template',
+              template: {
+                name: whatsappTemplateName,
+                language: {
+                  code: 'en',
                 },
-              ],
+                components: [
+                  {
+                    type: 'body',
+                    parameters: [
+                      {
+                        type: 'text',
+                        text: code,
+                      },
+                    ],
+                  },
+                ],
+              },
             },
-          },
-          {
-            headers: {
-              authkey: authKey,
-              'content-type': 'application/json',
+            {
+              headers: {
+                authkey: authKey,
+                'content-type': 'application/json',
+              },
             },
-          },
-        );
-        return;
-      } catch (error) {
-        console.error('WhatsApp OTP send failed:', error.response?.data?.message || error.message);
-        // Fall back to standard OTP endpoint if WhatsApp outbound fails
+          );
+          return;
+        } catch (error: any) {
+          this.logger.error('WhatsApp OTP send failed via MSG91:', error.response?.data?.message || error.message);
+          // Fall back to SMS if WhatsApp fails
+        }
       }
     }
 
+    // 2. SMS Channel (or fallback)
     try {
       await axios.post(
         'https://api.msg91.com/api/v5/otp',
@@ -510,8 +612,8 @@ export class AuthService {
         },
         { headers: { authkey: authKey, 'content-type': 'application/json' } },
       );
-    } catch (error) {
-      console.error('SMS send failed:', error.message);
+    } catch (error: any) {
+      this.logger.error('SMS OTP send failed via MSG91:', error.response?.data?.message || error.message);
       // Don't throw — log and continue in prod; OTP is saved in DB
     }
   }

@@ -97,7 +97,50 @@ export class NotificationsService {
       },
     });
 
-    // WhatsApp order notifications disabled as requested (only email notifications enabled)
+    // Send WhatsApp order lifecycle notification via MSG91 (if enabled in user settings)
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: { user: true, address: true },
+      });
+
+      const userObj = order?.user as any;
+      const whatsappEnabled = userObj?.whatsappNotificationsEnabled ?? true;
+      if (!whatsappEnabled) {
+        this.logger.log(`Skipping WhatsApp notification for order #${orderNumber} because user has toggled WhatsApp notifications OFF`);
+      } else {
+        const recipientPhone = order?.address?.phone || order?.user?.phone;
+        const customerName = order?.address?.name || order?.user?.name || 'Customer';
+        const trackingInfo = order?.trackingUrl || order?.awbCode || order?.courierName || 'Standard Shipping';
+
+        if (recipientPhone) {
+          let templateName = '';
+          let params: string[] = [];
+
+          if (type === 'ORDER_PLACED') {
+            templateName = this.config.get('MSG91_WHATSAPP_ORDER_PLACED_TEMPLATE') || 'order_placed';
+            params = [customerName, orderNumber, `₹${order?.totalAmount || 0}`];
+          } else if (type === 'ORDER_CONFIRMED') {
+            templateName = this.config.get('MSG91_WHATSAPP_ORDER_CONFIRMED_TEMPLATE') || 'order_confirmed';
+            params = [customerName, orderNumber];
+          } else if (type === 'ORDER_SHIPPED') {
+            templateName = this.config.get('MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE') || 'order_shipped';
+            params = [customerName, orderNumber, trackingInfo];
+          } else if (type === 'ORDER_DELIVERED') {
+            templateName = this.config.get('MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE') || 'order_delivered';
+            params = [customerName, orderNumber];
+          }
+
+          if (templateName) {
+            this.sendWhatsAppMessage(recipientPhone, templateName, params).catch((err) =>
+              this.logger.error(`Failed to send WhatsApp notification for order #${orderNumber}: ${err.message}`),
+            );
+          }
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to trigger WhatsApp order notification: ${err.message}`);
+    }
 
     // Send push notification
     if (this.firebaseInitialized) {

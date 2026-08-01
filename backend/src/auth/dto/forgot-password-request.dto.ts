@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ForgotPasswordRequestDto {
@@ -9,4 +9,14 @@ export class ForgotPasswordRequestDto {
   @IsNotEmpty()
   @IsString()
   emailOrPhone: string;
+
+  @ApiProperty({
+    example: 'email',
+    enum: ['email', 'sms', 'whatsapp'],
+    required: false,
+    description: 'Preferred OTP delivery channel',
+  })
+  @IsOptional()
+  @IsEnum(['email', 'sms', 'whatsapp'])
+  channel?: 'email' | 'sms' | 'whatsapp' = 'email';
 }

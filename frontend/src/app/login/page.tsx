@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
-import { Loader2, Mail, Lock, Phone, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { Loader2, Mail, Lock, Phone, User as UserIcon, ShieldCheck, MessageCircle, MessageSquare } from 'lucide-react';
 
 function LoginContent({ returnUrl }: { returnUrl: string }) {
   const router = useRouter();
@@ -31,10 +31,13 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [otpEmail, setOtpEmail] = useState('');
+  const [otpPhone, setOtpPhone] = useState('');
+  const [otpChannel, setOtpChannel] = useState<'EMAIL' | 'SMS' | 'WHATSAPP'>('EMAIL');
   const [otp, setOtp] = useState('');
   
   // Forgot Password states
   const [forgotEmailOrPhone, setForgotEmailOrPhone] = useState('');
+  const [forgotChannel, setForgotChannel] = useState<'EMAIL' | 'SMS' | 'WHATSAPP'>('EMAIL');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
@@ -58,14 +61,25 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     setForgotNewPassword('');
     setForgotConfirmPassword('');
     setOtpEmail('');
+    setOtpPhone('');
+    setOtpChannel('EMAIL');
+    setForgotChannel('EMAIL');
   };
 
   // Submit Forgot Password Request (OTP request)
   const handleForgotPasswordRequest = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!forgotEmailOrPhone.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmailOrPhone.trim())) {
-      setError('Please enter a valid email address');
-      return;
+
+    if (forgotChannel === 'EMAIL') {
+      if (!forgotEmailOrPhone.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmailOrPhone.trim())) {
+        setError('Please enter a valid email address');
+        return;
+      }
+    } else {
+      if (!forgotEmailOrPhone.trim() || forgotEmailOrPhone.replace(/\D/g, '').length !== 10) {
+        setError('Please enter a valid 10-digit mobile number');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -73,8 +87,10 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     setSuccessMessage('');
 
     try {
+      const channelParam = forgotChannel === 'WHATSAPP' ? 'whatsapp' : forgotChannel === 'SMS' ? 'sms' : 'email';
       const { data } = await api.post('/auth/forgot-password/request', {
         emailOrPhone: forgotEmailOrPhone.trim(),
+        channel: channelParam,
       });
       setSuccessMessage(data.message || 'Reset code sent successfully');
       setForgotStep('RESET');
@@ -196,22 +212,38 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     }
   };
 
-  // Submit Send OTP
-  // Submit Send OTP
+  // Submit Send OTP (Email, SMS, or WhatsApp)
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!otpEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail.trim())) {
-      setError('Please enter a valid email address');
-      return;
+
+    if (otpChannel === 'EMAIL') {
+      if (!otpEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail.trim())) {
+        setError('Please enter a valid email address');
+        return;
+      }
+    } else {
+      if (!otpPhone.trim() || otpPhone.replace(/\D/g, '').length !== 10) {
+        setError('Please enter a valid 10-digit mobile number');
+        return;
+      }
     }
     
     setIsLoading(true);
     setError('');
     
     try {
-      await api.post('/auth/otp/send', { email: otpEmail.trim() });
+      if (otpChannel === 'EMAIL') {
+        await api.post('/auth/otp/send', { email: otpEmail.trim() });
+        setSuccessMessage(`OTP sent successfully to ${otpEmail.trim()}`);
+      } else {
+        const channelParam = otpChannel === 'WHATSAPP' ? 'whatsapp' : 'sms';
+        await api.post('/auth/phone-otp/send', {
+          phone: otpPhone.trim(),
+          channel: channelParam,
+        });
+        setSuccessMessage(`OTP sent successfully via ${otpChannel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} to +91 ${otpPhone.trim()}`);
+      }
       setStep('OTP');
-      setSuccessMessage('OTP sent successfully');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
     } finally {
@@ -231,10 +263,20 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
     setError('');
     
     try {
-      const { data } = await api.post('/auth/otp/verify', { 
-        email: otpEmail.trim(), 
-        code: otp 
-      });
+      let data;
+      if (otpChannel === 'EMAIL') {
+        const response = await api.post('/auth/otp/verify', {
+          email: otpEmail.trim(),
+          code: otp,
+        });
+        data = response.data;
+      } else {
+        const response = await api.post('/auth/phone-otp/verify', {
+          phone: otpPhone.trim(),
+          code: otp,
+        });
+        data = response.data;
+      }
       
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
@@ -297,7 +339,7 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
           <p className="text-sm text-muted-foreground mt-2">
             {mode === 'LOGIN' && 'Sign in to access your wishlist, orders, and cart'}
             {mode === 'REGISTER' && 'Join Anjali Alankaram to start shopping'}
-            {mode === 'OTP' && 'Sign in securely via one-time email OTP verification'}
+            {mode === 'OTP' && `Sign in securely via one-time ${otpChannel.toLowerCase()} OTP verification`}
             {mode === 'FORGOT_PASSWORD' && (forgotStep === 'REQUEST' ? 'Enter email address to receive reset OTP' : 'Enter reset code and new password')}
           </p>
         </div>
@@ -517,37 +559,115 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
           </form>
         )}
 
-        {/* --- MODE: OTP (Email / OTP input) --- */}
+        {/* --- MODE: OTP (Email, SMS, WhatsApp via MSG91) --- */}
         {mode === 'OTP' && (
           <div>
+            {step === 'EMAIL' && (
+              <div className="grid grid-cols-3 gap-1.5 bg-muted/60 p-1.5 rounded-2xl mb-6 border border-border">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpChannel('EMAIL');
+                    setError('');
+                    setSuccessMessage('');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all ${
+                    otpChannel === 'EMAIL'
+                      ? 'bg-background text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpChannel('SMS');
+                    setError('');
+                    setSuccessMessage('');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all ${
+                    otpChannel === 'SMS'
+                      ? 'bg-background text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  SMS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpChannel('WHATSAPP');
+                    setError('');
+                    setSuccessMessage('');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all ${
+                    otpChannel === 'WHATSAPP'
+                      ? 'bg-background text-emerald-600 dark:text-emerald-400 shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  WhatsApp
+                </button>
+              </div>
+            )}
+
             {step === 'EMAIL' ? (
               <form onSubmit={handleSendOtp} className="space-y-5">
-                <div>
-                  <label htmlFor="otp-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-4 text-muted-foreground">
-                      <Mail className="w-5 h-5" />
-                    </span>
-                    <input
-                      id="otp-email"
-                      type="email"
-                      required
-                      className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
-                      placeholder="name@example.com"
-                      value={otpEmail}
-                      onChange={(e) => setOtpEmail(e.target.value)}
-                    />
+                {otpChannel === 'EMAIL' ? (
+                  <div>
+                    <label htmlFor="otp-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                      Email Address
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-4 text-muted-foreground">
+                        <Mail className="w-5 h-5" />
+                      </span>
+                      <input
+                        id="otp-email"
+                        type="email"
+                        required
+                        className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
+                        placeholder="name@example.com"
+                        value={otpEmail}
+                        onChange={(e) => setOtpEmail(e.target.value)}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <label htmlFor="otp-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                      Mobile Number ({otpChannel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'})
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
+                      <input
+                        id="otp-phone"
+                        type="tel"
+                        required
+                        maxLength={10}
+                        className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
+                        placeholder="Enter 10-digit mobile number"
+                        value={otpPhone}
+                        onChange={(e) => setOtpPhone(e.target.value.replace(/\D/g, ''))}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"
-                  disabled={isLoading || !otpEmail}
+                  disabled={isLoading || (otpChannel === 'EMAIL' ? !otpEmail : otpPhone.length !== 10)}
                   className="w-full h-13 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none text-sm"
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send OTP'}
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    `Send OTP via ${otpChannel === 'EMAIL' ? 'Email' : otpChannel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}`
+                  )}
                 </button>
               </form>
             ) : (
@@ -571,13 +691,13 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
                         onClick={() => setStep('EMAIL')}
                         className="text-xs text-primary hover:underline font-semibold"
                       >
-                        Change Email
+                        Change {otpChannel === 'EMAIL' ? 'Email' : 'Mobile'}
                       </button>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    Sent code to email address {otpEmail}
+                    Sent code via {otpChannel === 'EMAIL' ? `email to ${otpEmail}` : `${otpChannel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} to +91 ${otpPhone}`}
                   </p>
                   <input
                     id="otp-code"
@@ -608,32 +728,108 @@ function LoginContent({ returnUrl }: { returnUrl: string }) {
           <div>
             {forgotStep === 'REQUEST' ? (
               <form onSubmit={handleForgotPasswordRequest} className="space-y-5">
-                <div>
-                  <label htmlFor="forgot-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-4 text-muted-foreground">
-                      <Mail className="w-5 h-5" />
-                    </span>
-                    <input
-                      id="forgot-email"
-                      type="email"
-                      required
-                      placeholder="name@example.com"
-                      className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
-                      value={forgotEmailOrPhone}
-                      onChange={(e) => setForgotEmailOrPhone(e.target.value)}
-                    />
-                  </div>
+                <div className="grid grid-cols-3 gap-1.5 bg-muted/60 p-1.5 rounded-2xl mb-4 border border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotChannel('EMAIL');
+                      setError('');
+                      setSuccessMessage('');
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all ${
+                      forgotChannel === 'EMAIL'
+                        ? 'bg-background text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotChannel('SMS');
+                      setError('');
+                      setSuccessMessage('');
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all ${
+                      forgotChannel === 'SMS'
+                        ? 'bg-background text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    SMS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotChannel('WHATSAPP');
+                      setError('');
+                      setSuccessMessage('');
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all ${
+                      forgotChannel === 'WHATSAPP'
+                        ? 'bg-background text-emerald-600 dark:text-emerald-400 shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                    WhatsApp
+                  </button>
                 </div>
+
+                {forgotChannel === 'EMAIL' ? (
+                  <div>
+                    <label htmlFor="forgot-email" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                      Registered Email Address
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-4 text-muted-foreground">
+                        <Mail className="w-5 h-5" />
+                      </span>
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        required
+                        placeholder="name@example.com"
+                        className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
+                        value={forgotEmailOrPhone}
+                        onChange={(e) => setForgotEmailOrPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="forgot-phone" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                      Registered Mobile Number ({forgotChannel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'})
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-4 text-muted-foreground font-semibold text-sm">+91</span>
+                      <input
+                        id="forgot-phone"
+                        type="tel"
+                        required
+                        maxLength={10}
+                        placeholder="Enter 10-digit mobile number"
+                        className="w-full h-13 pl-12 pr-4 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
+                        value={forgotEmailOrPhone}
+                        onChange={(e) => setForgotEmailOrPhone(e.target.value.replace(/\D/g, ''))}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !forgotEmailOrPhone}
                   className="w-full h-13 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none text-sm"
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send Reset Code'}
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    `Send Reset Code via ${forgotChannel === 'EMAIL' ? 'Email' : forgotChannel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}`
+                  )}
                 </button>
 
                 <div className="text-center mt-4">

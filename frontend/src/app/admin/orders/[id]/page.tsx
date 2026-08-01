@@ -13,6 +13,8 @@ import {
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { AwbCameraScannerModal } from '@/components/admin/AwbCameraScannerModal';
+import { ParsedAwbResult } from '@/lib/awbParser';
 
 // ── Delivery Partners ────────────────────────────────────────────
 const DELIVERY_PARTNERS = [
@@ -457,8 +459,21 @@ export default function OrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const awbRef = useRef<HTMLInputElement>(null);
   const [selectedCourierCustomName, setSelectedCourierCustomName] = useState('');
+
+  const handleCameraScanSuccess = (result: ParsedAwbResult) => {
+    handleAwbChange(result.awb);
+    if (result.carrierId) {
+      setSelectedPartner(result.carrierId);
+      const url = getTrackingUrl(result.carrierId, result.awb);
+      if (url) {
+        setTrackingUrl(url);
+      }
+    }
+    showToast(`Scanned AWB Code: ${result.awb}`);
+  };
 
   // Transit Logs State
   const [transitEvents, setTransitEvents] = useState<any[]>([]);
@@ -560,9 +575,8 @@ export default function OrderDetailPage() {
       await api.put(`/orders/admin/${id}/status`, payload);
       showToast('Order fulfillment & tracking details saved successfully!');
       
-      // Reload order and trigger history list update
-      const { data } = await api.get(`/orders/admin/${id}`);
-      setOrder(data);
+      // Reload order and live transit timeline
+      await fetchOrder();
       setNotes('');
       window.dispatchEvent(new Event('order-status-history-refresh'));
       window.dispatchEvent(new Event('order-transactions-refresh'));
@@ -983,8 +997,16 @@ export default function OrderDetailPage() {
                     />
                     <button
                       type="button"
+                      onClick={() => setShowCameraScanner(true)}
+                      title="Open Camera QR / Barcode Scanner"
+                      className="w-10 h-10 rounded-xl border-2 border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition-all shrink-0 shadow-sm"
+                    >
+                      <QrCode className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleScanFocus}
-                      title="Ready barcode scanner"
+                      title="Ready USB barcode scanner"
                       className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all shrink-0 ${
                         scanning ? 'border-primary bg-primary text-white' : 'border-border hover:border-primary hover:text-primary'
                       }`}
@@ -1101,6 +1123,13 @@ export default function OrderDetailPage() {
         isOpen={isLabelSizeModalOpen}
         onClose={() => setIsLabelSizeModalOpen(false)}
         order={order}
+      />
+
+      {/* Camera QR & Barcode Scanner Modal */}
+      <AwbCameraScannerModal
+        isOpen={showCameraScanner}
+        onClose={() => setShowCameraScanner(false)}
+        onScanSuccess={handleCameraScanSuccess}
       />
     </div>
   );

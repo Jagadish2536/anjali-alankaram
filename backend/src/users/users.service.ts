@@ -189,6 +189,14 @@ export class UsersService {
       updateData.phone = formattedPhone;
     }
 
+    if (dto.emailNotificationsEnabled !== undefined) {
+      updateData.emailNotificationsEnabled = Boolean(dto.emailNotificationsEnabled);
+    }
+
+    if (dto.whatsappNotificationsEnabled !== undefined) {
+      updateData.whatsappNotificationsEnabled = Boolean(dto.whatsappNotificationsEnabled);
+    }
+
     if (dto.password !== undefined && dto.password !== '') {
       updateData.password = await bcrypt.hash(dto.password, 10);
     }
@@ -203,6 +211,8 @@ export class UsersService {
         name: true,
         avatar: true,
         role: true,
+        emailNotificationsEnabled: true,
+        whatsappNotificationsEnabled: true,
         password: true,
       }
     });
@@ -214,6 +224,8 @@ export class UsersService {
       name: updatedUser.name,
       avatar: updatedUser.avatar,
       role: updatedUser.role,
+      emailNotificationsEnabled: updatedUser.emailNotificationsEnabled,
+      whatsappNotificationsEnabled: updatedUser.whatsappNotificationsEnabled,
       hasPassword: !!updatedUser.password,
     };
   }
