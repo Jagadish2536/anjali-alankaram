@@ -237,7 +237,7 @@ export class ShippingService {
 
     if (afterShipKey) {
       this.afterShip = new AfterShipProvider(afterShipKey);
-      this.logger.log('AfterShip tracking provider initialized');
+      this.logger.log('AfterShip Pro tracking provider initialized');
     } else {
       this.logger.warn('AFTERSHIP_API_KEY not set — AfterShip tracking unavailable');
     }
