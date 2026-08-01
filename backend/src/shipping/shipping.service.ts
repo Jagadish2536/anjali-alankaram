@@ -298,13 +298,9 @@ export class ShippingService {
         description: 'Package in transit to destination hub',
       });
 
-      // Event 4: Out for Delivery (if > 2 hrs or status OUT_FOR_DELIVERY/DELIVERED)
-      const outForDeliveryTime = new Date(startTime + 2 * 60 * 60 * 1000);
-      if (
-        order?.status === 'OUT_FOR_DELIVERY' ||
-        order?.status === 'DELIVERED' ||
-        Date.now() >= outForDeliveryTime.getTime()
-      ) {
+      // Event 4: Out for Delivery (ONLY if actual order status is OUT_FOR_DELIVERY or DELIVERED)
+      if (order?.status === 'OUT_FOR_DELIVERY' || order?.status === 'DELIVERED') {
+        const outForDeliveryTime = new Date(startTime + 2 * 60 * 60 * 1000);
         events.push({
           status: 'Out for Delivery',
           location: `${destCity} Local Office`,
@@ -313,9 +309,9 @@ export class ShippingService {
         });
       }
 
-      // Event 5: Delivered (if status DELIVERED or > 4 hrs)
-      const deliveredTime = new Date(startTime + 4 * 60 * 60 * 1000);
-      if (order?.status === 'DELIVERED' || Date.now() >= deliveredTime.getTime()) {
+      // Event 5: Delivered (ONLY if actual order status is DELIVERED)
+      if (order?.status === 'DELIVERED') {
+        const deliveredTime = new Date(startTime + 4 * 60 * 60 * 1000);
         events.push({
           status: 'Delivered',
           location: `${destInfo}`,
