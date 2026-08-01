@@ -35,7 +35,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_FILTER_TABS = [
-  'ALL', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'PAYMENT_VERIFIED', 'CANCELLED', 'PENDING_PAYMENT',
+  'ALL', 'CONFIRMED', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'PAYMENT_VERIFIED', 'CANCELLED', 'PENDING_PAYMENT',
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -46,7 +46,18 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const BADGE_STATUSES = ['CONFIRMED', 'PAYMENT_VERIFIED', 'PENDING_PAYMENT'];
+// Show count badge on every tab
+const TAB_LABELS: Record<string, string> = {
+  ALL:              'All Orders',
+  CONFIRMED:        'Confirmed',
+  SHIPPED:          'Shipped',
+  IN_TRANSIT:       'In Transit',
+  OUT_FOR_DELIVERY: 'Out for Delivery',
+  DELIVERED:        'Delivered',
+  PAYMENT_VERIFIED: 'Payment Verified',
+  CANCELLED:        'Cancelled',
+  PENDING_PAYMENT:  'Pending Payment',
+};
 
 function AdminOrdersContent() {
   const router = useRouter();
@@ -247,21 +258,21 @@ function AdminOrdersContent() {
         {/* Status Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-3 px-3 sm:mx-0 sm:px-0">
           {STATUS_FILTER_TABS.map(s => {
-            const isBadgeStatus = BADGE_STATUSES.includes(s);
-            const count = statusCounts[s] ?? 0;
+            const count = s === 'ALL'
+              ? Object.values(statusCounts).reduce((a, b) => a + b, 0)
+              : (statusCounts[s] ?? 0);
+            const isActive = statusFilter === s;
             return (
               <button key={s} onClick={() => setStatusFilter(s)}
                 className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-colors shrink-0 flex items-center gap-1.5 ${
-                  statusFilter === s ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-muted-foreground hover:border-gray-300'
+                  isActive ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-muted-foreground hover:border-gray-300'
                 }`}>
-                <span>{s === 'ALL' ? 'All Orders' : s.replace(/_/g, ' ')}</span>
-                {isBadgeStatus && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
-                    statusFilter === s ? 'bg-white text-primary' : 'bg-primary/10 text-primary'
-                  }`}>
-                    {count}
-                  </span>
-                )}
+                <span>{TAB_LABELS[s] ?? s.replace(/_/g, ' ')}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                  isActive ? 'bg-white text-primary' : 'bg-primary/10 text-primary'
+                }`}>
+                  {count}
+                </span>
               </button>
             );
           })}
