@@ -43,6 +43,7 @@ export const metadata: Metadata = {
   // Modern PWA capability meta — replaces deprecated apple-mobile-web-app-capable
   other: {
     'mobile-web-app-capable': 'yes',
+    'facebook-domain-verification': '2c9y0gayfy6ep995vmmdbkfyah4q3b',
   },
 }
 
