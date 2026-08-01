@@ -437,22 +437,15 @@ function ReplacementModal({ order, onConfirm, onCancel, loading }: {
 
 const STATUS_ICON: Record<string, string> = {
   'Delivered': '✅',
-  'Out for Delivery': '🚚',
-  'Out For Delivery': '🚚',
-  'In Transit': '📦',
-  'InTransit': '📦',
+  'Out for Delivery': '🚚', 'Out For Delivery': '🚚',
+  'In Transit': '📦', 'InTransit': '📦',
   'Picked Up': '📬',
-  'Departure Scan': '✈️',
-  'Arrival scan': '📍',
-  'Arrival Scan': '📍',
-  'Acceptance scan': '🔖',
-  'Acceptance Scan': '🔖',
-  'Info Received': '🗒️',
-  'Softdata Upload': '🗒️',
-  'Booked': '🔖',
-  'Mis Route': '⚠️',
-  'Exception': '⚠️',
-  'Returned': '↩️',
+  'Departure Scan': '✈️', 'Item Dispatched': '✈️',
+  'Arrival scan': '📍', 'Arrival Scan': '📍',
+  'Item Received': '📍', 'Bag Received': '📍', 'Bag Received for Forwarding': '📍',
+  'Acceptance scan': '🔖', 'Acceptance Scan': '🔖', 'Item bagged': '🔖',
+  'Info Received': '🗒️', 'Softdata Upload': '🗒️', 'Booked': '🗒️',
+  'Mis Route': '⚠️', 'Exception': '⚠️', 'Returned': '↩️',
 };
 
 interface TrackEvent {
@@ -467,41 +460,29 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
   courierName?: string;
   lastRefreshed?: Date | null;
 }) {
-  const [events, setEvents]   = useState<TrackEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
+  const [events, setEvents]     = useState<TrackEvent[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.anjalialankaram.com/api/v1';
 
   const fetchTracking = async () => {
     if (!awbCode) return;
-    setLoading(true);
-    setError(false);
+    setLoading(true); setError(false);
     try {
       const res  = await fetch(`${API}/orders/${encodeURIComponent(awbCode.trim())}/track`);
       const data = await res.json();
-      if (data.events && data.events.length > 0) {
-        setEvents(data.events);
-      } else {
-        setError(true);
-      }
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+      if (data.events && data.events.length > 0) { setEvents(data.events); }
+      else { setError(true); }
+    } catch { setError(true); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchTracking(); }, [awbCode]);
 
-  const courierTrackUrl = () => {
-    const c = (courierName || '').toLowerCase();
-    if (c.includes('india post') || awbCode?.match(/^[A-Z]{2}\d{9}IN$/i))
-      return `https://www.indiapost.gov.in/_layouts/15/dop.online.tracking/trackconsignment.aspx`;
-    if (c.includes('dtdc') || awbCode?.startsWith('7D'))
-      return `https://www.dtdc.in/tracking/tracking-results.xhtml?shipmentNumber=${awbCode}`;
-    return `https://anjalialankaram.shiprocket.co/tracking/${awbCode}`;
-  };
+  // Collapsed: show latest 3, Expanded: show all in AfterShip detail style
+  const visibleEvents = expanded ? events : events.slice(0, 3);
 
   return (
     <div className="mt-8 pt-6 border-t">
@@ -511,29 +492,18 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           Live Tracking
         </h3>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
           {lastRefreshed && (
             <span className="text-[10px] text-muted-foreground hidden sm:inline">
               Updated {Math.round((Date.now() - lastRefreshed.getTime()) / 60000) < 1
-                ? 'just now'
-                : `${Math.round((Date.now() - lastRefreshed.getTime()) / 60000)}m ago`}
+                ? 'just now' : `${Math.round((Date.now() - lastRefreshed.getTime()) / 60000)}m ago`}
             </span>
           )}
-          <button
-            onClick={fetchTracking}
-            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 touch-manipulation"
-          >
+          <button onClick={fetchTracking}
+            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 touch-manipulation">
             <Loader2 className={`w-3 h-3 ${loading ? 'animate-spin' : 'hidden'}`} />
             Refresh
           </button>
-          <a
-            href={courierTrackUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
-          >
-            Track on {courierName || 'Courier'} <ExternalLink className="w-3 h-3" />
-          </a>
         </div>
       </div>
 
@@ -545,51 +515,35 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
         </div>
       )}
 
-      {/* Error / No data */}
+      {/* Error */}
       {!loading && error && (
-        <div className="py-4 text-sm text-muted-foreground">
-          <p className="mb-3">Tracking data is being fetched from the courier. Check back in a few minutes.</p>
-          <a
-            href={courierTrackUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl text-primary font-bold text-sm hover:bg-primary/15 transition-colors w-fit"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Track on {courierName || 'Courier'} →
-          </a>
-        </div>
+        <p className="text-sm text-muted-foreground py-4">
+          Tracking data is being fetched from the courier. Check back in a few minutes.
+        </p>
       )}
 
-      {/* Timeline */}
-      {!loading && !error && events.length > 0 && (
+      {/* Timeline — Collapsed (simple) */}
+      {!loading && !error && events.length > 0 && !expanded && (
         <div className="space-y-0">
-          {events.map((e, i) => {
-            const icon   = STATUS_ICON[e.status] || '📍';
+          {visibleEvents.map((e, i) => {
+            const icon    = STATUS_ICON[e.status] || '📍';
             const isFirst = i === 0;
-            const time   = new Date(e.timestamp);
+            const time    = new Date(e.timestamp);
             const dateStr = time.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
             const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
             return (
-              <div key={i} className="flex gap-3 group">
-                {/* Timeline dot + line */}
+              <div key={i} className="flex gap-3">
                 <div className="flex flex-col items-center flex-shrink-0">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 transition-all
-                    ${isFirst
-                      ? 'bg-primary/10 border-primary shadow-sm'
-                      : 'bg-muted border-border'
-                    }`}>
+                    ${isFirst ? 'bg-primary/10 border-primary shadow-sm' : 'bg-muted border-border'}`}>
                     {icon}
                   </div>
-                  {i < events.length - 1 && (
-                    <div className="w-0.5 flex-1 bg-border min-h-[24px] my-1" />
-                  )}
+                  {i < visibleEvents.length - 1 && <div className="w-0.5 flex-1 bg-border min-h-[24px] my-1" />}
                 </div>
-                {/* Content */}
-                <div className={`pb-4 flex-1 min-w-0 ${isFirst ? 'opacity-100' : 'opacity-70'}`}>
-                  <div className="flex items-start justify-between gap-x-2 gap-y-0.5 flex-wrap">
+                <div className={`pb-4 flex-1 min-w-0 ${isFirst ? 'opacity-100' : 'opacity-60'}`}>
+                  <div className="flex items-start justify-between gap-x-2 flex-wrap">
                     <div className="min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isFirst ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      <p className={`text-sm font-semibold ${isFirst ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {e.status}
                       </p>
                       {e.location && (
@@ -607,11 +561,80 @@ function LiveTrackingWidget({ awbCode, courierName, lastRefreshed }: {
               </div>
             );
           })}
+
+          {/* View More button */}
+          {events.length > 3 && (
+            <button
+              onClick={() => setExpanded(true)}
+              className="mt-2 w-full py-2.5 text-xs font-bold text-primary border border-primary/20 rounded-xl hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5 touch-manipulation"
+            >
+              View More ({events.length - 3} more events) ▼
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Timeline — Expanded (AfterShip detail style) */}
+      {!loading && !error && events.length > 0 && expanded && (
+        <div>
+          {/* Route header */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4 pb-3 border-b">
+            <span className="font-medium">🇮🇳 India</span>
+            <span>→</span>
+            <span className="font-medium">🇮🇳 India</span>
+            <span className="ml-auto text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-full font-bold">
+              {events[0]?.status || 'In Transit'}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {events.map((e, i) => {
+              const time    = new Date(e.timestamp);
+              const dateStr = time.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+              const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+              const isFirst = i === 0;
+              return (
+                <div key={i} className={`rounded-xl border p-3 transition-all ${isFirst
+                  ? 'border-primary/30 bg-primary/5'
+                  : 'border-border bg-muted/30'}`}>
+                  {/* Title */}
+                  <p className={`text-sm font-bold mb-0.5 ${isFirst ? 'text-primary' : 'text-foreground'}`}>
+                    {e.description || e.status}
+                  </p>
+                  {/* Location • Courier */}
+                  {e.location && (
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {e.location}{courierName ? ` • ${courierName}` : ''}
+                    </p>
+                  )}
+                  {/* Date underlined */}
+                  <p className="text-xs text-muted-foreground underline decoration-dotted mb-2">
+                    {dateStr} at {timeStr}
+                  </p>
+                  {/* Scan type badge */}
+                  {e.status && (
+                    <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded border border-border bg-background text-muted-foreground">
+                      {e.status}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Collapse button */}
+          <button
+            onClick={() => setExpanded(false)}
+            className="mt-3 w-full py-2.5 text-xs font-bold text-muted-foreground border border-border rounded-xl hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5 touch-manipulation"
+          >
+            Show Less ▲
+          </button>
         </div>
       )}
     </div>
   );
 }
+
 
 // ─── Main Page ─────────────────────────────────────────────────────
 
@@ -1085,14 +1108,6 @@ export default function OrderDetailPage() {
                     )}
                   </button>
                 </span>
-                <a
-                  href={`https://anjalialankaram.shiprocket.co/tracking/${order.awbCode}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary font-bold hover:underline flex items-center gap-1 ml-auto"
-                >
-                  Track Live <ExternalLink className="w-3 h-3" />
-                </a>
               </div>
             )}
 
