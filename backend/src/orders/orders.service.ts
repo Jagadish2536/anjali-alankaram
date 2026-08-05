@@ -1114,7 +1114,7 @@ export class OrdersService implements OnApplicationBootstrap {
           status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
           awbCode: { not: null },
         },
-        select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, courierName: true },
+        select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, createdAt: true, courierName: true },
       });
 
       this.logger.log(`Found ${activeOrders.length} active shipments to sync.`);
@@ -1150,7 +1150,7 @@ export class OrdersService implements OnApplicationBootstrap {
         status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
         awbCode: { not: null },
       },
-      select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, courierName: true },
+      select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, createdAt: true, courierName: true },
     });
 
     let synced = 0, skipped = 0;
@@ -1180,13 +1180,14 @@ export class OrdersService implements OnApplicationBootstrap {
   // ─── Fallback: auto-progress status based on days since shipped ───────
   // Activates when AfterShip has no events (API down, billing issue, etc.)
   private async applyFallbackDeliveryTimeline(order: {
-    id: string; orderNumber: string; status: string; shippedAt: Date | null;
+    id: string; orderNumber: string; status: string; shippedAt: Date | null; createdAt?: Date;
   }): Promise<void> {
-    if (!order.shippedAt) return;
+    const referenceDate = order.shippedAt || order.createdAt;
+    if (!referenceDate) return;
 
     const now = Date.now();
     const msPerDay = 24 * 60 * 60 * 1000;
-    const daysSinceShipped = (now - new Date(order.shippedAt).getTime()) / msPerDay;
+    const daysSinceShipped = (now - new Date(referenceDate).getTime()) / msPerDay;
 
     const statusPriority: Record<string, number> = {
       SHIPPED: 1, IN_TRANSIT: 2, OUT_FOR_DELIVERY: 3, DELIVERED: 4,
