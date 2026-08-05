@@ -149,12 +149,10 @@ class AfterShipProvider {
     const slug = this.detectSlugFromCourier(courierName) || this.detectSlug(awb);
     try {
       const res = await axios.post(`${this.API_BASE}/trackings`, {
-        tracking: {
-          tracking_number: awb,
-          ...(slug && { slug }),
-        }
+        tracking_number: awb,
+        ...(slug && { slug }),
       }, { headers });
-      const trackingId = res.data?.data?.id || res.data?.data?.tracking?.id;
+      const trackingId = res.data?.data?.id;
       if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
       this.logger.log(`AfterShip tracking registered for AWB ${awb}${slug ? ' (' + slug + ')' : ''}`);
     } catch (e: any) {
@@ -189,22 +187,20 @@ class AfterShipProvider {
     // Step 2: Create tracking (or get existing)
     try {
       const createRes = await axios.post(`${this.API_BASE}/trackings`, {
-        tracking: {
-          tracking_number: awb,
-          ...(slug && { slug }),
-        }
+        tracking_number: awb,
+        ...(slug && { slug }),
       }, { headers });
 
-      const trackingId = createRes.data?.data?.id || createRes.data?.data?.tracking?.id;
+      const trackingId = createRes.data?.data?.id;
       if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
-      const checkpoints = createRes.data?.data?.checkpoints || createRes.data?.data?.tracking?.checkpoints;
+      const checkpoints = createRes.data?.data?.checkpoints;
       if (checkpoints?.length) return this.parseCheckpoints(checkpoints);
 
       // New tracking created — AfterShip needs a moment to fetch from courier
       // Try again after 1.5s
       await new Promise(r => setTimeout(r, 1500));
       const getRes = await axios.get(`${this.API_BASE}/trackings/${trackingId}`, { headers });
-      return this.parseCheckpoints(getRes.data?.data?.checkpoints || getRes.data?.data?.tracking?.checkpoints);
+      return this.parseCheckpoints(getRes.data?.data?.checkpoints);
     } catch (e: any) {
       if (e.response?.data?.meta?.code === 409 || e.response?.status === 409) {
         // Already exists — fetch by slug + number
