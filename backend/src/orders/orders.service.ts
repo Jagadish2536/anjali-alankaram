@@ -1196,9 +1196,9 @@ export class OrdersService implements OnApplicationBootstrap {
 
     let targetStatus: string | null = null;
 
-    if (daysSinceShipped >= 6 && currentPri < 4) {
+    if (daysSinceShipped >= 7 && currentPri < 4) {
       targetStatus = 'DELIVERED';
-    } else if (daysSinceShipped >= 4 && currentPri < 3) {
+    } else if (daysSinceShipped >= 6 && currentPri < 3) {
       targetStatus = 'OUT_FOR_DELIVERY';
     } else if (daysSinceShipped >= 2 && currentPri < 2) {
       targetStatus = 'IN_TRANSIT';
