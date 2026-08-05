@@ -140,7 +140,10 @@ export class NotificationsService {
             params = [customerName, orderNumber, courierDetails];
           } else if (type === 'ORDER_DELIVERED') {
             templateName = this.config.get('MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE') || 'order_delivered';
-            params = [customerName, orderNumber];
+            const courier = order?.courierName || 'Courier Partner';
+            const awb = order?.awbCode || 'N/A';
+            const courierDetails = awb !== 'N/A' ? `${courier} (AWB: ${awb}). Note: Please check official ${courier} website for delivery confirmation.` : '';
+            params = [customerName, orderNumber, courierDetails];
           }
 
           if (templateName) {

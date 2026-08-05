@@ -379,6 +379,10 @@ export class EmailService {
         </a>
       </div>
 
+      <p style="color:#888;font-size:13px;margin:0 0 12px;">
+        📌 <strong>Note:</strong> You can verify delivery confirmation details on the official courier website using your Tracking ID.
+      </p>
+
       <p style="color:#888;font-size:13px;margin:0;">
         Love your saree? Share it on Instagram <a href="${contact.instagramUrl}" style="color:#8B0030;">${contact.instagramHandle}</a><br>
         Any issues? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
