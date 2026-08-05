@@ -678,13 +678,13 @@ export class OrdersService implements OnApplicationBootstrap {
       const name = order.user.name || 'Customer';
       const orderNum = order.orderNumber;
 
-      if (toStatus === 'SHIPPED') {
+      if (toStatus === 'SHIPPED' || toStatus === 'IN_TRANSIT' || toStatus === 'OUT_FOR_DELIVERY') {
         this.emailService.sendOrderShipped(email, {
           customerName: name,
           orderNumber: orderNum,
-          courier: extra?.courierName || 'Courier Partner',
-          awbCode: extra?.awbCode || 'N/A',
-          trackingUrl: extra?.trackingUrl,
+          courier: extra?.courierName || order.courierName || 'Courier Partner',
+          awbCode: extra?.awbCode || order.awbCode || 'N/A',
+          trackingUrl: extra?.trackingUrl || order.trackingUrl,
         }).catch(() => {});
       } else if (toStatus === 'DELIVERED') {
         this.emailService.sendOrderDelivered(email, {
