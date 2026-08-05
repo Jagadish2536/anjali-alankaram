@@ -156,7 +156,11 @@ class AfterShipProvider {
       if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
       this.logger.log(`AfterShip tracking registered for AWB ${awb}${slug ? ' (' + slug + ')' : ''}`);
     } catch (e: any) {
-      if (e.response?.data?.meta?.code === 409 || e.response?.status === 409) {
+      const metaCode = e.response?.data?.meta?.code;
+      const statusCode = e.response?.status;
+      if (metaCode === 409 || statusCode === 409 || metaCode === 4003) {
+        const existingId = e.response?.data?.data?.id;
+        if (existingId) this.idCache.set(awb.toUpperCase(), existingId);
         this.logger.log(`AfterShip: tracking already exists for AWB ${awb}`);
       } else {
         this.logger.warn(`AfterShip registerTracking failed for ${awb}: ${e.message} ${JSON.stringify(e.response?.data || {})}`);
@@ -202,8 +206,18 @@ class AfterShipProvider {
       const getRes = await axios.get(`${this.API_BASE}/trackings/${trackingId}`, { headers });
       return this.parseCheckpoints(getRes.data?.data?.checkpoints);
     } catch (e: any) {
-      if (e.response?.data?.meta?.code === 409 || e.response?.status === 409) {
-        // Already exists — fetch by slug + number
+      const metaCode = e.response?.data?.meta?.code;
+      const statusCode = e.response?.status;
+      if (metaCode === 409 || statusCode === 409 || metaCode === 4003) {
+        // Already exists — try using ID returned directly in 4003 error payload data, or query GET
+        const existingId = e.response?.data?.data?.id;
+        if (existingId) {
+          try {
+            this.idCache.set(awb.toUpperCase(), existingId);
+            const getRes = await axios.get(`${this.API_BASE}/trackings/${existingId}`, { headers });
+            return this.parseCheckpoints(getRes.data?.data?.checkpoints);
+          } catch {}
+        }
         try {
           const getRes = await axios.get(`${this.API_BASE}/trackings?tracking_numbers=${awb}${slug ? '&slug=' + slug : ''}`, { headers });
           const trackings = getRes.data?.data?.trackings || [];
