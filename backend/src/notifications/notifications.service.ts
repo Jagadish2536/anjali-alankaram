@@ -129,14 +129,14 @@ export class NotificationsService {
             const courier = order?.courierName || 'Courier Partner';
             const awb = order?.awbCode || 'N/A';
             const trackUrl = order?.trackingUrl || (order?.awbCode ? `https://anjalialankaram.com/orders/${orderId}/track` : '');
-            const courierDetails = `${courier} (AWB: ${awb})${trackUrl ? ` - Track: ${trackUrl}` : ''}`;
+            const courierDetails = `${courier} (AWB: ${awb})${trackUrl ? ` - Track: ${trackUrl}` : ''}. Note: Please check the official ${courier} website for live tracking updates.`;
             params = [customerName, orderNumber, courierDetails];
           } else if (type === 'ORDER_OUT_FOR_DELIVERY') {
             templateName = this.config.get('MSG91_WHATSAPP_ORDER_OUT_FOR_DELIVERY_TEMPLATE') || this.config.get('MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE') || 'order_out_for_delivery';
             const courier = order?.courierName || 'Courier Partner';
             const awb = order?.awbCode || 'N/A';
             const trackUrl = order?.trackingUrl || (order?.awbCode ? `https://anjalialankaram.com/orders/${orderId}/track` : '');
-            const courierDetails = `${courier} (AWB: ${awb})${trackUrl ? ` - Track: ${trackUrl}` : ''}`;
+            const courierDetails = `${courier} (AWB: ${awb})${trackUrl ? ` - Track: ${trackUrl}` : ''}. Note: Please check the official ${courier} website for live tracking updates.`;
             params = [customerName, orderNumber, courierDetails];
           } else if (type === 'ORDER_DELIVERED') {
             templateName = this.config.get('MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE') || 'order_delivered';

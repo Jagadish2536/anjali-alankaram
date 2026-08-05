@@ -348,6 +348,10 @@ export class EmailService {
         </a>
       </div>` : ''}
 
+      <p style="color:#888;font-size:13px;margin:0 0 12px;">
+        📌 <strong>Note:</strong> Please check the official ${data.courier || 'courier'} website using your Tracking ID (<strong>${data.awbCode}</strong>) for live real-time status updates.
+      </p>
+
       <p style="color:#888;font-size:13px;margin:0;">
         Expected delivery in 3-7 business days.<br>
         Questions? WhatsApp us at <a href="https://wa.me/${contact.whatsappFormatted}" style="color:#8B0030;">${contact.whatsappNumber}</a>
