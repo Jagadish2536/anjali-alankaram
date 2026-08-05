@@ -1068,7 +1068,7 @@ export class OrdersService implements OnApplicationBootstrap {
 
       for (const order of pendingOrders) {
         this.logger.log(`Auto-confirming order #${order.orderNumber} 5 minutes after payment verification`);
-        await this.updateStatus(order.id, 'CONFIRMED', 'SYSTEM', 'SYSTEM', {
+        await this.updateStatus(order.id, 'CONFIRMED', undefined as any, 'SYSTEM', {
           notes: 'Auto-confirmed 5 minutes after payment verification',
         }).catch((err) => {
           this.logger.error(`Failed to auto-confirm order #${order.orderNumber}: ${err.message}`);
@@ -1088,7 +1088,7 @@ export class OrdersService implements OnApplicationBootstrap {
         });
         if (order?.status === 'PAYMENT_VERIFIED') {
           this.logger.log(`Timer: Auto-confirming order #${order.orderNumber} 5 minutes after payment verification`);
-          await this.updateStatus(orderId, 'CONFIRMED', 'SYSTEM', 'SYSTEM', {
+          await this.updateStatus(orderId, 'CONFIRMED', undefined as any, 'SYSTEM', {
             notes: 'Auto-confirmed 5 minutes after payment verification',
           });
         }
@@ -1211,7 +1211,7 @@ export class OrdersService implements OnApplicationBootstrap {
       `(${daysSinceShipped.toFixed(1)} days since shipped)`,
     );
 
-    await this.updateStatus(order.id, targetStatus, 'SYSTEM', 'SYSTEM', {
+    await this.updateStatus(order.id, targetStatus, undefined as any, 'SYSTEM', {
       notes: `Auto-progressed via delivery timeline fallback (${daysSinceShipped.toFixed(1)} days since shipped, AfterShip had no events)`,
     });
   }
