@@ -149,17 +149,19 @@ class AfterShipProvider {
     const slug = this.detectSlugFromCourier(courierName) || this.detectSlug(awb);
     try {
       const res = await axios.post(`${this.API_BASE}/trackings`, {
-        tracking_number: awb,
-        ...(slug && { slug }),
+        tracking: {
+          tracking_number: awb,
+          ...(slug && { slug }),
+        }
       }, { headers });
-      const trackingId = res.data?.data?.id;
+      const trackingId = res.data?.data?.id || res.data?.data?.tracking?.id;
       if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
       this.logger.log(`AfterShip tracking registered for AWB ${awb}${slug ? ' (' + slug + ')' : ''}`);
     } catch (e: any) {
-      if (e.response?.data?.meta?.code === 409) {
+      if (e.response?.data?.meta?.code === 409 || e.response?.status === 409) {
         this.logger.log(`AfterShip: tracking already exists for AWB ${awb}`);
       } else {
-        this.logger.warn(`AfterShip registerTracking failed for ${awb}: ${e.message}`);
+        this.logger.warn(`AfterShip registerTracking failed for ${awb}: ${e.message} ${JSON.stringify(e.response?.data || {})}`);
       }
     }
   }
@@ -187,22 +189,24 @@ class AfterShipProvider {
     // Step 2: Create tracking (or get existing)
     try {
       const createRes = await axios.post(`${this.API_BASE}/trackings`, {
-        tracking_number: awb,
-        ...(slug && { slug }),
+        tracking: {
+          tracking_number: awb,
+          ...(slug && { slug }),
+        }
       }, { headers });
 
-      const trackingId = createRes.data?.data?.id;
+      const trackingId = createRes.data?.data?.id || createRes.data?.data?.tracking?.id;
       if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
-      const checkpoints = createRes.data?.data?.checkpoints;
+      const checkpoints = createRes.data?.data?.checkpoints || createRes.data?.data?.tracking?.checkpoints;
       if (checkpoints?.length) return this.parseCheckpoints(checkpoints);
 
       // New tracking created — AfterShip needs a moment to fetch from courier
       // Try again after 1.5s
       await new Promise(r => setTimeout(r, 1500));
       const getRes = await axios.get(`${this.API_BASE}/trackings/${trackingId}`, { headers });
-      return this.parseCheckpoints(getRes.data?.data?.checkpoints);
+      return this.parseCheckpoints(getRes.data?.data?.checkpoints || getRes.data?.data?.tracking?.checkpoints);
     } catch (e: any) {
-      if (e.response?.data?.meta?.code === 409) {
+      if (e.response?.data?.meta?.code === 409 || e.response?.status === 409) {
         // Already exists — fetch by slug + number
         try {
           const getRes = await axios.get(`${this.API_BASE}/trackings?tracking_numbers=${awb}${slug ? '&slug=' + slug : ''}`, { headers });
@@ -211,7 +215,7 @@ class AfterShipProvider {
           return this.parseCheckpoints(trackings[0]?.checkpoints);
         } catch {}
       }
-      this.logger.error(`AfterShip track failed for ${awb}: ${e.message}`);
+      this.logger.error(`AfterShip track failed for ${awb}: ${e.message} ${JSON.stringify(e.response?.data || {})}`);
       return [];
     }
   }
