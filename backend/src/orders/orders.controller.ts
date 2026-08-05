@@ -190,4 +190,16 @@ export class OrdersController {
       },
     );
   }
+
+  /**
+   * Manually trigger AfterShip sync for all active shipments (SHIPPED/IN_TRANSIT/OUT_FOR_DELIVERY).
+   * Also applies fallback delivery timeline for orders without AfterShip events.
+   */
+  @Post('admin/sync-aftership')
+  @UseGuards(RolesGuard)
+  @Roles(...ADMIN_ROLES)
+  @ApiOperation({ summary: 'Sync all active shipments to AfterShip + apply fallback timeline (Admin)' })
+  async syncAfterShip() {
+    return this.ordersService.syncAllActiveShipmentsToAfterShip();
+  }
 }

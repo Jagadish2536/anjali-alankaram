@@ -1,5 +1,5 @@
 import {
-  Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger,
+  Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger, OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,7 +15,7 @@ import { InventoryService } from './inventory.service';
 import { OrderStatus } from '@prisma/client';
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnApplicationBootstrap {
   private readonly logger = new Logger(OrdersService.name);
 
   constructor(
@@ -707,6 +707,17 @@ export class OrdersService {
       }
     }
 
+    // Register AWB in AfterShip immediately when order is shipped
+    if (newStatus === 'SHIPPED') {
+      const awb = extra?.awbCode || order.awbCode;
+      const courier = extra?.courierName || order.courierName;
+      if (awb) {
+        this.shippingService.registerTracking(awb, courier ?? undefined).catch(e =>
+          this.logger.warn(`AfterShip register failed for order ${id}: ${e.message}`)
+        );
+      }
+    }
+
     return updated;
   }
 
@@ -1087,35 +1098,121 @@ export class OrdersService {
     }, 5 * 60 * 1000);
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  // ─── Bootstrap: sync all existing active shipments into AfterShip ────
+  async onApplicationBootstrap() {
+    // Run after a short delay so DB/Redis connections are stable
+    setTimeout(() => this.syncAllActiveShipmentsToAfterShip().catch(() => {}), 15000);
+  }
+
+  // ─── 30-minute cron: poll AfterShip + apply fallback timeline ────────
+  @Cron('*/30 * * * *')
   async autoUpdateShippedOrders() {
-    this.logger.log('Running background auto-update for shipped orders (every 10 min)...');
+    this.logger.log('Running 30-min AfterShip sync for active shipments...');
     try {
       const activeOrders = await this.prisma.order.findMany({
         where: {
           status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
           awbCode: { not: null },
         },
-        select: { id: true, orderNumber: true, updatedAt: true },
+        select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, courierName: true },
       });
 
       this.logger.log(`Found ${activeOrders.length} active shipments to sync.`);
       for (const order of activeOrders) {
-        // Skip if synced within last 8 minutes to avoid hammering Shiprocket API
-        const minsAgo = (Date.now() - new Date(order.updatedAt).getTime()) / 60000;
-        if (minsAgo < 8) {
-          this.logger.debug(`Skipping ${order.orderNumber} — updated ${minsAgo.toFixed(1)} min ago`);
-          continue;
-        }
         try {
-          await this.trackOrder(order.id);
+          // Try live tracking via AfterShip first
+          const events = await this.shippingService.trackShipment(order.awbCode!);
+          const hasLiveData = events && events.length > 0;
+
+          if (hasLiveData) {
+            // Let trackOrder() handle status auto-update from AfterShip events
+            await this.trackOrder(order.id);
+          } else {
+            // AfterShip returned no events — apply fallback delivery timeline
+            await this.applyFallbackDeliveryTimeline(order);
+          }
         } catch (err: any) {
-          this.logger.error(`Failed to track order ${order.orderNumber}: ${err.message}`);
+          this.logger.error(`Failed to sync order ${order.orderNumber}: ${err.message}`);
+          // Still try fallback even if tracking threw
+          try { await this.applyFallbackDeliveryTimeline(order); } catch {}
         }
       }
     } catch (e: any) {
       this.logger.error(`Error in autoUpdateShippedOrders cron: ${e.message}`);
     }
+  }
+
+  // ─── One-time sync: register all active shipments in AfterShip ───────
+  async syncAllActiveShipmentsToAfterShip(): Promise<{ synced: number; skipped: number }> {
+    this.logger.log('Syncing all active shipments to AfterShip...');
+    const activeOrders = await this.prisma.order.findMany({
+      where: {
+        status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+        awbCode: { not: null },
+      },
+      select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, courierName: true },
+    });
+
+    let synced = 0, skipped = 0;
+    for (const order of activeOrders) {
+      try {
+        // Register in AfterShip
+        await this.shippingService.registerTracking(order.awbCode!, order.courierName ?? undefined);
+
+        // Get live events and update status
+        const events = await this.shippingService.trackShipment(order.awbCode!);
+        if (events && events.length > 0) {
+          await this.trackOrder(order.id);
+        } else {
+          // No live data yet — apply fallback timeline
+          await this.applyFallbackDeliveryTimeline(order);
+        }
+        synced++;
+      } catch (err: any) {
+        this.logger.error(`Sync failed for ${order.orderNumber}: ${err.message}`);
+        skipped++;
+      }
+    }
+    this.logger.log(`AfterShip sync complete: ${synced} synced, ${skipped} skipped.`);
+    return { synced, skipped };
+  }
+
+  // ─── Fallback: auto-progress status based on days since shipped ───────
+  // Activates when AfterShip has no events (API down, billing issue, etc.)
+  private async applyFallbackDeliveryTimeline(order: {
+    id: string; orderNumber: string; status: string; shippedAt: Date | null;
+  }): Promise<void> {
+    if (!order.shippedAt) return;
+
+    const now = Date.now();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysSinceShipped = (now - new Date(order.shippedAt).getTime()) / msPerDay;
+
+    const statusPriority: Record<string, number> = {
+      SHIPPED: 1, IN_TRANSIT: 2, OUT_FOR_DELIVERY: 3, DELIVERED: 4,
+    };
+    const currentPri = statusPriority[order.status] ?? 0;
+
+    let targetStatus: string | null = null;
+
+    if (daysSinceShipped >= 6 && currentPri < 4) {
+      targetStatus = 'DELIVERED';
+    } else if (daysSinceShipped >= 4 && currentPri < 3) {
+      targetStatus = 'OUT_FOR_DELIVERY';
+    } else if (daysSinceShipped >= 2 && currentPri < 2) {
+      targetStatus = 'IN_TRANSIT';
+    }
+
+    if (!targetStatus) return;
+
+    this.logger.log(
+      `Fallback timeline: Order ${order.orderNumber} ${order.status} → ${targetStatus} ` +
+      `(${daysSinceShipped.toFixed(1)} days since shipped)`,
+    );
+
+    await this.updateStatus(order.id, targetStatus, 'SYSTEM', 'SYSTEM', {
+      notes: `Auto-progressed via delivery timeline fallback (${daysSinceShipped.toFixed(1)} days since shipped, AfterShip had no events)`,
+    });
   }
 
   // ─── Active shipments for frontend polling ──────────────────────

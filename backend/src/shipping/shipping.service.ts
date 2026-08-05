@@ -138,6 +138,32 @@ class AfterShipProvider {
 
   constructor(private apiKey: string) {}
 
+  /** Proactively create a tracking entry in AfterShip (called when AWB is assigned). */
+  async registerTracking(awb: string, courierName?: string): Promise<void> {
+    if (!this.apiKey) return;
+    const headers = {
+      'as-api-key': this.apiKey,
+      'Content-Type': 'application/json',
+      'aftership-api-version': '2024-07',
+    };
+    const slug = this.detectSlugFromCourier(courierName) || this.detectSlug(awb);
+    try {
+      const res = await axios.post(`${this.API_BASE}/trackings`, {
+        tracking_number: awb,
+        ...(slug && { slug }),
+      }, { headers });
+      const trackingId = res.data?.data?.id;
+      if (trackingId) this.idCache.set(awb.toUpperCase(), trackingId);
+      this.logger.log(`AfterShip tracking registered for AWB ${awb}${slug ? ' (' + slug + ')' : ''}`);
+    } catch (e: any) {
+      if (e.response?.data?.meta?.code === 409) {
+        this.logger.log(`AfterShip: tracking already exists for AWB ${awb}`);
+      } else {
+        this.logger.warn(`AfterShip registerTracking failed for ${awb}: ${e.message}`);
+      }
+    }
+  }
+
   async trackShipment(awb: string, slug?: string): Promise<TrackingEvent[]> {
     if (!this.apiKey) return [];
     const headers = {
@@ -188,6 +214,20 @@ class AfterShipProvider {
       this.logger.error(`AfterShip track failed for ${awb}: ${e.message}`);
       return [];
     }
+  }
+
+  /** Detect AfterShip slug from the courier name entered by admin. */
+  private detectSlugFromCourier(courierName?: string): string | undefined {
+    if (!courierName) return undefined;
+    const c = courierName.toLowerCase();
+    if (c.includes('dtdc')) return 'dtdc';
+    if (c.includes('india post') || c.includes('indiapost') || c.includes('speed post')) return 'india-post';
+    if (c.includes('delhivery')) return 'delhivery';
+    if (c.includes('blue dart') || c.includes('bluedart')) return 'bluedart';
+    if (c.includes('ekart')) return 'ekart';
+    if (c.includes('xpressbees')) return 'xpressbees';
+    if (c.includes('shiprocket')) return undefined; // let AfterShip auto-detect
+    return undefined;
   }
 
   private detectSlug(awb: string): string | undefined {
@@ -241,6 +281,15 @@ export class ShippingService {
     } else {
       this.logger.warn('AFTERSHIP_API_KEY not set — AfterShip tracking unavailable');
     }
+  }
+
+  /**
+   * Register an AWB in AfterShip immediately (call when admin assigns courier).
+   * No-op if AfterShip is not configured.
+   */
+  async registerTracking(awb: string, courierName?: string): Promise<void> {
+    if (!this.afterShip || !awb?.trim()) return;
+    await this.afterShip.registerTracking(awb.trim().toUpperCase(), courierName);
   }
 
   async createShipment(orderId: string) {
