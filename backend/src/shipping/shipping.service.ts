@@ -355,6 +355,12 @@ export class ShippingService {
       });
 
       this.logger.log(`Shipment created for order ${orderId}: AWB ${result.awb}`);
+
+      // Register generated AWB with AfterShip immediately
+      if (result.awb) {
+        this.registerTracking(result.awb, this.provider.name).catch(() => {});
+      }
+
       return result;
     } catch (e) {
       this.logger.error(`Shipment creation failed for ${orderId}: ${e.message}`);

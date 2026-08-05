@@ -1112,7 +1112,7 @@ export class OrdersService implements OnApplicationBootstrap {
       const activeOrders = await this.prisma.order.findMany({
         where: {
           status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
-          awbCode: { not: null },
+          awbCode: { not: null, notIn: ['', ' '] },
         },
         select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, createdAt: true, courierName: true },
       });
@@ -1148,7 +1148,7 @@ export class OrdersService implements OnApplicationBootstrap {
     const activeOrders = await this.prisma.order.findMany({
       where: {
         status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
-        awbCode: { not: null },
+        awbCode: { not: null, notIn: ['', ' '] },
       },
       select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, createdAt: true, courierName: true },
     });
