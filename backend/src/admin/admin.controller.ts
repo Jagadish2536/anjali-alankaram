@@ -283,7 +283,7 @@ export class AdminController implements OnModuleInit {
           End: months[months.length - 1].end,
         },
         Granularity: 'MONTHLY',
-        Metrics: ['BlendedCost', 'UsageQuantity'],
+        Metrics: ['NetUnblendedCost', 'UnblendedCost', 'BlendedCost', 'UsageQuantity'],
         GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }],
       };
 
@@ -297,7 +297,12 @@ export class AdminController implements OnModuleInit {
         const label = d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 
         const services = (result.Groups || []).map((g) => {
-          const costInUsd = Number(g.Metrics?.BlendedCost?.Amount || 0);
+          const costInUsd = Number(
+            g.Metrics?.NetUnblendedCost?.Amount ||
+            g.Metrics?.UnblendedCost?.Amount ||
+            g.Metrics?.BlendedCost?.Amount ||
+            0
+          );
           return {
             name: g.Keys?.[0] || 'Other',
             cost: Number((costInUsd * USD_TO_INR).toFixed(2)),
