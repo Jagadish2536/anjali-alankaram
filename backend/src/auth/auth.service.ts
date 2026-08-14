@@ -543,15 +543,82 @@ export class AuthService {
       : this.config.get('MSG91_WHATSAPP_OTP_TEMPLATE_NAME');
     const whatsappSender = this.config.get('MSG91_WHATSAPP_SENDER');
 
-    // Clean phone number: remove non-digits, ensure it has 91 prefix
-    let cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length === 10) {
-      cleanPhone = `91${cleanPhone}`;
+    // Clean phone number: remove non-digits, format with leading + and country code
+    let rawDigits = phone.replace(/\D/g, '');
+    if (rawDigits.length === 10) {
+      rawDigits = `91${rawDigits}`;
+    }
+    const cleanPhone = rawDigits;
+    const formattedE164 = `+${rawDigits}`;
+
+    // ── Twilio Provider Integration ──────────────────────────────────────────
+    const twilioAccountSid = this.config.get<string>('TWILIO_ACCOUNT_SID');
+    const twilioApiKeySid = this.config.get<string>('TWILIO_API_KEY_SID') || this.config.get<string>('TWILIO_AUTH_TOKEN');
+    const twilioApiSecret = this.config.get<string>('TWILIO_API_KEY_SECRET');
+    const twilioFromPhone = this.config.get<string>('TWILIO_PHONE_NUMBER');
+    const twilioFromWhatsapp = this.config.get<string>('TWILIO_WHATSAPP_NUMBER') || 'whatsapp:+14155238886';
+
+    if (twilioAccountSid && twilioApiKeySid) {
+      const authHeader = 'Basic ' + Buffer.from(
+        twilioApiSecret ? `${twilioApiKeySid}:${twilioApiSecret}` : `${twilioAccountSid}:${twilioApiKeySid}`
+      ).toString('base64');
+
+      const messageBody = isForgotPassword
+        ? `Your Anjali Alankaram password reset verification code is: ${code}. Valid for 10 minutes.`
+        : `Your Anjali Alankaram verification code is: ${code}. Valid for 10 minutes.`;
+
+      if (channel === 'whatsapp') {
+        try {
+          const params = new URLSearchParams();
+          params.append('From', twilioFromWhatsapp.startsWith('whatsapp:') ? twilioFromWhatsapp : `whatsapp:${twilioFromWhatsapp}`);
+          params.append('To', `whatsapp:${formattedE164}`);
+          params.append('Body', messageBody);
+
+          await axios.post(
+            `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
+            params.toString(),
+            {
+              headers: {
+                Authorization: authHeader,
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            },
+          );
+          this.logger.log(`[Twilio-WhatsApp] OTP sent successfully to ${formattedE164}`);
+          return;
+        } catch (error: any) {
+          this.logger.error('WhatsApp OTP send failed via Twilio:', error.response?.data?.message || error.message);
+          // Fall through to SMS or MSG91
+        }
+      } else {
+        try {
+          const params = new URLSearchParams();
+          params.append('From', twilioFromPhone || twilioFromWhatsapp.replace('whatsapp:', ''));
+          params.append('To', formattedE164);
+          params.append('Body', messageBody);
+
+          await axios.post(
+            `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
+            params.toString(),
+            {
+              headers: {
+                Authorization: authHeader,
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            },
+          );
+          this.logger.log(`[Twilio-SMS] OTP sent successfully to ${formattedE164}`);
+          return;
+        } catch (error: any) {
+          this.logger.error('SMS OTP send failed via Twilio:', error.response?.data?.message || error.message);
+          // Fall through to MSG91
+        }
+      }
     }
 
     if (!authKey || process.env.NODE_ENV === 'development') {
       this.logger.log(
-        `[DEV/MSG91-${channel.toUpperCase()}] OTP for ${cleanPhone}: ${code} [Template: ${channel === 'whatsapp' ? whatsappTemplateName : templateId}]`,
+        `[DEV-${channel.toUpperCase()}] OTP for ${cleanPhone}: ${code} [Template: ${channel === 'whatsapp' ? whatsappTemplateName : templateId}]`,
       );
       return;
     }

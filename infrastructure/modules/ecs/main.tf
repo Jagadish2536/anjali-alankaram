@@ -196,7 +196,11 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_SHIPPED_TEMPLATE::" },
         { name = "MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_DELIVERED_TEMPLATE::" },
         { name = "MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE", valueFrom = "${var.secrets_arn}:MSG91_WHATSAPP_ORDER_CANCELLED_TEMPLATE::" },
-        { name = "GEMINI_API_KEY", valueFrom = "${var.secrets_arn}:GEMINI_API_KEY::" }
+        { name = "GEMINI_API_KEY", valueFrom = "${var.secrets_arn}:GEMINI_API_KEY::" },
+        { name = "TWILIO_ACCOUNT_SID", valueFrom = "${var.secrets_arn}:TWILIO_ACCOUNT_SID::" },
+        { name = "TWILIO_API_KEY_SID", valueFrom = "${var.secrets_arn}:TWILIO_API_KEY_SID::" },
+        { name = "TWILIO_API_KEY_SECRET", valueFrom = "${var.secrets_arn}:TWILIO_API_KEY_SECRET::" },
+        { name = "TWILIO_WHATSAPP_NUMBER", valueFrom = "${var.secrets_arn}:TWILIO_WHATSAPP_NUMBER::" }
       ]
     }
   ])
