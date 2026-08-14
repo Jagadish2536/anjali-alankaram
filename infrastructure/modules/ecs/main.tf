@@ -10,7 +10,7 @@ resource "aws_ecs_cluster" "main" {
 
   setting {
     name  = "containerInsights"
-    value = "enabled"
+    value = "disabled"
   }
   tags = var.tags
 }
@@ -23,14 +23,8 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 4
-    base              = 0
-  }
-
-  default_capacity_provider_strategy {
-    capacity_provider = "FARGATE"
     weight            = 1
-    base              = 1
+    base              = 0
   }
 }
 
@@ -125,8 +119,8 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512  # 0.5 vCPU — good for NestJS + Prisma + AI processing
-  memory                   = 1024 # 1 GB — handles file uploads + OpenAI buffers
+  cpu                      = 256  # 0.25 vCPU — right-sized for 100 concurrent users with Redis caching
+  memory                   = 512  # 512 MB — optimized memory allocation
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
@@ -214,8 +208,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512  # 0.5 vCPU
-  memory                   = 1024 # 1 GB — Next.js SSR needs adequate memory
+  cpu                      = 256  # 0.25 vCPU — right-sized for 100 concurrent users
+  memory                   = 512  # 512 MB — Next.js production runner
   execution_role_arn       = var.ecs_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
