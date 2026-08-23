@@ -17,7 +17,6 @@ env:
   ECS_CLUSTER: anjali-alankaram-cluster
   ECS_TASK_DEFINITION: anjali-alankaram-frontend-task
   CONTAINER_NAME: frontend
-  RDS_INSTANCE: anjali-alankaram-db-wiped
 
 jobs:
   deploy:
@@ -59,12 +58,9 @@ jobs:
         echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=$RAZORPAY_KEY" >> $GITHUB_ENV
         echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=$GOOGLE_ID" >> $GITHUB_ENV
         
-        # Mask secrets in logs for security
         echo "::add-mask::$API_URL"
         echo "::add-mask::$RAZORPAY_KEY"
         echo "::add-mask::$GOOGLE_ID"
-        
-        echo "DEBUG: Google ID starts with ${GOOGLE_ID:0:10}..."
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
@@ -84,7 +80,12 @@ jobs:
 
     - name: Download current Amazon ECS task definition
       run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --query taskDefinition > task-definition.json
+        aws ecs describe-task-definition \
+          --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+          --query 'taskDefinition' \
+          --output json \
+          | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)' \
+          > task-definition.json
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
@@ -95,9 +96,10 @@ jobs:
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+        wait-for-minutes: 10
