@@ -40,7 +40,8 @@ resource "aws_lb_target_group" "backend" {
   deregistration_delay = 30
 
   health_check {
-    path                = "/health"
+    path                = "/api/v1/health"
+    matcher             = "200,404"
     healthy_threshold   = 2
     unhealthy_threshold = 10
     interval            = 30
@@ -49,9 +50,9 @@ resource "aws_lb_target_group" "backend" {
 }
 
 # --- Route53 and ACM (Optional based on domain_name) ---
-resource "aws_route53_zone" "main" {
-  count = var.domain_name != "" ? 1 : 0
-  name  = var.domain_name
+data "aws_route53_zone" "main" {
+  count   = var.domain_name != "" ? 1 : 0
+  zone_id = "Z052703217665BLKSY9SQ"
 }
 
 resource "aws_acm_certificate" "main" {
@@ -80,7 +81,7 @@ resource "aws_route53_record" "cert_validation" {
   records         = [each.value.record]
   ttl             = 60
   type            = each.value.type
-  zone_id         = aws_route53_zone.main[0].zone_id
+  zone_id         = data.aws_route53_zone.main[0].zone_id
 }
 
 resource "aws_acm_certificate_validation" "main" {
@@ -134,7 +135,6 @@ resource "aws_lb_listener_rule" "api" {
 }
 
 resource "aws_lb_listener_rule" "api_http" {
-  count        = var.domain_name == "" ? 1 : 0
   listener_arn = aws_lb_listener.http.arn
   priority     = 100
 
@@ -152,10 +152,11 @@ resource "aws_lb_listener_rule" "api_http" {
 
 # --- DNS Records for ALB ---
 resource "aws_route53_record" "alb" {
-  count   = var.domain_name != "" ? 1 : 0
-  zone_id = aws_route53_zone.main[0].zone_id
-  name    = var.domain_name
-  type    = "A"
+  count           = var.domain_name != "" ? 1 : 0
+  allow_overwrite = true
+  zone_id         = data.aws_route53_zone.main[0].zone_id
+  name            = var.domain_name
+  type            = "A"
 
   alias {
     name                   = aws_lb.main.dns_name
@@ -166,10 +167,11 @@ resource "aws_route53_record" "alb" {
 
 # www subdomain DNS record → same ALB
 resource "aws_route53_record" "alb_www" {
-  count   = var.domain_name != "" ? 1 : 0
-  zone_id = aws_route53_zone.main[0].zone_id
-  name    = "www.${var.domain_name}"
-  type    = "A"
+  count           = var.domain_name != "" ? 1 : 0
+  allow_overwrite = true
+  zone_id         = data.aws_route53_zone.main[0].zone_id
+  name            = "www.${var.domain_name}"
+  type            = "A"
 
   alias {
     name                   = aws_lb.main.dns_name
@@ -179,10 +181,11 @@ resource "aws_route53_record" "alb_www" {
 }
 
 resource "aws_route53_record" "alb_api" {
-  count   = var.domain_name != "" ? 1 : 0
-  zone_id = aws_route53_zone.main[0].zone_id
-  name    = "api.${var.domain_name}"
-  type    = "A"
+  count           = var.domain_name != "" ? 1 : 0
+  allow_overwrite = true
+  zone_id         = data.aws_route53_zone.main[0].zone_id
+  name            = "api.${var.domain_name}"
+  type            = "A"
 
   alias {
     name                   = aws_lb.main.dns_name

@@ -31,7 +31,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 # --- CloudWatch Logs ---
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
-  retention_in_days = 14 # Cost Optimization: 14 days is sufficient for debugging + compliance
+  retention_in_days = 7 # Cost Optimization: 7 days is sufficient for debugging & saves log storage fees
   tags              = var.tags
 }
 
@@ -249,7 +249,9 @@ resource "aws_ecs_task_definition" "frontend" {
 
       environment = [
         { name = "PORT", value = "4000" },
-        { name = "NODE_ENV", value = "production" }
+        { name = "NODE_ENV", value = "production" },
+        { name = "NEXT_PUBLIC_API_URL", value = "https://anjalialankaram.com/api/v1" },
+        { name = "NEXT_PUBLIC_APP_URL", value = "https://anjalialankaram.com" }
       ]
     }
   ])
@@ -257,7 +259,7 @@ resource "aws_ecs_task_definition" "frontend" {
 }
 
 # --- Backend Service ---
-# Cost-optimized: 1 guaranteed On-Demand task + additional Spot tasks
+# Cost-optimized: 100% Fargate Spot usage for maximum compute discount (~70% savings)
 resource "aws_ecs_service" "backend" {
   name                   = "${var.project_name}-backend-service"
   cluster                = aws_ecs_cluster.main.id
@@ -265,28 +267,31 @@ resource "aws_ecs_service" "backend" {
   desired_count          = 1
   enable_execute_command = true
 
-  # 1 guaranteed On-Demand (stability) + more Spot tasks when scaling
-  capacity_provider_strategy {
-    capacity_provider = "FARGATE"
-    weight            = 1
-    base              = 1 # Always keep 1 on-demand task — never goes to 0
-  }
+  # 100% Fargate SPOT compute for maximum cost reduction
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 4 # 80% of additional tasks go to SPOT (~70% cheaper)
+    weight            = 1
+    base              = 0
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 0
     base              = 0
   }
 
   network_configuration {
     subnets          = var.public_subnets
     security_groups  = [var.ecs_tasks_sg_id]
-    assign_public_ip = true
+    assign_public_ip = true # Enable ECR image pull and AWS Secrets Manager access
   }
 
-  load_balancer {
-    target_group_arn = var.backend_target_group_arn
-    container_name   = "backend"
-    container_port   = 3000
+  dynamic "load_balancer" {
+    for_each = var.backend_target_group_arn != "" ? [1] : []
+    content {
+      target_group_arn = var.backend_target_group_arn
+      container_name   = "backend"
+      container_port   = 3000
+    }
   }
 
   deployment_circuit_breaker {
@@ -314,28 +319,31 @@ resource "aws_ecs_service" "frontend" {
   desired_count          = 1
   enable_execute_command = true
 
-  # Frontend is stateless — maximize SPOT usage
+  # Frontend is stateless — maximize SPOT usage (~70% savings)
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 4
+    weight            = 1
     base              = 0
   }
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
-    weight            = 1
-    base              = 1
+    weight            = 0
+    base              = 0
   }
 
   network_configuration {
     subnets          = var.public_subnets
     security_groups  = [var.ecs_tasks_sg_id]
-    assign_public_ip = true
+    assign_public_ip = true # Enable ECR image pull and AWS Secrets Manager access
   }
 
-  load_balancer {
-    target_group_arn = var.frontend_target_group_arn
-    container_name   = "frontend"
-    container_port   = 4000
+  dynamic "load_balancer" {
+    for_each = var.frontend_target_group_arn != "" ? [1] : []
+    content {
+      target_group_arn = var.frontend_target_group_arn
+      container_name   = "frontend"
+      container_port   = 4000
+    }
   }
 
   deployment_circuit_breaker {
@@ -404,8 +412,9 @@ resource "aws_appautoscaling_policy" "backend_memory" {
   }
 }
 
-# Scale on ALB Request Count Per Target (most reliable for web traffic)
+# Scale on ALB Request Count Per Target (only when ALB target group is present)
 resource "aws_appautoscaling_policy" "backend_alb_requests" {
+  count              = var.enable_alb ? 1 : 0
   name               = "${var.project_name}-backend-alb-request-tracking"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.backend.resource_id
@@ -450,6 +459,7 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
 }
 
 resource "aws_appautoscaling_policy" "frontend_alb_requests" {
+  count              = var.enable_alb ? 1 : 0
   name               = "${var.project_name}-frontend-alb-request-tracking"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.frontend.resource_id

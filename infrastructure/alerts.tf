@@ -240,6 +240,7 @@ resource "aws_cloudwatch_metric_alarm" "db_storage_low" {
 
 # ── 5. ALB 5XX Errors > 10 in 5 min ──────────────────────────────────────
 resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
+  count               = var.enable_alb ? 1 : 0
   alarm_name          = "${var.project_name}-alb-5xx-errors"
   alarm_description   = "Website returning errors (5XX) to customers. Check ECS logs immediately."
   comparison_operator = "GreaterThanThreshold"
@@ -252,7 +253,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = module.alb.alb_arn_suffix
+    LoadBalancer = module.alb[0].alb_arn_suffix
   }
 
   alarm_actions = [aws_sns_topic.alerts.arn]

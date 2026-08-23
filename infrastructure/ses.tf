@@ -9,7 +9,7 @@ resource "aws_ses_domain_identity" "main" {
 
 resource "aws_route53_record" "ses_verification" {
   count   = var.domain_name != "" ? 1 : 0
-  zone_id = module.alb.route53_zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = "_amazonses.${var.domain_name}"
   type    = "TXT"
   ttl     = "600"
@@ -23,7 +23,7 @@ resource "aws_ses_domain_dkim" "main" {
 
 resource "aws_route53_record" "ses_dkim" {
   count   = var.domain_name != "" ? 3 : 0
-  zone_id = module.alb.route53_zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = "${element(aws_ses_domain_dkim.main[0].dkim_tokens, count.index)}._domainkey.${var.domain_name}"
   type    = "CNAME"
   ttl     = "600"
@@ -33,7 +33,7 @@ resource "aws_route53_record" "ses_dkim" {
 # -- SPF: Authorize AWS SES to send email on behalf of the domain --
 resource "aws_route53_record" "spf" {
   count   = var.domain_name != "" ? 1 : 0
-  zone_id = module.alb.route53_zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "TXT"
   ttl     = "600"
@@ -42,10 +42,11 @@ resource "aws_route53_record" "spf" {
 
 # -- DMARC: Policy for email authentication failures --
 resource "aws_route53_record" "dmarc" {
-  count   = var.domain_name != "" ? 1 : 0
-  zone_id = module.alb.route53_zone_id
-  name    = "_dmarc.${var.domain_name}"
-  type    = "TXT"
-  ttl     = "600"
-  records = ["v=DMARC1; p=none; rua=mailto:jagadishvarma99@gmail.com; ruf=mailto:jagadishvarma99@gmail.com; fo=1"]
+  count           = var.domain_name != "" ? 1 : 0
+  allow_overwrite = true
+  zone_id         = data.aws_route53_zone.main.zone_id
+  name            = "_dmarc.${var.domain_name}"
+  type            = "TXT"
+  ttl             = "600"
+  records         = ["v=DMARC1; p=none; rua=mailto:jagadishvarma99@gmail.com; ruf=mailto:jagadishvarma99@gmail.com; fo=1"]
 }

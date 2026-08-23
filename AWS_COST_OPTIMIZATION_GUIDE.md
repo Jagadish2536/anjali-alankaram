@@ -41,23 +41,40 @@ Product images and static assets are cached across global CloudFront Edge locati
 
 ## 🛠️ Step-by-Step Actions to Keep Monthly Bill Under ₹5,000
 
-### Step 1: Remove NAT Gateway (Saves ~₹2,700/mo)
+### Step 1: Remove NAT Gateway (Saves ~₹2,700/mo / ~$32.50 USD)
 1. Go to **VPC Console → NAT Gateways**.
 2. Select NAT Gateway → **Actions → Delete NAT Gateway**.
 3. Confirm deletion.
 
-### Step 2: Disable Auto-Assign Public IP on ECS Tasks (Saves ~₹920/mo)
+### Step 2: Disable Auto-Assign Public IP on ECS Tasks (Saves ~₹920/mo / ~$11.00 USD)
 1. Go to **ECS Console → Clusters → anjali-alankaram-cluster**.
 2. Update **backend-service** and **frontend-service**:
-   - Under Networking, set **Auto-assign public IP = DISABLED**.
+   - Under Networking, set **Auto-assign public IP = DISABLED** (Updated in Terraform `assign_public_ip = false`).
 
-### Step 3: Purchase 1-Year Reserved Instances (Saves ~₹1,083/mo)
+### Step 3: Purchase 1-Year Reserved Instances (Saves ~₹1,083/mo / ~$13.00 USD)
 1. **RDS Console → Reserved Instances → Purchase reserved DB instance**:
    - Product: `PostgreSQL` | Class: `db.t4g.micro` | Term: `1 Year` | Offering: `No Upfront`
 2. **ElastiCache Console → Reserved Nodes → Purchase Reserved Nodes**:
    - Product: `Redis` | Node type: `cache.t4g.micro` | Term: `1 Year` | Offering: `No Upfront`
 
+### Step 4: Route Media & Static Assets through CloudFront CDN (Saves ~₹1,500/mo / ~$18.00 USD in Data Transfer)
+1. Route all product image URLs and static assets via `CLOUDFRONT_DOMAIN` (e.g. `https://d12345.cloudfront.net`).
+2. CloudFront includes **1 TB/month FREE Data Transfer**, bypassing expensive direct ALB/EC2 Internet egress fees.
+
 ---
 
-## Summary
-By maintaining this configuration, your AWS infrastructure will comfortably host **100 concurrent active users with zero lag** while keeping your monthly bill at **~₹4,410 / month**, safely under your **₹5,000 / month limit**.
+## 🧾 August 2026 Audit vs Optimized Target
+
+| Service | Aug 2026 Bill (Actual) | Optimized Target | Key Fix Applied |
+| :--- | :--- | :--- | :--- |
+| **ECS Fargate** | $21.74 | **$8.00** | Switched 100% compute to `FARGATE_SPOT` + Night Scale-Down. |
+| **Data Transfer** | $19.41 | **$1.50** | Routing static traffic via CloudFront 1TB Free Tier & same-AZ subnets. |
+| **VPC & IPs** | $12.14 | **$3.65** | Disabled `assign_public_ip` on ECS tasks. |
+| **RDS PostgreSQL** | $14.15 | **$10.00** | 1-Year No Upfront RI purchase. |
+| **ElastiCache Redis** | $13.18 | **$7.50** | 1-Year No Upfront Reserved Node purchase. |
+| **CloudWatch** | $5.44 | **$1.00** | Log retention capped at 7 days across all services. |
+| **ALB & Other** | $15.90 | **$15.79** | Standard baseline. |
+| **Total Pre-Tax** | **$101.96** | **$47.44** | Pre-tax bill reduced by 53%. |
+| **18% GST (Tax)** | **$18.36** | **$8.54** | Tax drops proportionally. |
+| **GRAND TOTAL** | **$120.32 (~₹10,050)** | **~$55.98 (~₹4,690)** | **Brings bill strictly under ₹5,000 INR limit.** |
+

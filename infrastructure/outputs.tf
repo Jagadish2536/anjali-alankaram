@@ -1,8 +1,8 @@
 output "alb_dns_name" {
-  value = module.alb.alb_dns_name
+  value = var.enable_alb ? module.alb[0].alb_dns_name : ""
 }
 output "route53_nameservers" {
-  value = module.alb.route53_nameservers
+  value = data.aws_route53_zone.main.name_servers
 }
 output "rds_endpoint" {
   value = module.rds.db_endpoint

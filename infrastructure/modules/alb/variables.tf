@@ -20,10 +20,10 @@ output "alb_dns_name" {
   value = aws_lb.main.dns_name
 }
 output "route53_zone_id" {
-  value = var.domain_name != "" ? aws_route53_zone.main[0].zone_id : ""
+  value = var.domain_name != "" ? data.aws_route53_zone.main[0].zone_id : ""
 }
 output "route53_nameservers" {
-  value = var.domain_name != "" ? aws_route53_zone.main[0].name_servers : []
+  value = var.domain_name != "" ? data.aws_route53_zone.main[0].name_servers : []
 }
 
 output "alb_arn_suffix" {

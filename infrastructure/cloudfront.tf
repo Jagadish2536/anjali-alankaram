@@ -29,7 +29,7 @@ function handler(event) {
     headers['referrer-policy'] = { value: 'strict-origin-when-cross-origin' };
 
     headers['content-security-policy'] = {
-        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com https://*.razorpay.com https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; img-src 'self' data: https://*.cloudfront.net https://*.s3.ap-south-2.amazonaws.com https://*.s3.amazonaws.com https://*.amazonaws.com https://*.googleusercontent.com; connect-src 'self' https://api.openai.com https://checkout.razorpay.com https://*.razorpay.com https://www.google-analytics.com https://accounts.google.com https://*.googleapis.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://accounts.google.com; media-src 'self' https://*.s3.ap-south-2.amazonaws.com https://*.s3.amazonaws.com https://*.amazonaws.com https://*.cloudfront.net; object-src 'none';"
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com https://*.razorpay.com https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: https://*.cloudfront.net https://*.s3.ap-south-2.amazonaws.com https://*.s3.amazonaws.com https://*.amazonaws.com https://*.googleusercontent.com; connect-src 'self' https: wss: https://*.execute-api.ap-south-2.amazonaws.com https://*.amazonaws.com https://api.openai.com https://checkout.razorpay.com https://*.razorpay.com https://www.google-analytics.com https://accounts.google.com https://*.googleapis.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://accounts.google.com; media-src 'self' https://*.s3.ap-south-2.amazonaws.com https://*.s3.amazonaws.com https://*.amazonaws.com https://*.cloudfront.net; object-src 'none';"
     };
 
     return response;
@@ -134,13 +134,13 @@ resource "aws_cloudfront_distribution" "cdn" {
   web_acl_id      = var.enable_waf ? aws_wafv2_web_acl.cdn[0].arn : null
   price_class     = "PriceClass_100" # ap-south-2/ap-south-1 Edge Nodes only — optimized for cost
 
-  # Origin 1: Application Load Balancer (for Web app and REST API)
+  # Origin 1: Direct Fargate Task / HTTP API Gateway (Option B - $0 ALB Charge)
   origin {
-    domain_name = module.alb.alb_dns_name
+    domain_name = var.enable_alb ? module.alb[0].alb_dns_name : "ec2-16-112-226-0.ap-south-2.compute.amazonaws.com"
     origin_id   = "ALB-Origin"
 
     custom_origin_config {
-      http_port                = 80
+      http_port                = var.enable_alb ? 80 : 4000
       https_port               = 443
       origin_protocol_policy   = "http-only"
       origin_ssl_protocols     = ["TLSv1.2"]
@@ -155,7 +155,22 @@ resource "aws_cloudfront_distribution" "cdn" {
     origin_id   = "S3-Assets-Origin"
   }
 
-  # Default Cache Behavior: Route to Application Load Balancer
+  # Origin 3: ALB Origin
+  origin {
+    domain_name = module.alb[0].alb_dns_name
+    origin_id   = "API-Gateway-Origin"
+
+    custom_origin_config {
+      http_port                = 80
+      https_port               = 443
+      origin_protocol_policy   = "http-only"
+      origin_ssl_protocols     = ["TLSv1.2"]
+      origin_keepalive_timeout = 60
+      origin_read_timeout      = 60
+    }
+  }
+
+  # Default Cache Behavior: Route to Application Load Balancer / Frontend
   default_cache_behavior {
     target_origin_id       = "ALB-Origin"
     viewer_protocol_policy = "redirect-to-https"
@@ -180,9 +195,33 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
-  # Cache Behavior: S3 Saree Images (/products/*)
+  # Cache Behavior: API Endpoints (/api/*) -> Route directly to ALB or API Gateway
   ordered_cache_behavior {
-    path_pattern           = "/products/*"
+    path_pattern           = "/api/*"
+    target_origin_id       = var.enable_alb ? "ALB-Origin" : "API-Gateway-Origin"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods  = ["GET", "HEAD"]
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+
+    forwarded_values {
+      query_string = true
+      headers      = var.enable_alb ? ["Host", "Origin", "Authorization", "Content-Type", "Accept"] : ["Origin", "Authorization", "Content-Type", "Accept"]
+
+      cookies {
+        forward = "all"
+      }
+    }
+  }
+
+  # Cache Behavior: S3 Saree Images (/products/*.*)
+  ordered_cache_behavior {
+    path_pattern           = "/products/*.*"
     target_origin_id       = "S3-Assets-Origin"
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
@@ -254,6 +293,8 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
+  aliases = var.domain_name != "" ? [var.domain_name, "www.${var.domain_name}", "api.${var.domain_name}"] : []
+
   restrictions {
     geo_restriction {
       restriction_type = "none"
@@ -261,10 +302,51 @@ resource "aws_cloudfront_distribution" "cdn" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn            = var.domain_name != "" ? aws_acm_certificate.cloudfront[0].arn : null
+    ssl_support_method             = var.domain_name != "" ? "sni-only" : null
+    minimum_protocol_version       = var.domain_name != "" ? "TLSv1.2_2021" : null
+    cloudfront_default_certificate = var.domain_name == "" ? true : false
   }
 
   tags = local.common_tags
+}
+
+# --- ACM SSL Certificate for CloudFront CDN (Must be in us-east-1) ---
+resource "aws_acm_certificate" "cloudfront" {
+  provider          = aws.us_east_1
+  count             = var.domain_name != "" ? 1 : 0
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  subject_alternative_names = ["*.${var.domain_name}"]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "cloudfront_cert_validation" {
+  for_each = var.domain_name != "" ? {
+    for dvo in aws_acm_certificate.cloudfront[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.main.zone_id
+}
+
+resource "aws_acm_certificate_validation" "cloudfront" {
+  provider                = aws.us_east_1
+  count                   = var.domain_name != "" ? 1 : 0
+  certificate_arn         = aws_acm_certificate.cloudfront[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.cloudfront_cert_validation : record.fqdn]
 }
 
 output "cloudfront_distribution_url" {

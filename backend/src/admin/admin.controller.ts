@@ -132,6 +132,7 @@ export class AdminController implements OnModuleInit {
     const [
       totalUsers,
       totalOrders,
+      totalPaidOrders,
       totalProducts,
       revenue,
       statusBreakdown,
@@ -139,17 +140,26 @@ export class AdminController implements OnModuleInit {
       lowStockVariants,
       outOfStockProducts,
       dailyRevenue,
+      monthlyStatsRaw,
     ] = await Promise.all([
       // Total customers (CUSTOMER role only)
       this.prisma.user.count({ where: { role: 'CUSTOMER' } }),
 
-      // Total orders
+      // Total orders (all statuses)
       this.prisma.order.count(),
+
+      // Total verified paid orders
+      this.prisma.order.count({
+        where: {
+          paymentStatus: 'PAID',
+          status: { notIn: ['CANCELLED', 'REFUNDED', 'REFUND_INITIATED'] },
+        },
+      }),
 
       // Active products
       this.prisma.product.count({ where: { status: 'ACTIVE' } }),
 
-      // Total revenue from paid orders
+      // Total revenue strictly from verified paid orders
       this.prisma.order.aggregate({
         _sum: { totalAmount: true },
         where: {
@@ -194,7 +204,7 @@ export class AdminController implements OnModuleInit {
         },
       }),
 
-      // Last 7 days daily revenue
+      // Last 7 days daily revenue (strictly verified paid orders)
       this.prisma.$queryRawUnsafe<{ date: string; revenue: number; orders: number }[]>(`
         SELECT 
           DATE("createdAt")::text as date,
@@ -202,10 +212,27 @@ export class AdminController implements OnModuleInit {
           COUNT(*)::int as orders
         FROM "orders"
         WHERE 
-          "createdAt" >= NOW() - INTERVAL '7 days'
+          "paymentStatus" = 'PAID'
+          AND "createdAt" >= NOW() - INTERVAL '7 days'
           AND status NOT IN ('CANCELLED', 'REFUNDED', 'REFUND_INITIATED')
         GROUP BY DATE("createdAt")
         ORDER BY date ASC
+      `),
+
+      // Monthly breakdown (strictly verified paid orders)
+      this.prisma.$queryRawUnsafe<{ month_key: string; month_name: string; revenue: number; orders: number }[]>(`
+        SELECT 
+          TO_CHAR("createdAt", 'YYYY-MM') as month_key,
+          TO_CHAR("createdAt", 'Mon YYYY') as month_name,
+          SUM("totalAmount")::float as revenue,
+          COUNT(*)::int as orders
+        FROM "orders"
+        WHERE 
+          "paymentStatus" = 'PAID'
+          AND status NOT IN ('CANCELLED', 'REFUNDED', 'REFUND_INITIATED')
+        GROUP BY TO_CHAR("createdAt", 'YYYY-MM'), TO_CHAR("createdAt", 'Mon YYYY')
+        ORDER BY month_key DESC
+        LIMIT 12
       `),
     ]);
 
@@ -239,10 +266,18 @@ export class AdminController implements OnModuleInit {
       });
     }
 
+    const monthlyStats = (monthlyStatsRaw as any[]).map(m => ({
+      monthKey: m.month_key,
+      monthName: m.month_name,
+      revenue: Number(m.revenue) || 0,
+      orders: Number(m.orders) || 0,
+    }));
+
     return {
       stats: {
         totalUsers,
         totalOrders,
+        totalPaidOrders,
         totalProducts,
         totalRevenue: Number(revenue._sum.totalAmount) || 0,
         pendingOrders,
@@ -255,6 +290,7 @@ export class AdminController implements OnModuleInit {
       statusBreakdown,
       recentOrders,
       chartData,
+      monthlyStats,
     };
   }
 

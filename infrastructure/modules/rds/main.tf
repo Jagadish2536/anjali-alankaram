@@ -22,6 +22,8 @@ resource "aws_db_instance" "postgres" {
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [var.rds_sg_id]
+  availability_zone      = "ap-south-2a"
+  snapshot_identifier    = "awsbackup:job-6cb7850f-b981-ca7f-0c30-bf9f326001de"
 
   # Reliability & Safety
   publicly_accessible     = false
@@ -32,4 +34,8 @@ resource "aws_db_instance" "postgres" {
   apply_immediately       = true         # Apply instance resize now, not next maintenance window
 
   tags = var.tags
+
+  lifecycle {
+    ignore_changes = [snapshot_identifier, final_snapshot_identifier]
+  }
 }

@@ -109,6 +109,8 @@ export default function AdminDashboard() {
     };
   }, [fetchLiveVisitors]);
 
+  const [monthlyStats, setMonthlyStats] = useState<{ monthKey: string; monthName: string; revenue: number; orders: number }[]>([]);
+
   const fetchDashboard = useCallback(async () => {
     try {
       // Use the efficient dashboard API that does DB-side aggregations
@@ -132,7 +134,7 @@ export default function AdminDashboard() {
       // Stats from dashboard endpoint
       setStats({
         totalSales: Number(dash.stats?.totalRevenue) || 0,
-        totalOrders: dash.stats?.totalOrders || 0,
+        totalOrders: dash.stats?.totalPaidOrders ?? dash.stats?.totalOrders ?? 0,
         totalCustomers: dash.stats?.totalUsers || 0,
         pendingOrders: dash.stats?.pendingOrders || 0,
         deliveredOrders: dash.stats?.deliveredOrders || 0,
@@ -141,6 +143,8 @@ export default function AdminDashboard() {
         lowStock: dash.stats?.lowStock || 0,
         outOfStock: dash.stats?.outOfStock ?? calculatedOutOfStock,
       });
+
+      setMonthlyStats(dash.monthlyStats || []);
 
       // Chart data from dashboard endpoint (7-day revenue)
       const chartFromApi = dash.chartData ?? [];
@@ -189,8 +193,8 @@ export default function AdminDashboard() {
   };
 
   const statCards = [
-    { name: 'Total Revenue', value: formatPrice(stats.totalSales), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/admin/orders' },
-    { name: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/orders?status=ALL' },
+    { name: 'Total Revenue (Verified Paid)', value: formatPrice(stats.totalSales), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/admin/orders' },
+    { name: 'Verified Paid Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/orders?status=ALL' },
     { name: 'Total Customers', value: stats.totalCustomers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', link: '/admin/customers' },
     { name: 'Pending Orders', value: stats.pendingOrders, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', link: '/admin/orders?status=CONFIRMED' },
     { name: 'Delivered', value: stats.deliveredOrders, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/orders?status=DELIVERED' },
@@ -355,7 +359,7 @@ export default function AdminDashboard() {
             ) : (
               orderStatusBreakdown.sort((a, b) => b.count - a.count).map(({ status, count }) => {
                 const cfg = STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-600' };
-                const pct = Math.round((count / stats.totalOrders) * 100);
+                const pct = Math.round((count / (stats.totalOrders || 1)) * 100);
                 return (
                   <div key={status}>
                     <div className="flex items-center justify-between mb-1">
@@ -371,6 +375,55 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Monthly Performance Breakdown (Verified Payment Only) */}
+      <div className="bg-white border rounded-2xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-outfit font-bold text-lg">Monthly Income & Orders Breakdown</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Calculated strictly from verified payment orders (PAID)</p>
+          </div>
+          <span className="text-xs font-bold bg-green-100 text-green-800 px-3 py-1 rounded-full">
+            Payment Verified Only
+          </span>
+        </div>
+
+        {monthlyStats.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No monthly records found yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Month</th>
+                  <th className="px-4 py-3 font-semibold text-center">Verified Paid Orders</th>
+                  <th className="px-4 py-3 font-semibold text-right">Total Verified Revenue</th>
+                  <th className="px-4 py-3 font-semibold text-right">Avg Order Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {monthlyStats.map((m) => {
+                  const avg = m.orders > 0 ? Math.round(m.revenue / m.orders) : 0;
+                  return (
+                    <tr key={m.monthKey} className="hover:bg-muted/10 transition-colors">
+                      <td className="px-4 py-3.5 font-bold">{m.monthName}</td>
+                      <td className="px-4 py-3.5 text-center font-semibold text-blue-700">
+                        <span className="bg-blue-50 px-2.5 py-1 rounded-md">{m.orders} orders</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-bold text-green-700">
+                        {formatPrice(m.revenue)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right text-muted-foreground">
+                        {formatPrice(avg)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Recent Orders + Top Products */}

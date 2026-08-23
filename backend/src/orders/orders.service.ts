@@ -30,6 +30,50 @@ export class OrdersService implements OnApplicationBootstrap {
     private emailService: EmailService,
   ) {}
 
+  // Auto-complete shipped orders to DELIVERED after 10 days
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async autoCompleteShippedOrders() {
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+    // Strictly find orders where admin marked as SHIPPED and shippedAt is >= 10 days old
+    const shippedOrders = await this.prisma.order.findMany({
+      where: {
+        status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+        shippedAt: { lte: tenDaysAgo, not: null },
+      },
+    });
+
+    if (shippedOrders.length === 0) return;
+
+    this.logger.log(`Auto-completing ${shippedOrders.length} orders shipped >= 10 days ago to DELIVERED.`);
+
+    for (const order of shippedOrders) {
+      try {
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'DELIVERED',
+            deliveredAt: new Date(),
+          },
+        });
+
+        await this.statusHistory.append({
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'DELIVERED',
+          actorId: 'SYSTEM_CRON',
+          actorRole: 'SYSTEM' as any,
+          notes: 'Auto-completed order status to DELIVERED after 10 days of shipment.',
+        });
+
+        this.logger.log(`Order #${order.orderNumber} auto-completed to DELIVERED after 10 days.`);
+      } catch (err: any) {
+        this.logger.error(`Failed auto-completing order #${order.orderNumber}: ${err.message}`);
+      }
+    }
+  }
+
   // ─────────────────────────────────────────────
   // CREATE ORDER
   // ─────────────────────────────────────────────
@@ -1102,6 +1146,9 @@ export class OrdersService implements OnApplicationBootstrap {
   async onApplicationBootstrap() {
     // Run after a short delay so DB/Redis connections are stable
     setTimeout(() => this.syncAllActiveShipmentsToAfterShip().catch(() => {}), 15000);
+    this.autoCompleteShippedOrders().catch(e =>
+      this.logger.error(`Error running shipped orders auto-completion on startup: ${e.message}`)
+    );
   }
 
   // ─── 30-minute cron: poll AfterShip + apply fallback timeline ────────

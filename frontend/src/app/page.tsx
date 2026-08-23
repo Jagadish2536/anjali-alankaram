@@ -113,7 +113,7 @@ function getHeroThemeStyles(primaryColorHex: string) {
 }
 
 // ── Server-side data fetchers with no caching (immediate updates) ─────────────
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://v48tw2kzfj.execute-api.ap-south-2.amazonaws.com/api/v1';
 
 async function fetchFromApi(endpoint: string, searchParams: Record<string, string> = {}) {
   try {

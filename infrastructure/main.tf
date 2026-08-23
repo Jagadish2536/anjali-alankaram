@@ -22,6 +22,7 @@ module "security" {
 }
 
 module "alb" {
+  count          = var.enable_alb ? 1 : 0
   source         = "./modules/alb"
   project_name   = var.project_name
   vpc_id         = module.vpc.vpc_id
@@ -56,13 +57,14 @@ module "ecs" {
   source                            = "./modules/ecs"
   project_name                      = var.project_name
   aws_region                        = var.aws_region
-  public_subnets                    = module.vpc.public_subnets
+  enable_alb                        = var.enable_alb
+  public_subnets                    = [module.vpc.public_subnets[0]]
   ecs_tasks_sg_id                   = module.security.ecs_tasks_sg_id
-  backend_target_group_arn          = module.alb.backend_target_group_arn
-  frontend_target_group_arn         = module.alb.frontend_target_group_arn
-  alb_arn_suffix                    = module.alb.alb_arn_suffix
-  backend_target_group_arn_suffix   = module.alb.backend_target_group_arn_suffix
-  frontend_target_group_arn_suffix  = module.alb.frontend_target_group_arn_suffix
+  backend_target_group_arn          = var.enable_alb ? module.alb[0].backend_target_group_arn : ""
+  frontend_target_group_arn         = var.enable_alb ? module.alb[0].frontend_target_group_arn : ""
+  alb_arn_suffix                    = var.enable_alb ? module.alb[0].alb_arn_suffix : ""
+  backend_target_group_arn_suffix   = var.enable_alb ? module.alb[0].backend_target_group_arn_suffix : ""
+  frontend_target_group_arn_suffix  = var.enable_alb ? module.alb[0].frontend_target_group_arn_suffix : ""
   ecs_execution_role_arn            = module.security.ecs_task_execution_role_arn
   ecs_task_role_arn                 = module.security.ecs_task_role_arn
   secrets_arn                       = aws_secretsmanager_secret.backend_secrets.arn
@@ -76,6 +78,4 @@ module "ecs" {
   backend_memory_scale_threshold    = var.backend_memory_scale_threshold
   alb_requests_per_target_threshold = var.alb_requests_per_target_threshold
   tags                              = local.common_tags
-
-  depends_on = [module.alb]
 }

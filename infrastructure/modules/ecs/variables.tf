@@ -6,12 +6,16 @@ variable "project_name" {}
 variable "aws_region" {}
 variable "public_subnets" { type = list(string) }
 variable "ecs_tasks_sg_id" {}
-variable "backend_target_group_arn" {}
-variable "frontend_target_group_arn" {}
+variable "backend_target_group_arn" { default = "" }
+variable "frontend_target_group_arn" { default = "" }
 variable "ecs_execution_role_arn" {}
 variable "ecs_task_role_arn" {}
 variable "secrets_arn" {}
 variable "s3_bucket_name" {}
+variable "enable_alb" {
+  type    = bool
+  default = true
+}
 variable "tags" { type = map(string) }
 
 variable "backend_min_tasks" {
@@ -61,14 +65,17 @@ variable "cloudfront_domain" {
 variable "alb_arn_suffix" {
   type        = string
   description = "ARN suffix of the Application Load Balancer"
+  default     = ""
 }
 
 variable "backend_target_group_arn_suffix" {
   type        = string
   description = "ARN suffix of the backend Target Group"
+  default     = ""
 }
 
 variable "frontend_target_group_arn_suffix" {
   type        = string
   description = "ARN suffix of the frontend Target Group"
+  default     = ""
 }
