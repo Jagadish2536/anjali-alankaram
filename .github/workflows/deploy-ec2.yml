@@ -127,8 +127,23 @@ jobs:
             $COMPOSE_CMD -f docker-compose.production.yml up -d --build --remove-orphans
 
             # Migrations & cleanup
-            echo "=== [5/5] Running migrations & cleanup ==="
+            echo "=== [5/5] Running migrations & storage cleanup ==="
             docker exec anjali_backend npx prisma migrate deploy || echo "Migration skipped"
+
+            echo "--- Disk before cleanup: $(df -h / | tail -1 | awk '{print $3 " used / " $2 " total"}')"
+
+            # Dangling images (untagged layers from previous builds)
             docker image prune -f
+            # Build cache left over from docker build steps
+            docker builder prune -f
+            # Stopped containers
+            docker container prune -f
+            # Apt package cache
+            sudo apt-get clean -y
+            sudo rm -rf /var/lib/apt/lists/*
+            # Temp files
+            sudo rm -rf /tmp/awscliv2.zip /tmp/aws /tmp/*.bak /tmp/*.tmp 2>/dev/null || true
+
+            echo "--- Disk after cleanup:  $(df -h / | tail -1 | awk '{print $3 " used / " $2 " total"}')"
 
             echo "=== Deployment successfully completed! ==="
