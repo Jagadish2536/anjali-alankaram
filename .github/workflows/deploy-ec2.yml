@@ -12,9 +12,9 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # ── Step 1: Fetch secrets from AWS Secrets Manager → write .env files on EC2 ──
+      # ── Step 1: Fetch secrets from AWS Secrets Manager ───────────────────────────
       - name: Fetch Secrets from AWS Secrets Manager
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -29,7 +29,6 @@ jobs:
             # Ensure aws cli is available and actually executable (EC2 is ARM64 / aarch64)
             if ! aws --version &>/dev/null 2>&1; then
               echo "AWS CLI missing or broken — installing aarch64 version..."
-              # Remove any broken/wrong-arch binary left from previous runs
               sudo rm -f /usr/local/bin/aws /usr/local/bin/aws_completer
               sudo rm -rf /usr/local/aws-cli
               sudo apt-get install -y unzip curl -qq
@@ -40,33 +39,30 @@ jobs:
             fi
             echo "AWS CLI: $(aws --version)"
 
-            # Create directories
             sudo mkdir -p /app/backend /app/frontend
             sudo chown -R ubuntu:ubuntu /app
 
-            # Fetch backend .env from Secrets Manager
+            # Fetch backend .env
             echo "Fetching anjali-alankaram/backend..."
             aws secretsmanager get-secret-value \
               --region ap-south-2 \
               --secret-id "anjali-alankaram/backend" \
               --query SecretString \
               --output text > /app/backend/.env
-            # Strip UTF-8 BOM and Windows CRLF line endings if present
             sed -i 's/\r//' /app/backend/.env
             sed -i '1s/^\xEF\xBB\xBF//' /app/backend/.env
-            echo "backend/.env written — $(wc -l < /app/backend/.env) lines"
+            echo "backend/.env — $(wc -l < /app/backend/.env) lines ✓"
 
-            # Fetch frontend .env.local from Secrets Manager
+            # Fetch frontend .env.local
             echo "Fetching anjali-alankaram/frontend..."
             aws secretsmanager get-secret-value \
               --region ap-south-2 \
               --secret-id "anjali-alankaram/frontend" \
               --query SecretString \
               --output text > /app/frontend/.env.local
-            # Strip UTF-8 BOM and Windows CRLF line endings if present
             sed -i 's/\r//' /app/frontend/.env.local
             sed -i '1s/^\xEF\xBB\xBF//' /app/frontend/.env.local
-            echo "frontend/.env.local written — $(wc -l < /app/frontend/.env.local) lines"
+            echo "frontend/.env.local — $(wc -l < /app/frontend/.env.local) lines ✓"
 
             echo "=== Secrets fetched successfully ==="
         env:
@@ -74,7 +70,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-south-2
 
-      # ── Step 2: Clone / pull repo & run docker compose ───────────────────────────
+      # ── Step 2: Clone / pull repo & deploy ───────────────────────────────────────
       - name: Deploy Application
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -88,19 +84,16 @@ jobs:
             echo "=== [1/5] Starting deployment on EC2 ==="
             echo "User: $(whoami) | Time: $(date -u)"
 
-            # Ensure /app is owned by ubuntu
             echo "=== [2/5] Setting up /app directory ==="
             sudo mkdir -p /app
             sudo chown -R ubuntu:ubuntu /app
             cd /app
 
-            # Clone or pull the repo (preserve .env files)
             echo "=== [3/5] Syncing repository ==="
             if [ -d ".git" ]; then
               echo "Repo exists — pulling latest from main..."
               git fetch origin main
               git reset --hard origin/main
-              # git clean skips .env files (they are gitignored, so not tracked)
               git clean -fd --exclude="backend/.env" --exclude="frontend/.env.local"
             else
               echo "No .git found — backup .env files, wipe, clone, restore..."
@@ -112,39 +105,39 @@ jobs:
               [ -f /tmp/backend.env.bak ]  && cp /tmp/backend.env.bak  /app/backend/.env  && rm /tmp/backend.env.bak
               [ -f /tmp/frontend.env.bak ] && cp /tmp/frontend.env.bak /app/frontend/.env.local && rm /tmp/frontend.env.bak
             fi
+            GIT_SHA=$(git rev-parse --short HEAD)
             echo "Latest commit: $(git log --oneline -1)"
 
-            # Verify .env files exist
             echo "=== [3b] Verifying .env files ==="
             ls -la /app/backend/.env && echo "backend/.env ✓" || { echo "ERROR: backend/.env missing!"; exit 1; }
-            ls -la /app/frontend/.env.local && echo "frontend/.env.local ✓" || echo "frontend/.env.local not present (build-args used)"
+            ls -la /app/frontend/.env.local && echo "frontend/.env.local ✓" || echo "frontend/.env.local not present"
 
-            # Docker compose — force fresh build to ensure new code is deployed
-            echo "=== [4/5] Building & starting containers ==="
+            # Build with git SHA cache-busting — fast but always picks up code changes
+            echo "=== [4/5] Building & starting containers (SHA: $GIT_SHA) ==="
             COMPOSE_CMD="docker compose"
             $COMPOSE_CMD version || COMPOSE_CMD="docker-compose"
             echo "Using: $COMPOSE_CMD"
-            $COMPOSE_CMD -f docker-compose.production.yml build --no-cache
+            $COMPOSE_CMD -f docker-compose.production.yml build --build-arg CACHE_BUST=$GIT_SHA
             $COMPOSE_CMD -f docker-compose.production.yml up -d --remove-orphans
 
-            # Migrations & cleanup
             echo "=== [5/5] Running migrations & storage cleanup ==="
-            docker exec anjali_backend npx prisma migrate deploy || echo "Migration skipped"
+
+            # Baseline existing migrations to fix P3005 (DB schema already exists)
+            docker exec anjali_backend npx prisma migrate resolve \
+              --applied "20260526_add_shipping_enabled" 2>/dev/null || true
+            docker exec anjali_backend npx prisma migrate resolve \
+              --applied "20260526_add_store_address_hours" 2>/dev/null || true
+
+            # Deploy any new migrations added in future
+            docker exec anjali_backend npx prisma migrate deploy || echo "No new migrations"
 
             echo "--- Disk before cleanup: $(df -h / | tail -1 | awk '{print $3 " used / " $2 " total"}')"
-
-            # Dangling images (untagged layers from previous builds)
             docker image prune -f
-            # Build cache left over from docker build steps
             docker builder prune -f
-            # Stopped containers
             docker container prune -f
-            # Apt package cache
             sudo apt-get clean -y
             sudo rm -rf /var/lib/apt/lists/*
-            # Temp files
             sudo rm -rf /tmp/awscliv2.zip /tmp/aws /tmp/*.bak /tmp/*.tmp 2>/dev/null || true
-
             echo "--- Disk after cleanup:  $(df -h / | tail -1 | awk '{print $3 " used / " $2 " total"}')"
 
             echo "=== Deployment successfully completed! ==="
