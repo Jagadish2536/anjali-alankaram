@@ -303,15 +303,16 @@ export default function CheckoutPage() {
           modal: {
             ondismiss: () => {
               setIsProcessing(false);
-              router.push('/cart');
+              clearCart();
+              router.push(`/orders/${data.order.id}`);
             },
           },
         };
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', () => {
           setIsProcessing(false);
-          alert('Payment failed. Please try again.');
-          router.push('/cart');
+          clearCart();
+          router.push(`/orders/${data.order.id}`);
         });
         rzp.open();
         return; // Don't hit finally block while modal is open

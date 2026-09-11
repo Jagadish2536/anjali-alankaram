@@ -1,0 +1,42 @@
+name: Deploy to Simple EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Application to Simple EC2 Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Execute Remote SSH Commands for Auto-Deployment
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "Starting deployment on EC2..."
+            
+            # Navigate to app directory
+            cd /app
+            
+            # Pull latest changes from git
+            git pull origin main
+            
+            # Rebuild and start production Docker containers
+            docker compose -f docker-compose.production.yml up -d --build --remove-orphans
+            
+            # Run database migrations
+            docker exec anjali_backend npx prisma migrate deploy
+            
+            # Prune unused docker images to save disk space
+            docker image prune -f
+            
+            echo "Deployment successfully completed!"

@@ -7,54 +7,33 @@ on:
       - 'backend/**'
   pull_request:
     branches: [ "main" ]
-
-env:
-  AWS_REGION: ap-south-2
-  ECR_REPOSITORY: anjali-alankaram-backend
+    paths:
+      - 'backend/**'
 
 jobs:
   build:
+    name: Build & Verify Backend
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-    - name: Use Node.js 20.x
+    - name: Setup Node.js 20.x
       uses: actions/setup-node@v3
       with:
         node-version: 20.x
         cache: 'npm'
         cache-dependency-path: ./backend/package-lock.json
 
-    - run: npm ci
-    - run: npx prisma generate
-    - run: npm run build
+    - name: Install Dependencies
+      run: npm ci
 
-    # ── Build & Push Docker image to ECR (only on push to main, not PRs) ──
-    - name: Configure AWS credentials
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+    - name: Generate Prisma Client
+      run: npx prisma generate
 
-    - name: Login to Amazon ECR
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Build, tag, and push image to Amazon ECR
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag  $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        echo "✅ Pushed image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+    - name: Build NestJS Application
+      run: npm run build

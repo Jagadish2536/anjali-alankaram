@@ -12,11 +12,12 @@ RUN npm install
 
 COPY . .
 
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 RUN npx prisma generate
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-alpine AS production
 
 WORKDIR /app
 

@@ -28,7 +28,7 @@ export class OrdersService implements OnApplicationBootstrap {
     private statusHistory: OrderStatusHistoryService,
     private inventory: InventoryService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   // Auto-complete shipped orders to DELIVERED after 10 days
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -259,7 +259,7 @@ export class OrdersService implements OnApplicationBootstrap {
     if (dto.paymentMethod === 'COD') {
       await this.notificationsService
         .sendOrderNotification(userId, 'ORDER_PLACED', order.id, orderNumber)
-        .catch(() => {});
+        .catch(() => { });
     }
 
     if (initialStatus === 'PAYMENT_VERIFIED') {
@@ -268,7 +268,7 @@ export class OrdersService implements OnApplicationBootstrap {
           orderId: order.id, orderNumber, totalAmount: order.totalAmount,
           customerName: address.name || 'Customer',
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
     // Email confirmation via AWS SES
@@ -299,9 +299,9 @@ export class OrdersService implements OnApplicationBootstrap {
               total: Number(order.totalAmount),
               paymentMethod: 'Cash on Delivery',
               address: `${address.name}, ${address.line1}, ${address.city} - ${address.pincode}`,
-            }).catch(() => {});
+            }).catch(() => { });
           }
-        }).catch(() => {});
+        }).catch(() => { });
     }
 
     if (dto.paymentMethod === 'COD') {
@@ -384,7 +384,7 @@ export class OrdersService implements OnApplicationBootstrap {
     // Notify customer
     await this.notificationsService
       .sendOrderNotification(userId, 'ORDER_CONFIRMED', orderId, orderNumber)
-      .catch(() => {});
+      .catch(() => { });
   }
 
   // ─────────────────────────────────────────────
@@ -480,7 +480,7 @@ export class OrdersService implements OnApplicationBootstrap {
           'DELIVERED': 4,
         };
         const currentPri = statusPriority[order.status] || 0;
-        const targetPri  = statusPriority[targetStatus] || 0;
+        const targetPri = statusPriority[targetStatus] || 0;
 
         if (targetPri > currentPri) {
           const oldStatus = order.status;
@@ -697,23 +697,23 @@ export class OrdersService implements OnApplicationBootstrap {
 
     // Send notification
     const notifMap: Record<string, string> = {
-      CONFIRMED:          'ORDER_CONFIRMED',
-      SHIPPED:            'ORDER_SHIPPED',
-      IN_TRANSIT:         'ORDER_SHIPPED',
-      OUT_FOR_DELIVERY:   'ORDER_OUT_FOR_DELIVERY',
-      DELIVERED:          'ORDER_DELIVERED',
-      CANCELLED:          'ORDER_CANCELLED',
-      RETURN_APPROVED:    'RETURN_UPDATE',
-      RETURN_REJECTED:    'RETURN_UPDATE',
-      PICKUP_SCHEDULED:   'RETURN_UPDATE',
-      REFUND_INITIATED:   'REFUND_UPDATE',
-      REFUNDED:           'REFUND_UPDATE',
+      CONFIRMED: 'ORDER_CONFIRMED',
+      SHIPPED: 'ORDER_SHIPPED',
+      IN_TRANSIT: 'ORDER_SHIPPED',
+      OUT_FOR_DELIVERY: 'ORDER_OUT_FOR_DELIVERY',
+      DELIVERED: 'ORDER_DELIVERED',
+      CANCELLED: 'ORDER_CANCELLED',
+      RETURN_APPROVED: 'RETURN_UPDATE',
+      RETURN_REJECTED: 'RETURN_UPDATE',
+      PICKUP_SCHEDULED: 'RETURN_UPDATE',
+      REFUND_INITIATED: 'REFUND_UPDATE',
+      REFUNDED: 'REFUND_UPDATE',
     };
     const notifType = notifMap[toStatus];
     if (notifType && order.userId) {
       await this.notificationsService
         .sendOrderNotification(order.userId, notifType as any, id, order.orderNumber)
-        .catch(() => {});
+        .catch(() => { });
     }
 
     // AWS SES transactional emails per status
@@ -729,25 +729,25 @@ export class OrdersService implements OnApplicationBootstrap {
           courier: extra?.courierName || order.courierName || 'Courier Partner',
           awbCode: extra?.awbCode || order.awbCode || 'N/A',
           trackingUrl: extra?.trackingUrl || order.trackingUrl,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (toStatus === 'DELIVERED') {
         this.emailService.sendOrderDelivered(email, {
           customerName: name,
           orderNumber: orderNum,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (toStatus === 'CANCELLED') {
         this.emailService.sendOrderCancelled(email, {
           customerName: name,
           orderNumber: orderNum,
           reason: extra?.cancelReason,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (toStatus === 'REFUND_INITIATED' || toStatus === 'REFUNDED') {
         this.emailService.sendOrderRefunded(email, {
           customerName: name,
           orderNumber: orderNum,
           amount: Number(order.totalAmount),
           status: toStatus as 'REFUND_INITIATED' | 'REFUNDED',
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
 
@@ -825,7 +825,7 @@ export class OrdersService implements OnApplicationBootstrap {
 
     await this.notificationsService
       .sendOrderNotification(userId, 'ORDER_CANCELLED', id, order.orderNumber)
-      .catch(() => {});
+      .catch(() => { });
 
     // Send customer cancellation email
     if (order.user?.email) {
@@ -833,7 +833,7 @@ export class OrdersService implements OnApplicationBootstrap {
         customerName: order.user.name || 'Customer',
         orderNumber: order.orderNumber,
         reason,
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     return { success: true, message: 'Order cancelled successfully' };
@@ -894,14 +894,14 @@ export class OrdersService implements OnApplicationBootstrap {
 
     await this.notificationsService
       .sendOrderNotification(userId, 'RETURN_UPDATE', id, order.orderNumber)
-      .catch(() => {});
+      .catch(() => { });
 
     this.notificationsService
       .sendAdminAlert('ORDER_PLACED', {
         orderId: id, orderNumber: order.orderNumber, reason,
         event: 'RETURN_REQUESTED',
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return { success: true, message: 'Return request submitted' };
   }
@@ -1030,7 +1030,7 @@ export class OrdersService implements OnApplicationBootstrap {
 
     await this.notificationsService
       .sendOrderNotification(userId, 'RETURN_UPDATE', id, order.orderNumber)
-      .catch(() => {});
+      .catch(() => { });
 
     this.notificationsService
       .sendAdminAlert('ORDER_PLACED', {
@@ -1038,7 +1038,7 @@ export class OrdersService implements OnApplicationBootstrap {
         event: 'REPLACEMENT_REQUESTED',
         replacementVariantId,
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return {
       success: true,
@@ -1145,7 +1145,7 @@ export class OrdersService implements OnApplicationBootstrap {
   // ─── Bootstrap: sync all existing active shipments into AfterShip ────
   async onApplicationBootstrap() {
     // Run after a short delay so DB/Redis connections are stable
-    setTimeout(() => this.syncAllActiveShipmentsToAfterShip().catch(() => {}), 15000);
+    setTimeout(() => this.syncAllActiveShipmentsToAfterShip().catch(() => { }), 15000);
     this.autoCompleteShippedOrders().catch(e =>
       this.logger.error(`Error running shipped orders auto-completion on startup: ${e.message}`)
     );
@@ -1181,7 +1181,7 @@ export class OrdersService implements OnApplicationBootstrap {
         } catch (err: any) {
           this.logger.error(`Failed to sync order ${order.orderNumber}: ${err.message}`);
           // Still try fallback even if tracking threw
-          try { await this.applyFallbackDeliveryTimeline(order); } catch {}
+          try { await this.applyFallbackDeliveryTimeline(order); } catch { }
         }
       }
     } catch (e: any) {
