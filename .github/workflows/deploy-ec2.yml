@@ -20,35 +20,54 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 30m
           script: |
             set -e
-            echo "Starting deployment on EC2..."
-            
+
+            echo "=== [1/6] Starting deployment on EC2 ==="
+            echo "User: $(whoami) | Dir: $(pwd)"
+
             # Ensure /app directory exists and has permissions
+            echo "=== [2/6] Setting up /app directory ==="
             sudo mkdir -p /app
             sudo chown -R ubuntu:ubuntu /app
             cd /app
-            
-            # Clone if first time, pull if repo exists, or wipe & clone if dir is dirty
+            echo "Now in: $(pwd)"
+
+            # Clone or pull
+            echo "=== [3/6] Syncing repository ==="
             if [ -d ".git" ]; then
-              echo "Repo already exists — pulling latest changes from main branch..."
+              echo "Repo exists — pulling latest from main..."
               git fetch origin main
               git reset --hard origin/main
+              git clean -fd
             else
-              echo "No .git found — clearing any stale files and cloning fresh..."
-              # Remove all files including hidden ones, but keep the /app dir itself
-              find /app -mindepth 1 -delete
+              echo "No .git found — wiping /app and cloning fresh..."
+              sudo rm -rf /app/*  /app/.[!.]* 2>/dev/null || true
               git clone https://github.com/Jagadish2536/anjali-alankaram.git .
             fi
-            
+            echo "Git status: $(git log --oneline -1)"
+
+            # Check docker compose availability
+            echo "=== [4/6] Checking docker compose ==="
+            if docker compose version > /dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+              echo "Using: docker compose (v2)"
+            else
+              COMPOSE_CMD="docker-compose"
+              echo "Using: docker-compose (v1)"
+            fi
+
             # Rebuild and start production Docker containers
-            docker compose -f docker-compose.production.yml up -d --build --remove-orphans
-            
+            echo "=== [5/6] Building & starting containers ==="
+            $COMPOSE_CMD -f docker-compose.production.yml up -d --build --remove-orphans
+
             # Run database migrations
-            docker exec anjali_backend npx prisma migrate deploy || true
-            
+            echo "=== [6/6] Running migrations & cleanup ==="
+            docker exec anjali_backend npx prisma migrate deploy || echo "Migration skipped (container may not be ready yet)"
+
             # Prune unused docker images to save disk space
             docker image prune -f
-            
-            echo "Deployment successfully completed!"
+
+            echo "=== Deployment successfully completed! ==="
 
