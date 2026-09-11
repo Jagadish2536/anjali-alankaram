@@ -26,11 +26,11 @@ jobs:
             set -e
             echo "=== Fetching secrets from AWS Secrets Manager (ap-south-2) ==="
 
-            # Ensure aws cli is available
+            # Ensure aws cli is available (EC2 is ARM64 / aarch64)
             if ! command -v aws &>/dev/null; then
-              echo "Installing AWS CLI..."
+              echo "Installing AWS CLI (aarch64)..."
               sudo apt-get install -y unzip curl -qq
-              curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+              curl -s "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o /tmp/awscliv2.zip
               unzip -q /tmp/awscliv2.zip -d /tmp
               sudo /tmp/aws/install --update
               rm -rf /tmp/aws /tmp/awscliv2.zip
