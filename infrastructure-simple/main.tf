@@ -104,7 +104,11 @@ resource "aws_instance" "app_server" {
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = false
-    tags = merge(local.common_tags, { Name = "${var.project_name}-disk" })
+    tags = merge(local.common_tags, {
+      Name           = "${var.project_name}-data"
+      SnapshotTarget = "true"   # Required by DLM policy aws_dlm_lifecycle_policy.daily_ebs_backup
+      Backup         = "daily"
+    })
   }
 
   tags = merge(local.common_tags, {
