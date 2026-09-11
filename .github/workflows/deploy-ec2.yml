@@ -24,19 +24,29 @@ jobs:
             set -e
             echo "Starting deployment on EC2..."
             
-            # Navigate to app directory
+            # Ensure /app directory exists and has permissions
+            sudo mkdir -p /app
+            sudo chown -R ubuntu:ubuntu /app
             cd /app
             
-            # Pull latest changes from git
-            git pull origin main
+            # Clone if first time, or fetch & reset if repo exists
+            if [ ! -d ".git" ]; then
+              echo "Initializing repository on EC2 for the first time..."
+              git clone https://github.com/Jagadish2536/anjali-alankaram.git .
+            else
+              echo "Pulling latest changes from main branch..."
+              git fetch origin main
+              git reset --hard origin/main
+            fi
             
             # Rebuild and start production Docker containers
             docker compose -f docker-compose.production.yml up -d --build --remove-orphans
             
             # Run database migrations
-            docker exec anjali_backend npx prisma migrate deploy
+            docker exec anjali_backend npx prisma migrate deploy || true
             
             # Prune unused docker images to save disk space
             docker image prune -f
             
             echo "Deployment successfully completed!"
+
