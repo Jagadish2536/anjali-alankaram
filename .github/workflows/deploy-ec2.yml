@@ -51,6 +51,9 @@ jobs:
               --secret-id "anjali-alankaram/backend" \
               --query SecretString \
               --output text > /app/backend/.env
+            # Strip UTF-8 BOM and Windows CRLF line endings if present
+            sed -i 's/\r//' /app/backend/.env
+            sed -i '1s/^\xEF\xBB\xBF//' /app/backend/.env
             echo "backend/.env written — $(wc -l < /app/backend/.env) lines"
 
             # Fetch frontend .env.local from Secrets Manager
@@ -60,6 +63,9 @@ jobs:
               --secret-id "anjali-alankaram/frontend" \
               --query SecretString \
               --output text > /app/frontend/.env.local
+            # Strip UTF-8 BOM and Windows CRLF line endings if present
+            sed -i 's/\r//' /app/frontend/.env.local
+            sed -i '1s/^\xEF\xBB\xBF//' /app/frontend/.env.local
             echo "frontend/.env.local written — $(wc -l < /app/frontend/.env.local) lines"
 
             echo "=== Secrets fetched successfully ==="
