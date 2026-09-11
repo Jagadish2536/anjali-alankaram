@@ -482,6 +482,26 @@ resource "aws_lambda_permission" "allow_sns_billing" {
   source_arn    = aws_sns_topic.billing_alerts.arn
 }
 
+# ─── AWS Secrets Manager — App Environment Secrets ───────────────────────────
+# These secrets store backend/.env and frontend/.env.local contents.
+# Fetched at deploy time by the GitHub Actions deploy-ec2.yml workflow.
+
+resource "aws_secretsmanager_secret" "backend_env" {
+  name                    = "${var.project_name}/backend"
+  description             = "Backend .env file contents for production deployment (fetched by deploy-ec2.yml)"
+  recovery_window_in_days = 0 # Allow immediate deletion if needed
+
+  tags = merge(local.common_tags, { Name = "${var.project_name}/backend" })
+}
+
+resource "aws_secretsmanager_secret" "frontend_env" {
+  name                    = "${var.project_name}/frontend"
+  description             = "Frontend .env.local file contents for production deployment (fetched by deploy-ec2.yml)"
+  recovery_window_in_days = 0
+
+  tags = merge(local.common_tags, { Name = "${var.project_name}/frontend" })
+}
+
 
 
 
