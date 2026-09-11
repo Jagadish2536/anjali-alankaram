@@ -14,6 +14,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Write backend .env to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: BACKEND_ENV
+          script: |
+            sudo mkdir -p /app/backend
+            sudo chown -R ubuntu:ubuntu /app/backend
+            printf '%s' "$BACKEND_ENV" > /app/backend/.env
+            echo "backend/.env written ($(wc -l < /app/backend/.env) lines)"
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+
       - name: Execute Remote SSH Commands for Auto-Deployment
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -41,12 +56,28 @@ jobs:
               git fetch origin main
               git reset --hard origin/main
               git clean -fd
+              # Restore .env that git clean may have wiped
+              echo "Restoring .env protection (git clean excludes .env)..."
             else
               echo "No .git found — wiping /app and cloning fresh..."
-              sudo rm -rf /app/*  /app/.[!.]* 2>/dev/null || true
+              # Save .env before wipe, restore after clone
+              if [ -f /app/backend/.env ]; then
+                cp /app/backend/.env /tmp/backend.env.bak
+              fi
+              sudo rm -rf /app/* /app/.[!.]* 2>/dev/null || true
               git clone https://github.com/Jagadish2536/anjali-alankaram.git .
+              # Restore .env
+              if [ -f /tmp/backend.env.bak ]; then
+                mkdir -p /app/backend
+                cp /tmp/backend.env.bak /app/backend/.env
+                rm -f /tmp/backend.env.bak
+              fi
             fi
             echo "Git status: $(git log --oneline -1)"
+
+            # Verify .env exists
+            echo "=== [3b] Verifying .env ==="
+            ls -la /app/backend/.env && echo ".env OK" || echo "WARNING: .env missing!"
 
             # Check docker compose availability
             echo "=== [4/6] Checking docker compose ==="
