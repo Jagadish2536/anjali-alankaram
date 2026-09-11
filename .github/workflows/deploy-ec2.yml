@@ -14,22 +14,58 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Write backend .env to EC2
+      # ── Step 1: Fetch secrets from AWS Secrets Manager → write .env files on EC2 ──
+      - name: Fetch Secrets from AWS Secrets Manager
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: BACKEND_ENV
+          envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION
           script: |
-            sudo mkdir -p /app/backend
-            sudo chown -R ubuntu:ubuntu /app/backend
-            printf '%s' "$BACKEND_ENV" > /app/backend/.env
-            echo "backend/.env written ($(wc -l < /app/backend/.env) lines)"
-        env:
-          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+            set -e
+            echo "=== Fetching secrets from AWS Secrets Manager (ap-south-2) ==="
 
-      - name: Execute Remote SSH Commands for Auto-Deployment
+            # Ensure aws cli is available
+            if ! command -v aws &>/dev/null; then
+              echo "Installing AWS CLI..."
+              curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+              unzip -q /tmp/awscliv2.zip -d /tmp
+              sudo /tmp/aws/install --update
+              rm -rf /tmp/aws /tmp/awscliv2.zip
+            fi
+            echo "AWS CLI: $(aws --version)"
+
+            # Create directories
+            sudo mkdir -p /app/backend /app/frontend
+            sudo chown -R ubuntu:ubuntu /app
+
+            # Fetch backend .env from Secrets Manager
+            echo "Fetching anjali-alankaram/backend..."
+            aws secretsmanager get-secret-value \
+              --region ap-south-2 \
+              --secret-id "anjali-alankaram/backend" \
+              --query SecretString \
+              --output text > /app/backend/.env
+            echo "backend/.env written — $(wc -l < /app/backend/.env) lines"
+
+            # Fetch frontend .env.local from Secrets Manager
+            echo "Fetching anjali-alankaram/frontend..."
+            aws secretsmanager get-secret-value \
+              --region ap-south-2 \
+              --secret-id "anjali-alankaram/frontend" \
+              --query SecretString \
+              --output text > /app/frontend/.env.local
+            echo "frontend/.env.local written — $(wc -l < /app/frontend/.env.local) lines"
+
+            echo "=== Secrets fetched successfully ==="
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_DEPLOY_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_DEPLOY_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ap-south-2
+
+      # ── Step 2: Clone / pull repo & run docker compose ───────────────────────────
+      - name: Deploy Application
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -39,66 +75,50 @@ jobs:
           script: |
             set -e
 
-            echo "=== [1/6] Starting deployment on EC2 ==="
-            echo "User: $(whoami) | Dir: $(pwd)"
+            echo "=== [1/5] Starting deployment on EC2 ==="
+            echo "User: $(whoami) | Time: $(date -u)"
 
-            # Ensure /app directory exists and has permissions
-            echo "=== [2/6] Setting up /app directory ==="
+            # Ensure /app is owned by ubuntu
+            echo "=== [2/5] Setting up /app directory ==="
             sudo mkdir -p /app
             sudo chown -R ubuntu:ubuntu /app
             cd /app
-            echo "Now in: $(pwd)"
 
-            # Clone or pull
-            echo "=== [3/6] Syncing repository ==="
+            # Clone or pull the repo (preserve .env files)
+            echo "=== [3/5] Syncing repository ==="
             if [ -d ".git" ]; then
               echo "Repo exists — pulling latest from main..."
               git fetch origin main
               git reset --hard origin/main
-              git clean -fd
-              # Restore .env that git clean may have wiped
-              echo "Restoring .env protection (git clean excludes .env)..."
+              # git clean skips .env files (they are gitignored, so not tracked)
+              git clean -fd --exclude="backend/.env" --exclude="frontend/.env.local"
             else
-              echo "No .git found — wiping /app and cloning fresh..."
-              # Save .env before wipe, restore after clone
-              if [ -f /app/backend/.env ]; then
-                cp /app/backend/.env /tmp/backend.env.bak
-              fi
+              echo "No .git found — backup .env files, wipe, clone, restore..."
+              [ -f /app/backend/.env ]        && cp /app/backend/.env        /tmp/backend.env.bak
+              [ -f /app/frontend/.env.local ] && cp /app/frontend/.env.local /tmp/frontend.env.bak
               sudo rm -rf /app/* /app/.[!.]* 2>/dev/null || true
               git clone https://github.com/Jagadish2536/anjali-alankaram.git .
-              # Restore .env
-              if [ -f /tmp/backend.env.bak ]; then
-                mkdir -p /app/backend
-                cp /tmp/backend.env.bak /app/backend/.env
-                rm -f /tmp/backend.env.bak
-              fi
+              mkdir -p /app/backend /app/frontend
+              [ -f /tmp/backend.env.bak ]  && cp /tmp/backend.env.bak  /app/backend/.env  && rm /tmp/backend.env.bak
+              [ -f /tmp/frontend.env.bak ] && cp /tmp/frontend.env.bak /app/frontend/.env.local && rm /tmp/frontend.env.bak
             fi
-            echo "Git status: $(git log --oneline -1)"
+            echo "Latest commit: $(git log --oneline -1)"
 
-            # Verify .env exists
-            echo "=== [3b] Verifying .env ==="
-            ls -la /app/backend/.env && echo ".env OK" || echo "WARNING: .env missing!"
+            # Verify .env files exist
+            echo "=== [3b] Verifying .env files ==="
+            ls -la /app/backend/.env && echo "backend/.env ✓" || { echo "ERROR: backend/.env missing!"; exit 1; }
+            ls -la /app/frontend/.env.local && echo "frontend/.env.local ✓" || echo "frontend/.env.local not present (build-args used)"
 
-            # Check docker compose availability
-            echo "=== [4/6] Checking docker compose ==="
-            if docker compose version > /dev/null 2>&1; then
-              COMPOSE_CMD="docker compose"
-              echo "Using: docker compose (v2)"
-            else
-              COMPOSE_CMD="docker-compose"
-              echo "Using: docker-compose (v1)"
-            fi
-
-            # Rebuild and start production Docker containers
-            echo "=== [5/6] Building & starting containers ==="
+            # Docker compose
+            echo "=== [4/5] Building & starting containers ==="
+            COMPOSE_CMD="docker compose"
+            $COMPOSE_CMD version || COMPOSE_CMD="docker-compose"
+            echo "Using: $COMPOSE_CMD"
             $COMPOSE_CMD -f docker-compose.production.yml up -d --build --remove-orphans
 
-            # Run database migrations
-            echo "=== [6/6] Running migrations & cleanup ==="
-            docker exec anjali_backend npx prisma migrate deploy || echo "Migration skipped (container may not be ready yet)"
-
-            # Prune unused docker images to save disk space
+            # Migrations & cleanup
+            echo "=== [5/5] Running migrations & cleanup ==="
+            docker exec anjali_backend npx prisma migrate deploy || echo "Migration skipped"
             docker image prune -f
 
             echo "=== Deployment successfully completed! ==="
-
