@@ -302,16 +302,16 @@ export default function CheckoutPage() {
           theme: { color: '#B76E79' },
           modal: {
             ondismiss: () => {
+              // User closed Razorpay without paying — keep cart intact, go to order page
               setIsProcessing(false);
-              clearCart();
               router.push(`/orders/${data.order.id}`);
             },
           },
         };
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', () => {
+          // Payment failed — keep cart intact, go to order page to retry
           setIsProcessing(false);
-          clearCart();
           router.push(`/orders/${data.order.id}`);
         });
         rzp.open();

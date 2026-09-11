@@ -119,12 +119,13 @@ jobs:
             ls -la /app/backend/.env && echo "backend/.env ✓" || { echo "ERROR: backend/.env missing!"; exit 1; }
             ls -la /app/frontend/.env.local && echo "frontend/.env.local ✓" || echo "frontend/.env.local not present (build-args used)"
 
-            # Docker compose
+            # Docker compose — force fresh build to ensure new code is deployed
             echo "=== [4/5] Building & starting containers ==="
             COMPOSE_CMD="docker compose"
             $COMPOSE_CMD version || COMPOSE_CMD="docker-compose"
             echo "Using: $COMPOSE_CMD"
-            $COMPOSE_CMD -f docker-compose.production.yml up -d --build --remove-orphans
+            $COMPOSE_CMD -f docker-compose.production.yml build --no-cache
+            $COMPOSE_CMD -f docker-compose.production.yml up -d --remove-orphans
 
             # Migrations & cleanup
             echo "=== [5/5] Running migrations & storage cleanup ==="
