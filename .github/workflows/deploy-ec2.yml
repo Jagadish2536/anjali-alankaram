@@ -118,6 +118,21 @@ jobs:
             $COMPOSE_CMD version || COMPOSE_CMD="docker-compose"
             echo "Using: $COMPOSE_CMD"
             $COMPOSE_CMD -f docker-compose.production.yml build --build-arg CACHE_BUST=$GIT_SHA
+
+            # Force-remove any stale containers that share our service names but belong
+            # to a different Compose project (different prefix). --remove-orphans won't
+            # catch these, so we do it explicitly before `up`.
+            echo "--- Removing any stale containers by service name ---"
+            for name in anjali_backend anjali_frontend anjali_postgres anjali_redis; do
+              OLD_ID=$(docker ps -aq --filter "name=^/${name}$" 2>/dev/null)
+              # Also catch containers whose name contains the service name (e.g. <hash>_anjali_backend)
+              OLD_IDS=$(docker ps -aq --filter "name=${name}" 2>/dev/null)
+              if [ -n "$OLD_IDS" ]; then
+                echo "  Removing stale container(s) matching '${name}': $OLD_IDS"
+                docker rm -f $OLD_IDS || true
+              fi
+            done
+
             $COMPOSE_CMD -f docker-compose.production.yml up -d --remove-orphans
 
             echo "=== [5/5] Running migrations & storage cleanup ==="

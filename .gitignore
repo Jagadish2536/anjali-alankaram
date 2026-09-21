@@ -19,4 +19,5 @@ backups/
 scratch/
 *.pem
 *.zip
-
+.DS_Store
+**/.DS_Store
