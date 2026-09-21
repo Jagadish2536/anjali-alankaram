@@ -597,6 +597,139 @@ export class AdminController implements OnModuleInit {
     return this.paymentsService.getPaymentDetails(id);
   }
 
+  @Post('orders/:id/sync-razorpay')
+  @ApiOperation({ summary: 'Reconcile and sync order payment status directly with Razorpay API' })
+  async syncOrderWithRazorpay(@Param('id') id: string, @Body() body: { paymentId?: string }) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { user: { select: { email: true, phone: true } } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const { keyId, keySecret } = await this.paymentsService.getPublicConfig();
+    if (!keyId || !keySecret) throw new BadRequestException('Razorpay credentials not configured');
+
+    let capturedPayment: any = null;
+
+    // 1. If explicit paymentId provided, fetch that payment directly
+    if (body?.paymentId) {
+      try {
+        const res = await axios.get(`https://api.razorpay.com/v1/payments/${body.paymentId}`, {
+          auth: { username: keyId, password: keySecret },
+          timeout: 10000,
+        });
+        if (res.data?.status === 'captured') {
+          capturedPayment = res.data;
+        }
+      } catch (e: any) {
+        this.logger.warn(`Failed to fetch payment ${body.paymentId}: ${e.message}`);
+      }
+    }
+
+    // 2. If order has razorpayOrderId, query all payments for that Razorpay order
+    if (!capturedPayment && order.razorpayOrderId) {
+      try {
+        const res = await axios.get(`https://api.razorpay.com/v1/orders/${order.razorpayOrderId}/payments`, {
+          auth: { username: keyId, password: keySecret },
+          timeout: 10000,
+        });
+        const items = res.data?.items || [];
+        capturedPayment = items.find((p: any) => p.status === 'captured');
+      } catch (e: any) {
+        this.logger.warn(`Failed to fetch payments for razorpayOrderId ${order.razorpayOrderId}: ${e.message}`);
+      }
+    }
+
+    // 3. Fallback: Search recent captured payments matching order total and customer phone/email
+    if (!capturedPayment) {
+      try {
+        const res = await axios.get('https://api.razorpay.com/v1/payments', {
+          auth: { username: keyId, password: keySecret },
+          params: { count: 100 },
+          timeout: 10000,
+        });
+        const items = res.data?.items || [];
+        const orderAmountPaisa = Math.round(Number(order.totalAmount) * 100);
+        capturedPayment = items.find((p: any) => {
+          if (p.status !== 'captured') return false;
+          if (Math.abs(p.amount - orderAmountPaisa) > 100) return false; // within 1 rupee tolerance
+          if (p.order_id && order.razorpayOrderId && p.order_id === order.razorpayOrderId) return true;
+          const phone = order.user?.phone?.replace(/\D/g, '') || '';
+          const pContact = p.contact?.replace(/\D/g, '') || '';
+          if (phone && pContact && (phone.endsWith(pContact) || pContact.endsWith(phone))) return true;
+          if (order.user?.email && p.email && order.user.email.toLowerCase() === p.email.toLowerCase()) return true;
+          return false;
+        });
+      } catch (e: any) {
+        this.logger.warn(`Failed searching payments fallback: ${e.message}`);
+      }
+    }
+
+    if (!capturedPayment) {
+      return {
+        success: false,
+        message: 'No captured payment found on Razorpay matching this order.',
+      };
+    }
+
+    // Update order to PAID and PAYMENT_VERIFIED
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: 'PAID',
+        status: 'PAYMENT_VERIFIED',
+        cancelReason: null,
+        razorpayOrderId: capturedPayment.order_id || order.razorpayOrderId,
+      },
+    });
+
+    // Upsert payment record
+    await this.prisma.payment.upsert({
+      where: { orderId: order.id },
+      create: {
+        orderId: order.id,
+        razorpayOrderId: capturedPayment.order_id || order.razorpayOrderId || '',
+        razorpayPaymentId: capturedPayment.id,
+        amount: capturedPayment.amount / 100,
+        status: 'PAID',
+        method: 'RAZORPAY',
+      },
+      update: {
+        razorpayPaymentId: capturedPayment.id,
+        status: 'PAID',
+        amount: capturedPayment.amount / 100,
+      },
+    });
+
+    // Insert transaction
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO "payment_transactions" ("id","orderId","type","amount","status","gateway","gatewayRef","createdAt")
+       VALUES (gen_random_uuid(),$1,'CHARGE',$2,'SUCCESS','RAZORPAY',$3,NOW())`,
+      order.id, capturedPayment.amount / 100, capturedPayment.id,
+    ).catch(() => {});
+
+    // Confirm inventory
+    await this.inventoryService.confirm(order.id).catch((e: any) =>
+      this.logger.error(`Inventory confirm failed during admin sync for order ${order.id}: ${e.message}`)
+    );
+
+    // Log status history
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO "order_status_history" ("id","orderId","fromStatus","toStatus","actorRole","notes","metadata","createdAt")
+       VALUES (gen_random_uuid(),$1,$2::"OrderStatus",'PAYMENT_VERIFIED'::"OrderStatus",'ADMIN',
+       'Payment reconciled and verified via Razorpay Sync',$3::jsonb,NOW())`,
+      order.id, order.status, JSON.stringify({ razorpayPaymentId: capturedPayment.id, amount: capturedPayment.amount / 100 }),
+    ).catch(() => {});
+
+    return {
+      success: true,
+      message: `Payment ${capturedPayment.id} verified. Order updated to PAYMENT_VERIFIED.`,
+      paymentId: capturedPayment.id,
+      amount: capturedPayment.amount / 100,
+      status: 'PAYMENT_VERIFIED',
+    };
+  }
+
   @Get('razorpay/transactions')
   @ApiOperation({ summary: 'Get all payment transactions' })
   async getRazorpayTransactions(

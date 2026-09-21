@@ -514,6 +514,27 @@ export default function OrderDetailPage() {
     }
   };
 
+  const [syncingRazorpay, setSyncingRazorpay] = useState(false);
+
+  const handleSyncRazorpay = async () => {
+    if (!order) return;
+    setSyncingRazorpay(true);
+    try {
+      const res = await api.post(`/admin/orders/${order.id}/sync-razorpay`, {});
+      if (res.data?.success) {
+        alert(res.data.message);
+        await fetchOrder();
+        window.dispatchEvent(new Event('order-transactions-refresh'));
+      } else {
+        alert(res.data?.message || 'No captured payment found on Razorpay.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to sync with Razorpay');
+    } finally {
+      setSyncingRazorpay(false);
+    }
+  };
+
   useEffect(() => {
     if (id) {
       fetchOrder(true);
@@ -853,6 +874,23 @@ export default function OrderDetailPage() {
                     </span>
                   </div>
                 </div>
+
+                {order.paymentMethod === 'RAZORPAY' && order.paymentStatus !== 'PAID' && (
+                  <div className="mt-3 pt-3 border-t border-orange-100 bg-orange-50/70 p-3 rounded-xl flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-orange-900">Payment marked as {order.paymentStatus}</p>
+                      <p className="text-[11px] text-orange-700">If customer was charged, sync directly with Razorpay to mark as PAID and verify order.</p>
+                    </div>
+                    <button
+                      onClick={handleSyncRazorpay}
+                      disabled={syncingRazorpay}
+                      className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 shrink-0 transition-colors disabled:opacity-50"
+                    >
+                      {syncingRazorpay ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Sync with Razorpay
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

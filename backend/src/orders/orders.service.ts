@@ -103,7 +103,7 @@ export class OrdersService implements OnApplicationBootstrap {
     const settings = await this.prisma.storeSettings.findFirst();
     const freeShipThreshold = Number((settings as any)?.freeShippingThreshold ?? 499);
     const shippingFee = Number((settings as any)?.shippingCharge ?? 49);
-    const reservationMins = Number((settings as any)?.reservationTimeoutMins ?? 5);
+    const reservationMins = Number((settings as any)?.reservationTimeoutMins ?? 20);
     const platformFeeEnabled = (settings as any)?.platformFeeEnabled ?? false;
     const platformFeeAmt = platformFeeEnabled ? Number((settings as any)?.platformFeeAmount ?? 0) : 0;
     const codChargeAmt = dto.paymentMethod === 'COD' ? Number((settings as any)?.codCharges ?? 0) : 0;

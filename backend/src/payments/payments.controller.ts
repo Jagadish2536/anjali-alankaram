@@ -18,4 +18,20 @@ export class PaymentsController {
     // Use raw body buffer for HMAC — re-serializing parsed JSON breaks Razorpay signature
     return this.paymentsService.verifyWebhook(req.rawBody ?? Buffer.from(JSON.stringify(body)), body, signature);
   }
+
+  @Post('verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify payment on frontend callback (client-side verification)' })
+  async verifyPayment(@Body() body: any) {
+    const razorpayOrderId = body.razorpayOrderId || body.razorpay_order_id;
+    const razorpayPaymentId = body.razorpayPaymentId || body.razorpay_payment_id;
+    const razorpaySignature = body.razorpaySignature || body.razorpay_signature;
+    const orderId = body.orderId || body.order_id;
+    return this.paymentsService.verifyPayment({
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      orderId,
+    });
+  }
 }

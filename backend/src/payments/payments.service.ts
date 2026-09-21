@@ -214,7 +214,7 @@ export class PaymentsService implements OnModuleInit {
         where: { razorpayOrderId },
       });
 
-      if (order && order.paymentStatus === 'PENDING') {
+      if (order && order.paymentStatus !== 'PAID') {
         // Log payment transaction
         await this.prisma.$executeRawUnsafe(
           `INSERT INTO "payment_transactions" ("id","orderId","type","amount","status","gateway","gatewayRef","createdAt")
@@ -240,12 +240,13 @@ export class PaymentsService implements OnModuleInit {
           },
         });
 
-        // Advance order to PAYMENT_VERIFIED
+        // Advance order to PAYMENT_VERIFIED and clear any timeout cancellation
         await this.prisma.order.update({
           where: { id: order.id },
           data: {
             paymentStatus: 'PAID',
             status: 'PAYMENT_VERIFIED',
+            cancelReason: null,
           },
         });
 
@@ -397,6 +398,7 @@ export class PaymentsService implements OnModuleInit {
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
+    orderId?: string;
   }) {
     const { keySecret } = await this.getRazorpayConfig();
     if (!keySecret) throw new BadRequestException('Razorpay not configured');
@@ -411,14 +413,31 @@ export class PaymentsService implements OnModuleInit {
     }
 
     // Find and update order
-    const order = await this.prisma.order.findFirst({
+    let order = await this.prisma.order.findFirst({
       where: { razorpayOrderId: data.razorpayOrderId },
     });
+    if (!order && data.orderId) {
+      order = await this.prisma.order.findUnique({
+        where: { id: data.orderId },
+      });
+    }
 
-    if (order && order.paymentStatus === 'PENDING') {
+    if (order && order.paymentStatus !== 'PAID') {
+      // Log payment transaction
+      await this.prisma.$executeRawUnsafe(
+        `INSERT INTO "payment_transactions" ("id","orderId","type","amount","status","gateway","gatewayRef","createdAt")
+         VALUES (gen_random_uuid(),$1,'CHARGE',$2,'SUCCESS','RAZORPAY',$3,NOW())`,
+        order.id, Number(order.totalAmount), data.razorpayPaymentId,
+      ).catch(() => {});
+
       await this.prisma.order.update({
         where: { id: order.id },
-        data: { paymentStatus: 'PAID', status: 'PAYMENT_VERIFIED' },
+        data: {
+          paymentStatus: 'PAID',
+          status: 'PAYMENT_VERIFIED',
+          cancelReason: null,
+          razorpayOrderId: data.razorpayOrderId || order.razorpayOrderId,
+        },
       });
 
       await this.prisma.payment.upsert({
@@ -463,6 +482,11 @@ export class PaymentsService implements OnModuleInit {
          VALUES (gen_random_uuid(),$1,'PENDING_PAYMENT'::"OrderStatus",'PAYMENT_VERIFIED'::"OrderStatus",'CUSTOMER',
          'Payment verified via client callback',$2::jsonb,NOW())`,
         order.id, JSON.stringify({ razorpayPaymentId: data.razorpayPaymentId }),
+      ).catch(() => {});
+
+      // Trigger shipment creation in background
+      this.shippingService.createShipment(order.id).catch((e) =>
+        this.logger.error(`Shipment creation failed after verifyPayment: ${e.message}`)
       );
 
       // Send order confirmation email and notification post-payment

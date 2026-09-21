@@ -31,7 +31,7 @@ export class InventoryService implements OnModuleInit {
   async reserve(
     orderId: string,
     items: { variantId: string; quantity: number }[],
-    timeoutMins = 5,
+    timeoutMins = 20,
   ) {
     const expiresAt = new Date(Date.now() + timeoutMins * 60 * 1000);
 
@@ -87,7 +87,60 @@ export class InventoryService implements OnModuleInit {
       orderId,
     );
 
-    if (!reservations.length) return;
+    if (!reservations.length) {
+      // Check if stock was already deducted for this order
+      const alreadyDeducted = await this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT id FROM "inventory_logs" WHERE "orderId" = $1 AND "type" = 'DEDUCTED' LIMIT 1`,
+        orderId,
+      );
+      if (alreadyDeducted.length) return;
+
+      // Deduct directly from order items (handles recovery when payment succeeds after timeout)
+      const orderItems = await this.prisma.orderItem.findMany({ where: { orderId } });
+      if (!orderItems.length) return;
+
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        select: { warehouseId: true },
+      });
+      const finalWhId = order?.warehouseId || (await this.prisma.warehouse.findFirst({ where: { isDefault: true } }))?.id;
+
+      await this.prisma.$transaction(async (tx) => {
+        for (const item of orderItems) {
+          const variant = await tx.productVariant.findUnique({
+            where: { id: item.variantId },
+            select: { stock: true },
+          });
+          if (!variant) continue;
+          const newStock = Math.max(0, variant.stock - item.quantity);
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: newStock },
+          });
+          if (finalWhId) {
+            const whInv = await tx.warehouseInventory.findUnique({
+              where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: item.variantId } },
+            });
+            if (whInv) {
+              await tx.warehouseInventory.update({
+                where: { warehouseId_variantId: { warehouseId: finalWhId, variantId: item.variantId } },
+                data: { quantity: Math.max(0, whInv.quantity - item.quantity) },
+              });
+            }
+          }
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { totalSold: { increment: item.quantity } },
+          });
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "inventory_logs" ("id","variantId","type","quantity","stockBefore","stockAfter","orderId","notes","createdAt")
+             VALUES (gen_random_uuid(),$1,'DEDUCTED'::"InventoryMovementType",$2,$3,$4,$5,'Stock deducted upon order recovery'::text,NOW())`,
+            item.variantId, item.quantity, variant.stock, newStock, orderId,
+          );
+        }
+      });
+      return;
+    }
 
     // Get assigned warehouse or default warehouse
     const order = await this.prisma.order.findUnique({

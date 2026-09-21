@@ -89,6 +89,24 @@ function AdminOrdersContent() {
   const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
   const [selectedOrderForLabel, setSelectedOrderForLabel] = useState<any | null>(null);
   const [bulkOrdersForLabel, setBulkOrdersForLabel] = useState<any[] | null>(null);
+  const [syncingOrderId, setSyncingOrderId] = useState<string | null>(null);
+
+  const handleSyncOrder = async (orderId: string) => {
+    setSyncingOrderId(orderId);
+    try {
+      const res = await api.post(`/admin/orders/${orderId}/sync-razorpay`, {});
+      if (res.data?.success) {
+        alert(res.data.message);
+        fetchOrders(page);
+      } else {
+        alert(res.data?.message || 'No captured payment found on Razorpay.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to sync with Razorpay');
+    } finally {
+      setSyncingOrderId(null);
+    }
+  };
   const [bulkFilterInfo, setBulkFilterInfo] = useState<string>('');
 
   const checkDateCount = useCallback(async () => {
@@ -368,6 +386,17 @@ function AdminOrdersContent() {
                           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${order.paymentStatus === 'PAID' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
                             {order.paymentStatus}
                           </span>
+                          {order.paymentMethod === 'RAZORPAY' && order.paymentStatus !== 'PAID' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleSyncOrder(order.id); }}
+                              disabled={syncingOrderId === order.id}
+                              className="mt-1 flex items-center gap-1 text-[9px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 border border-orange-300 px-1.5 py-0.5 rounded transition-colors disabled:opacity-50"
+                              title="Check Razorpay for captured payment"
+                            >
+                              <RefreshCw className={`w-2.5 h-2.5 ${syncingOrderId === order.id ? 'animate-spin' : ''}`} />
+                              Sync Razorpay
+                            </button>
+                          )}
                         </td>
                         <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                         <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
