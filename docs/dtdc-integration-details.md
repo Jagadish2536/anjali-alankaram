@@ -10,7 +10,7 @@ This document records the complete architecture, API specifications, and operati
 * **POC Email:** anjalialankaram@gmail.com
 * **POC Contact Number:** +91 8919045363
 * **Origin Location:** Vizianagaram, Andhra Pradesh (Pincode: `535002`)
-* **DTDC Customer Code:** `anjalialankaram001` (or assigned production GL code)
+* **DTDC Customer Code:** `VO1494`
 * **Default Pickup Service:** B2C PRIORITY / B2C PREMIUM
 
 ### DTDC Franchisee / Branch Details

@@ -30,7 +30,7 @@ export class DtdcService {
    * Determine if running in staging or production
    */
   get isProduction(): boolean {
-    const env = (this.config.get<string>('DTDC_ENV') || 'staging').toLowerCase();
+    const env = (this.config.get<string>('DTDC_ENV') || 'production').toLowerCase();
     return env === 'production' || env === 'prod' || env === 'live';
   }
 
@@ -63,7 +63,11 @@ export class DtdcService {
   }
 
   get customerCode(): string {
-    return this.config.get<string>('DTDC_CUSTOMER_CODE') || 'anjalialankaram001';
+    return this.config.get<string>('DTDC_CUSTOMER_CODE') || 'VO1494';
+  }
+
+  get trackingTokenConfig(): string {
+    return this.config.get<string>('DTDC_TRACKING_TOKEN') || '';
   }
 
   isConfigured(): boolean {
@@ -77,9 +81,11 @@ export class DtdcService {
       customerCode: this.customerCode,
       hasApiKey: Boolean(this.apiKey),
       hasTrackingCreds: Boolean(
-        this.config.get('DTDC_TRACKING_USERNAME') &&
-        this.config.get('DTDC_TRACKING_PASSWORD'),
+        this.trackingTokenConfig ||
+        (this.config.get('DTDC_TRACKING_USERNAME') &&
+         this.config.get('DTDC_TRACKING_PASSWORD')),
       ),
+      hasTrackingToken: Boolean(this.trackingTokenConfig),
       originWarehouse: {
         name: this.config.get('DTDC_ORIGIN_NAME') || 'Anjali Alankaram',
         phone: this.config.get('DTDC_ORIGIN_PHONE') || '8919045363',
@@ -371,6 +377,12 @@ export class DtdcService {
    * 4. DTDC REST Tracking V4 API (JSON Based)
    */
   private async getTrackingToken(): Promise<string | null> {
+    // If a static/issued tracking token is directly provided, prioritize it
+    const directToken = this.config.get<string>('DTDC_TRACKING_TOKEN');
+    if (directToken && directToken.trim()) {
+      return directToken.trim();
+    }
+
     const username = this.config.get<string>('DTDC_TRACKING_USERNAME');
     const password = this.config.get<string>('DTDC_TRACKING_PASSWORD');
 
