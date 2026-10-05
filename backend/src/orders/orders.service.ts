@@ -1306,30 +1306,31 @@ export class OrdersService implements OnApplicationBootstrap {
     return results;
   }
 
-  // ─── Shiprocket status label → DB OrderStatus mapping ─────────────
+  // ─── Courier status label (DTDC / AfterShip / Shiprocket) → DB OrderStatus mapping ─────
   private mapShiprocketStatus(label: string): OrderStatus | null {
     if (!label) return null;
     const s = label.toLowerCase().trim();
 
     // DELIVERED
     if (s.includes('delivered') && !s.includes('out for')) return 'DELIVERED';
-    if (s === 'delivery done') return 'DELIVERED';
+    if (s === 'delivery done' || s === 'dlv') return 'DELIVERED';
 
     // OUT_FOR_DELIVERY
-    if (s.includes('out for delivery')) return 'OUT_FOR_DELIVERY';
+    if (s.includes('out for delivery') || s === 'outdlv') return 'OUT_FOR_DELIVERY';
     if (s.includes('with delivery') || s.includes('delivery boy')) return 'OUT_FOR_DELIVERY';
 
     // IN_TRANSIT
     if (s.includes('in transit') || s.includes('in-transit')) return 'IN_TRANSIT';
     if (s.includes('reached') || s.includes('at destination')) return 'IN_TRANSIT';
     if (s.includes('hub') || s.includes('sorting')) return 'IN_TRANSIT';
-    if (s.includes('dispatched') || s.includes('picked up')) return 'IN_TRANSIT';
-    if (s.includes('on route') || s.includes('en route')) return 'IN_TRANSIT';
-    if (s.includes('received at') || s.includes('arrived at')) return 'IN_TRANSIT';
+    if (s.includes('dispatched') || s.includes('picked up') || s === 'pcup') return 'IN_TRANSIT';
+    if (s.includes('on route') || s.includes('en route') || s.includes('in progress')) return 'IN_TRANSIT';
+    if (s.includes('received at') || s.includes('arrived at') || s === 'received') return 'IN_TRANSIT';
+    if (s.includes('consignment released') || s.includes('customs cleared')) return 'IN_TRANSIT';
 
     // SHIPPED (initial scan events)
-    if (s.includes('accepted') || s.includes('booked') || s.includes('softdata')) return 'SHIPPED';
-    if (s.includes('pickup done') || s.includes('pickup successful')) return 'SHIPPED';
+    if (s.includes('accepted') || s.includes('booked') || s.includes('softdata') || s === 'bkd') return 'SHIPPED';
+    if (s.includes('pickup done') || s.includes('pickup successful') || s === 'pcsc' || s === 'pcra' || s === 'pcaw') return 'SHIPPED';
 
     return null;
   }

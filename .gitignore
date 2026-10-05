@@ -19,6 +19,8 @@ backups/
 scratch/
 *.pem
 *.zip
-.DS_Store
+*.csv
+.DS_Store
 **/.DS_Store
 *.tsbuildinfo
+.agents/

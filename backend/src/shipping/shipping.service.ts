@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { DtdcService } from './dtdc.service';
 import axios from 'axios';
 
 // ─── Mock shipping providers ────────────────────────────────────────
@@ -276,6 +277,7 @@ export class ShippingService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private dtdcService: DtdcService,
   ) {
     const email = config.get('SHIPROCKET_EMAIL');
     const password = config.get('SHIPROCKET_PASSWORD');
@@ -312,6 +314,32 @@ export class ShippingService {
       include: { items: true, address: true, user: true },
     });
     if (!order) return;
+
+    // If DTDC direct API is configured, use DTDC by default
+    if (this.dtdcService.isConfigured()) {
+      try {
+        const dtdcRes = await this.dtdcService.createShipment(order);
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            awbCode: dtdcRes.awb,
+            trackingUrl: dtdcRes.trackingUrl,
+            courierName: 'DTDC',
+            courierTrackingId: dtdcRes.referenceNumber,
+            status: 'SHIPPED',
+            shippedAt: new Date(),
+          },
+        });
+        this.logger.log(`DTDC shipment created for order ${orderId}: AWB ${dtdcRes.awb}`);
+        this.registerTracking(dtdcRes.awb, 'DTDC').catch(() => {});
+        return {
+          awb: dtdcRes.awb,
+          trackingUrl: dtdcRes.trackingUrl,
+        };
+      } catch (e: any) {
+        this.logger.error(`DTDC createShipment failed for ${orderId}: ${e.message}. Falling back to default provider.`);
+      }
+    }
 
     try {
       // Build provider-agnostic payload
@@ -370,6 +398,20 @@ export class ShippingService {
   async trackShipment(awb: string): Promise<TrackingEvent[]> {
     if (!awb || !awb.trim()) return [];
     const cleanAwb = awb.trim().toUpperCase();
+
+    // ── 0. DTDC Direct Tracking API (primary for DTDC AWBs or configured DTDC) ────
+    const isDtdcAwb = cleanAwb.startsWith('7D') || cleanAwb.startsWith('D') || /^[A-Z]\d{7,10}$/.test(cleanAwb);
+    if (this.dtdcService.isConfigured() || isDtdcAwb) {
+      try {
+        const events = await this.dtdcService.trackShipment(cleanAwb);
+        if (events && events.length > 0) {
+          this.logger.log(`DTDC direct tracking for AWB ${cleanAwb}: ${events.length} events`);
+          return events;
+        }
+      } catch (e: any) {
+        this.logger.warn(`DTDC tracking lookup failed for ${cleanAwb}: ${e.message}`);
+      }
+    }
 
     // ── 1. AfterShip (primary) ─ works for DTDC, India Post, any courier ────
     if (this.afterShip) {

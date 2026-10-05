@@ -462,6 +462,69 @@ export default function OrderDetailPage() {
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const awbRef = useRef<HTMLInputElement>(null);
   const [selectedCourierCustomName, setSelectedCourierCustomName] = useState('');
+  
+  // DTDC Direct API Integration State
+  const [dtdcLoading, setDtdcLoading] = useState(false);
+  const [dtdcLabelLoading, setDtdcLabelLoading] = useState(false);
+  const [dtdcCancelLoading, setDtdcCancelLoading] = useState(false);
+
+  const handleBookWithDtdc = async () => {
+    if (!order) return;
+    if (!confirm(`Book Order #${order.orderNumber} with DTDC Direct API?\n\nThis will generate an official DTDC AWB, assign DTDC as courier, and set status to SHIPPED.`)) return;
+    setDtdcLoading(true);
+    try {
+      const res = await api.post(`/shipping/dtdc/orders/${order.id}/ship`);
+      showToast(res.data?.message || 'DTDC Consignment created successfully!');
+      await fetchOrder();
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to book consignment with DTDC');
+    } finally {
+      setDtdcLoading(false);
+    }
+  };
+
+  const handleDownloadDtdcLabel = async (code: 'SHIP_LABEL_4X6' | 'SHIP_LABEL_A4' = 'SHIP_LABEL_4X6') => {
+    const awb = order?.awbCode || awbCode;
+    if (!awb) {
+      alert('No AWB code found to generate label.');
+      return;
+    }
+    setDtdcLabelLoading(true);
+    try {
+      const res = await api.get(`/shipping/dtdc/label/${encodeURIComponent(awb)}?code=${code}`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `DTDC-Label-${awb}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      showToast('DTDC Shipping Label downloaded!');
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to download DTDC label');
+    } finally {
+      setDtdcLabelLoading(false);
+    }
+  };
+
+  const handleCancelDtdcShipment = async () => {
+    if (!order) return;
+    if (!confirm(`Cancel DTDC consignment for AWB ${order.awbCode}?\n\nThis will trigger DTDC Cancellation API and mark order as CANCELLED.`)) return;
+    setDtdcCancelLoading(true);
+    try {
+      await api.post(`/shipping/dtdc/cancel/${order.id}`);
+      showToast(`DTDC consignment for order #${order.orderNumber} cancelled`);
+      await fetchOrder();
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to cancel DTDC consignment');
+    } finally {
+      setDtdcCancelLoading(false);
+    }
+  };
 
   const handleCameraScanSuccess = (result: ParsedAwbResult) => {
     handleAwbChange(result.awb);
@@ -961,7 +1024,71 @@ export default function OrderDetailPage() {
               </div>
 
               <form onSubmit={handleFulfillmentSubmit} className="space-y-4">
-                
+
+                {/* DTDC Direct API Integration Panel */}
+                <div className="rounded-xl border-2 border-primary/20 bg-primary/[0.03] p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-primary uppercase tracking-wider">
+                      <Truck className="w-3.5 h-3.5" />
+                      DTDC Direct API Service
+                    </div>
+                    {order?.courierName?.toLowerCase().includes('dtdc') && order?.awbCode && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        DTDC Active
+                      </span>
+                    )}
+                  </div>
+
+                  {(!order?.awbCode || !order?.courierName?.toLowerCase().includes('dtdc')) ? (
+                    <button
+                      type="button"
+                      onClick={handleBookWithDtdc}
+                      disabled={dtdcLoading || order?.status === 'CANCELLED' || order?.status === 'DELIVERED'}
+                      className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      {dtdcLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <PackageCheck className="w-4 h-4" />}
+                      Book Consignment via DTDC API
+                    </button>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between text-xs bg-white rounded-lg p-2 border">
+                        <span className="text-muted-foreground font-medium">DTDC AWB:</span>
+                        <strong className="font-mono text-primary font-bold text-sm">{order.awbCode}</strong>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadDtdcLabel('SHIP_LABEL_4X6')}
+                          disabled={dtdcLabelLoading}
+                          className="h-8 rounded-lg bg-white border border-primary/30 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-primary/5 transition-colors disabled:opacity-50 shadow-sm"
+                        >
+                          {dtdcLabelLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+                          Thermal 4x6 Label
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadDtdcLabel('SHIP_LABEL_A4')}
+                          disabled={dtdcLabelLoading}
+                          className="h-8 rounded-lg bg-white border border-border text-foreground text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm"
+                        >
+                          <Printer className="w-3 h-3" />
+                          A4 Label
+                        </button>
+                      </div>
+                      {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                        <button
+                          type="button"
+                          onClick={handleCancelDtdcShipment}
+                          disabled={dtdcCancelLoading}
+                          className="w-full text-center text-[10px] text-red-600 hover:underline font-semibold pt-1"
+                        >
+                          {dtdcCancelLoading ? 'Cancelling consignment…' : 'Cancel DTDC Consignment'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Status selection */}
                 <div>
                   <label htmlFor="order-status-select" className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1.5">Order Status *</label>

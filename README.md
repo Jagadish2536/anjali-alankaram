@@ -182,6 +182,20 @@ graph TB
 - **SSM Decrypted Secrets Backup**: Export decrypted backend and frontend secrets values from Secrets Manager to a secure local folder using `fetch-aws-secrets-backup.js`.
 - **Fargate State Restoration**: Bulk restore customers and configuration parameters back to fresh RDS database instances from local backup JSONs using the container execution script `run-restore.js`.
 
+### 🚚 DTDC Direct Carrier Logistics & Live Tracking (NEW)
+- **Direct Carrier Integration**: Native integration with official DTDC APIs (Ver 2.0 & REST Tracking V4) with zero third-party aggregator dependency.
+- **Order Upload (Softdata) API**: 1-click booking generating official DTDC AWB numbers directly from the admin order management dashboard.
+- **Thermal & Standard Shipping Labels**: Stream & print carrier-ready barcode labels (`SHIP_LABEL_4X6` thermal sticker and `SHIP_LABEL_A4` standard PDF).
+- **Consignment Cancellation**: Instant cancellation API (`/consignment/cancel`) with AWB validation before package dispatch.
+- **REST Tracking API V4**: Real-time scan milestones and timestamps retrieved via DTDC token-authenticated REST service.
+- **Real-Time Order Sync**: Automatic status transitions from courier scans:
+  - `BKD` / `PCAW` $\rightarrow$ `SHIPPED`
+  - `PCUP` / `DISPATCHED` $\rightarrow$ `IN_TRANSIT`
+  - `OUTDLV` $\rightarrow$ `OUT_FOR_DELIVERY`
+  - `DLV` $\rightarrow$ `DELIVERED` (auto sets delivery date & logs audit record)
+- **Customer Live Tracking**: Interactive timeline widget on order detail pages with instant on-demand refresh.
+- **Full Documentation**: See [`docs/dtdc-integration-details.md`](docs/dtdc-integration-details.md) and official PDF specifications in [`docs/dtdc/`](docs/dtdc/).
+
 ---
 
 ## ── AWS Auto-Scaling Architecture
