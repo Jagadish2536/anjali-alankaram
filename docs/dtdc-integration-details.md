@@ -143,14 +143,15 @@ When tracking checkpoints are queried by customers or admins, the application au
 ## 6. Environment Configuration Variables
 
 ```env
-# DTDC Environment Settings
-DTDC_ENV=production                  # 'staging' or 'production'
-DTDC_CUSTOMER_CODE=anjalialankaram001 # DTDC Customer Code
-DTDC_API_KEY=your_production_api_key  # Provided by DTDC IT Team
+# DTDC Production Settings
+DTDC_ENV=production
+DTDC_CUSTOMER_CODE=VO1494
+DTDC_API_KEY=71db28f9feee0cef26fc9cf242e97c
 
 # DTDC Tracking API V4 Credentials
-DTDC_TRACKING_USERNAME=your_username # Provided for blktracksvc.dtdc.com
-DTDC_TRACKING_PASSWORD=your_password # Provided for blktracksvc.dtdc.com
+DTDC_TRACKING_USERNAME=VO1494_trk_json
+DTDC_TRACKING_PASSWORD=UbrMi
+DTDC_TRACKING_TOKEN=VO1494_trk_json:ab3095ff05d70972cadebeb1076980a7
 
 # Origin Warehouse Information
 DTDC_ORIGIN_NAME="Anjali Alankaram"
