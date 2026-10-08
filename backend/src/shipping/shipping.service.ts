@@ -326,8 +326,16 @@ export class ShippingService {
             trackingUrl: dtdcRes.trackingUrl,
             courierName: 'DTDC',
             courierTrackingId: dtdcRes.referenceNumber,
-            status: 'SHIPPED',
-            shippedAt: new Date(),
+            status: 'PACKED',
+            statusHistory: {
+              create: {
+                fromStatus: order.status,
+                toStatus: 'PACKED',
+                notes: `Consignment booked via DTDC API. Consignment Packed & Awaiting Pickup. AWB: ${dtdcRes.awb}`,
+                actorRole: 'SYSTEM',
+                metadata: { awbCode: dtdcRes.awb, courierName: 'DTDC' },
+              },
+            },
           },
         });
         this.logger.log(`DTDC shipment created for order ${orderId}: AWB ${dtdcRes.awb}`);
@@ -377,8 +385,16 @@ export class ShippingService {
           awbCode: result.awb,
           trackingUrl: result.trackingUrl,
           courierName: this.provider.name,
-          status: 'SHIPPED',
-          shippedAt: new Date(),
+          status: 'PACKED',
+          statusHistory: {
+            create: {
+              fromStatus: order.status,
+              toStatus: 'PACKED',
+              notes: `Consignment booked via ${this.provider.name}. Consignment Packed & Awaiting Pickup. AWB: ${result.awb}`,
+              actorRole: 'SYSTEM',
+              metadata: { awbCode: result.awb, courierName: this.provider.name },
+            },
+          },
         },
       });
 

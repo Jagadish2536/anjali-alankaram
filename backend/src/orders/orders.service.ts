@@ -472,25 +472,46 @@ export class OrdersService implements OnApplicationBootstrap {
       const latest = sortedEvents[0];
       const scanCount = events.length;
 
-      // Determine targetStatus based on scan count and latest scan content
-      let targetStatus: OrderStatus | null = null;
-      const latestMapped = this.mapShiprocketStatus(latest.status);
+      // Determine targetStatus based on tracking scans
+      let targetStatus: OrderStatus | null = this.mapShiprocketStatus(latest.status);
 
-      if (latestMapped === 'DELIVERED') {
-        targetStatus = 'DELIVERED';
-      } else if (latestMapped === 'OUT_FOR_DELIVERY') {
-        targetStatus = 'OUT_FOR_DELIVERY';
-      } else {
-        // Milestone logic per scan progression:
-        // Scans 1-2: PACKED (Consignment booked / Pickup requested at merchant)
-        // Scan 3:    SHIPPED (Third scan: parcel collected / dispatched from origin branch)
-        // Scan 4+:   IN_TRANSIT (Fourth scan onwards: moving between transit hubs / apex)
-        if (scanCount >= 4) {
-          targetStatus = 'IN_TRANSIT';
-        } else if (scanCount === 3) {
-          targetStatus = 'SHIPPED';
-        } else if (scanCount <= 2) {
-          targetStatus = 'PACKED';
+      // If latest event wasn't recognized, scan through historical events in reverse
+      if (!targetStatus) {
+        for (const ev of sortedEvents) {
+          const mapped = this.mapShiprocketStatus(ev.status);
+          if (mapped) {
+            targetStatus = mapped;
+            break;
+          }
+        }
+      }
+
+      // If an order was previously marked SHIPPED (e.g. by bug or assumption) but DTDC only has pre-pickup events
+      // (Pickup scheduled, Pickup Requested, Pickup Awaited), auto-correct order back to PACKED.
+      if (order.status === 'SHIPPED' && targetStatus === 'PACKED') {
+        const hasAnyShippedScan = sortedEvents.some(e => {
+          const m = this.mapShiprocketStatus(e.status);
+          return m === 'SHIPPED' || m === 'IN_TRANSIT' || m === 'OUT_FOR_DELIVERY' || m === 'DELIVERED';
+        });
+        if (!hasAnyShippedScan) {
+          try {
+            await this.updateStatus(
+              order.id,
+              'PACKED',
+              'SYSTEM',
+              'SYSTEM',
+              {
+                notes: `Auto-corrected from SHIPPED to PACKED: DTDC tracking shows consignment awaiting pickup ("${latest.status}")`,
+                awbCode: order.awbCode,
+                courierName: order.courierName || 'DTDC',
+                trackingUrl: trackingUrl,
+              },
+            );
+            order.status = 'PACKED';
+            this.logger.log(`Order ${order.orderNumber}: auto-corrected status from SHIPPED to PACKED`);
+          } catch (err: any) {
+            this.logger.error(`Status auto-correction failed for ${order.orderNumber}: ${err.message}`);
+          }
         }
       }
 
@@ -521,7 +542,7 @@ export class OrdersService implements OnApplicationBootstrap {
                 'SYSTEM',
                 'SYSTEM',
                 {
-                  notes: `Auto-updated to SHIPPED (DTDC scan #${Math.min(3, scanCount)}: "${latest.status}")`,
+                  notes: `Auto-updated to SHIPPED (DTDC scan: "${latest.status}")`,
                   awbCode: order.awbCode,
                   courierName: order.courierName || 'DTDC',
                   trackingUrl: trackingUrl,
@@ -535,7 +556,7 @@ export class OrdersService implements OnApplicationBootstrap {
               'SYSTEM',
               'SYSTEM',
               {
-                notes: `Auto-updated to ${targetStatus} via DTDC scan #${scanCount} ("${latest.status}" at ${latest.location || 'Hub'})`,
+                notes: `Auto-updated to ${targetStatus} via DTDC scan ("${latest.status}" at ${latest.location || 'Hub'})`,
                 awbCode: order.awbCode,
                 courierName: order.courierName || 'DTDC',
                 trackingUrl: trackingUrl,
@@ -543,7 +564,7 @@ export class OrdersService implements OnApplicationBootstrap {
             );
             order.status = targetStatus;
             this.logger.log(
-              `Order ${order.orderNumber}: auto-updated to ${targetStatus} via DTDC scan #${scanCount} ("${latest.status}") with notifications triggered`,
+              `Order ${order.orderNumber}: auto-updated to ${targetStatus} via DTDC scan ("${latest.status}") with notifications triggered`,
             );
           } catch (err: any) {
             this.logger.error(`Status update failed for ${order.orderNumber}: ${err.message}`);
@@ -649,8 +670,8 @@ export class OrdersService implements OnApplicationBootstrap {
     const fromStatus = order.status;
     const newStatus = toStatus as OrderStatus;
 
-    // Validate transition (admins can force any transition, others must follow rules)
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(actorRole)) {
+    // Validate transition (admins, warehouse staff, and order managers can change status)
+    if (!['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'ORDER_MANAGER'].includes(actorRole)) {
       if (!this.statusHistory.isValidTransition(fromStatus, newStatus)) {
         throw new BadRequestException(
           `Invalid status transition: ${fromStatus} → ${toStatus}`,
@@ -683,6 +704,7 @@ export class OrdersService implements OnApplicationBootstrap {
 
     // Set timestamps
     if (newStatus === 'SHIPPED') updateData.shippedAt = new Date();
+    if (newStatus === 'PACKED') updateData.shippedAt = null;
     if (newStatus === 'DELIVERED') updateData.deliveredAt = new Date();
     if (newStatus === 'RETURN_REQUESTED') updateData.returnRequestedAt = new Date();
     if (newStatus === 'RETURN_APPROVED') updateData.returnApprovedAt = new Date();
@@ -1377,9 +1399,9 @@ export class OrdersService implements OnApplicationBootstrap {
     if (s.includes('dispatched') || s.includes('picked up') || s === 'pcup' || s === 'obmn') return 'SHIPPED';
     if (s.includes('shipped') || s.includes('in flight') || s.includes('departed')) return 'SHIPPED';
 
-    // PACKED / BOOKED (First & Second DTDC scans - softdata / booking created)
+    // PACKED / BOOKED (First & Second DTDC scans - softdata / booking created / pickup scheduled / awaited)
     if (s.includes('accepted') || s.includes('booked') || s.includes('softdata') || s === 'bkd') return 'PACKED';
-    if (s.includes('pickup requested') || s === 'spl') return 'PACKED';
+    if (s.includes('pickup requested') || s.includes('pickup awaited') || s.includes('pickup pending') || s.includes('pickup assigned') || s === 'spl') return 'PACKED';
     if (s.includes('pickup scheduled') || s.includes('pickup done') || s.includes('pickup successful') || s === 'pcsc' || s === 'pcra' || s === 'pcaw') return 'PACKED';
 
     return null;
