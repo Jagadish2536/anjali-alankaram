@@ -305,7 +305,7 @@ function AdminOrdersContent() {
             name="orderSearch"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by order#, customer name or phone…"
+            placeholder="Search by order#, AWB tracking#, customer name or phone…"
             className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary bg-white shadow-sm"
           />
           {search && (

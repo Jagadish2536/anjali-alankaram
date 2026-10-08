@@ -576,6 +576,7 @@ export class OrdersService implements OnApplicationBootstrap {
       const q = query.search.trim();
       where.OR = [
         { orderNumber: { contains: q, mode: 'insensitive' } },
+        { awbCode: { contains: q, mode: 'insensitive' } },
         { user: { name: { contains: q, mode: 'insensitive' } } },
         { user: { phone: { contains: q, mode: 'insensitive' } } },
         { address: { name: { contains: q, mode: 'insensitive' } } },

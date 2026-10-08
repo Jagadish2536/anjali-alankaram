@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -54,8 +54,8 @@ export class UsersController {
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get all users/customers (Admin only)' })
-  async findAll() {
-    return this.usersService.findAll();
+  async findAll(@Query('role') role?: string, @Query('search') search?: string) {
+    return this.usersService.findAll({ role, search });
   }
 
   @Post()

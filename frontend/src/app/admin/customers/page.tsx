@@ -1,12 +1,23 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Search, Mail, Phone, Calendar, X, Plus, Edit2, Trash2, Loader2, UserPlus } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Search, Mail, Phone, Calendar, X, Plus, Edit2, Trash2, Loader2, UserPlus, Shield } from 'lucide-react';
 import { api } from '@/lib/api';
+
+const ROLE_OPTIONS = [
+  { id: 'ALL', label: 'All Users' },
+  { id: 'CUSTOMER', label: 'Customers' },
+  { id: 'ADMIN', label: 'Admins' },
+  { id: 'SUPER_ADMIN', label: 'Super Admins' },
+  { id: 'ORDER_MANAGER', label: 'Order Managers' },
+  { id: 'STOCK_MANAGER', label: 'Product Managers' },
+  { id: 'WAREHOUSE_STAFF', label: 'Warehouse Staff' },
+];
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRole, setSelectedRole] = useState('ALL');
   
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -152,38 +163,113 @@ export default function AdminCustomersPage() {
     }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.phone || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const roleCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: customers.length };
+    for (const c of customers) {
+      const r = c.role || 'CUSTOMER';
+      counts[r] = (counts[r] || 0) + 1;
+    }
+    return counts;
+  }, [customers]);
+
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(c => {
+      // 1. Filter by role tab/selector
+      if (selectedRole !== 'ALL' && c.role !== selectedRole) {
+        return false;
+      }
+
+      // 2. Filter by search query (name, email, phone, role)
+      if (!searchQuery.trim()) return true;
+
+      const q = searchQuery.toLowerCase().trim();
+      const roleStr = (c.role || '').toLowerCase();
+      const roleFriendly = roleStr.replace(/_/g, ' ');
+
+      return (
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        roleStr.includes(q) ||
+        roleFriendly.includes(q)
+      );
+    });
+  }, [customers, selectedRole, searchQuery]);
 
   return (
     <div className="container py-6 sm:py-10 space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-outfit font-bold text-foreground">Customer Directory</h1>
-          <p className="text-muted-foreground mt-1">Manage and view your registered store users.</p>
+          <h1 className="text-3xl font-outfit font-bold text-foreground">User & Customer Directory</h1>
+          <p className="text-muted-foreground mt-1">Manage, search, and view all registered users and roles.</p>
         </div>
         <button
           onClick={openAddModal}
           className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-primary/90 transition-all shadow-sm"
         >
-          <UserPlus className="w-5 h-5" /> Add Customer
+          <UserPlus className="w-5 h-5" /> Add User
         </button>
       </div>
 
+      {/* Role Filter Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
+        {ROLE_OPTIONS.map(r => {
+          const count = roleCounts[r.id] ?? 0;
+          const isActive = selectedRole === r.id;
+          return (
+            <button
+              key={r.id}
+              onClick={() => setSelectedRole(r.id)}
+              className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-bold border-2 transition-all shrink-0 flex items-center gap-2 ${
+                isActive
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white border-gray-200 text-muted-foreground hover:border-gray-300'
+              }`}
+            >
+              <span>{r.label}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                isActive ? 'bg-white text-primary' : 'bg-primary/10 text-primary'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b">
-          <div className="relative max-w-md">
+        <div className="p-4 border-b flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <div className="relative flex-1 max-w-lg">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input 
               type="text" 
-              placeholder="Search customers by name, email, or phone..." 
+              placeholder="Search by name, email, phone, or role (Admin, Customer, Staff...)" 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-muted/20 border-transparent rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm transition-all"
+              className="w-full pl-10 pr-10 py-2.5 bg-muted/20 border-transparent rounded-xl focus:ring-2 focus:ring-primary outline-none text-sm transition-all"
             />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedRole}
+              onChange={e => setSelectedRole(e.target.value)}
+              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary shadow-sm"
+            >
+              {ROLE_OPTIONS.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.label} ({roleCounts[r.id] ?? 0})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

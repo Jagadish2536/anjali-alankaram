@@ -10,8 +10,21 @@ import * as bcrypt from 'bcryptjs';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(query?: { role?: string; search?: string }) {
+    const where: any = {};
+    if (query?.role && query.role !== 'ALL') {
+      where.role = query.role as Role;
+    }
+    if (query?.search && query.search.trim()) {
+      const q = query.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+      ];
+    }
     return this.prisma.user.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
