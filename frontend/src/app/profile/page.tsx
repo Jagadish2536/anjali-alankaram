@@ -532,7 +532,7 @@ export default function ProfilePage() {
           <div className="divide-y">
                 {orders.map((order: any) => {
                   const live = liveTracking[order.id];
-                  const isActive = ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(order.status);
+                  const isActive = ['PACKED', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(order.status);
                   return (
                     <Link href={`/orders/${order.id}`} key={order.id}
                       className="flex items-center justify-between py-4 hover:bg-gray-50 -mx-4 px-4 transition-colors group">
@@ -561,6 +561,8 @@ export default function ProfilePage() {
                               order.status === 'OUT_FOR_DELIVERY'? 'bg-blue-50 text-blue-700' :
                               order.status === 'IN_TRANSIT'      ? 'bg-sky-50 text-sky-700' :
                               order.status === 'SHIPPED'         ? 'bg-cyan-50 text-cyan-700' :
+                              order.status === 'PACKED'          ? 'bg-emerald-50 text-emerald-700' :
+                              order.status === 'CONFIRMED'       ? 'bg-indigo-50 text-indigo-700' :
                               'bg-gray-50 text-gray-500'
                             }`}>
                               {isActive && (

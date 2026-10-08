@@ -21,7 +21,7 @@ const STATUS_COLOR: Record<string, string> = {
   INVENTORY_RESERVED: 'bg-violet-50 text-violet-700 border-violet-200',
   PROCESSING:         'bg-yellow-50 text-yellow-700 border-yellow-200',
   PICKING:            'bg-amber-50 text-amber-700 border-amber-200',
-  PACKED:             'bg-lime-50 text-lime-700 border-lime-200',
+  PACKED:             'bg-emerald-50 text-emerald-700 border-emerald-200',
   READY_FOR_SHIPMENT: 'bg-teal-50 text-teal-700 border-teal-200',
   SHIPPED:            'bg-cyan-50 text-cyan-700 border-cyan-200',
   IN_TRANSIT:         'bg-sky-50 text-sky-700 border-sky-200',
@@ -35,7 +35,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_FILTER_TABS = [
-  'ALL', 'CONFIRMED', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'PAYMENT_VERIFIED', 'CANCELLED', 'PENDING_PAYMENT',
+  'ALL', 'CONFIRMED', 'PACKED', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'PAYMENT_VERIFIED', 'CANCELLED', 'PENDING_PAYMENT',
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -50,6 +50,7 @@ function StatusBadge({ status }: { status: string }) {
 const TAB_LABELS: Record<string, string> = {
   ALL:              'All Orders',
   CONFIRMED:        'Confirmed',
+  PACKED:           'Packed',
   SHIPPED:          'Shipped',
   IN_TRANSIT:       'In Transit',
   OUT_FOR_DELIVERY: 'Out for Delivery',

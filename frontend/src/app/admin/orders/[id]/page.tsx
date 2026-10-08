@@ -56,7 +56,7 @@ const STATUS_COLOR: Record<string, string> = {
   INVENTORY_RESERVED: 'bg-violet-50 text-violet-700 border-violet-200',
   PROCESSING:         'bg-yellow-50 text-yellow-700 border-yellow-200',
   PICKING:            'bg-amber-50 text-amber-700 border-amber-200',
-  PACKED:             'bg-lime-50 text-lime-700 border-lime-200',
+  PACKED:             'bg-emerald-50 text-emerald-700 border-emerald-200',
   READY_FOR_SHIPMENT: 'bg-teal-50 text-teal-700 border-teal-200',
   SHIPPED:            'bg-cyan-50 text-cyan-700 border-cyan-200',
   IN_TRANSIT:         'bg-sky-50 text-sky-700 border-sky-200',
@@ -95,14 +95,18 @@ const ALL_STATUSES = [
 const SIMPLE_STATUSES = [
   { id: 'PENDING_PAYMENT', name: 'Pending Payment' },
   { id: 'CONFIRMED', name: 'Order Placed / Confirmed' },
+  { id: 'PACKED', name: 'Packed' },
   { id: 'SHIPPED', name: 'Shipped' },
+  { id: 'IN_TRANSIT', name: 'In Transit' },
+  { id: 'OUT_FOR_DELIVERY', name: 'Out for Delivery' },
   { id: 'DELIVERED', name: 'Delivered' },
   { id: 'CANCELLED', name: 'Cancelled' },
 ];
 
 const ADMIN_ORDER_STEPS = [
   { label: 'Order Placed',     keys: ['PENDING_PAYMENT', 'PAYMENT_VERIFIED'] },
-  { label: 'Confirmed',        keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING', 'PACKED', 'READY_FOR_SHIPMENT'] },
+  { label: 'Confirmed',        keys: ['CONFIRMED', 'INVENTORY_RESERVED', 'PROCESSING', 'PICKING'] },
+  { label: 'Packed',           keys: ['PACKED', 'READY_FOR_SHIPMENT'] },
   { label: 'Shipped',          keys: ['SHIPPED'] },
   { label: 'In Transit',       keys: ['IN_TRANSIT'] },
   { label: 'Out for Delivery', keys: ['OUT_FOR_DELIVERY'] },
