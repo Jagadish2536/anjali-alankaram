@@ -131,7 +131,10 @@ export class DtdcService {
     const heightStr = (options?.height || 10).toString();
 
     const declaredValue = (options?.declaredValue || totalAmount || 500).toFixed(2);
-    const serviceType = options?.serviceType || 'B2C PRIORITY';
+    const serviceType =
+      options?.serviceType ||
+      this.config.get<string>('DTDC_SERVICE_TYPE') ||
+      'B2C SMART EXPRESS';
 
     // Format invoice date e.g. "14 Oct 2026"
     const orderDate = order.createdAt ? new Date(order.createdAt) : new Date();

@@ -11,7 +11,7 @@ This document records the complete architecture, API specifications, and operati
 * **POC Contact Number:** +91 8919045363
 * **Origin Location:** Vizianagaram, Andhra Pradesh (Pincode: `535002`)
 * **DTDC Customer Code:** `VO1494`
-* **Default Pickup Service:** B2C PRIORITY / B2C PREMIUM
+* **Default Pickup Service:** B2C SMART EXPRESS
 
 ### DTDC Franchisee / Branch Details
 * **Region:** VIJAYAWADA
@@ -47,8 +47,8 @@ The application directly implements all 4 official DTDC specifications:
   * `Content-Type: application/json`
   * `api-key: <DTDC_API_KEY>`
 * **Payload Structure:**
-  * `customer_code`: Unique client code (`anjalialankaram001`)
-  * `service_type_id`: `B2C PRIORITY` / `B2C PREMIUM`
+  * `customer_code`: Unique client code (`VO1494`)
+  * `service_type_id`: `B2C SMART EXPRESS`
   * `load_type`: `NON-DOCUMENT`
   * `consignment_type`: `Forward`
   * `dimension_unit`: `cm`
@@ -83,7 +83,7 @@ The application directly implements all 4 official DTDC specifications:
   ```json
   {
     "AWBNo": ["D78326386"],
-    "customerCode": "anjalialankaram001"
+    "customerCode": "VO1494"
   }
   ```
 * **Implementation:** Triggered on admin cancellation before dispatch (`/shipping/dtdc/cancel/:orderId`).

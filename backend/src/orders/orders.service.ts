@@ -474,33 +474,35 @@ export class OrdersService implements OnApplicationBootstrap {
 
       if (targetStatus && order.status !== targetStatus) {
         const statusPriority: Record<string, number> = {
-          'SHIPPED': 1,
-          'IN_TRANSIT': 2,
-          'OUT_FOR_DELIVERY': 3,
-          'DELIVERED': 4,
+          'CONFIRMED': 1,
+          'PROCESSING': 2,
+          'PACKED': 3,
+          'SHIPPED': 4,
+          'IN_TRANSIT': 5,
+          'OUT_FOR_DELIVERY': 6,
+          'DELIVERED': 7,
         };
         const currentPri = statusPriority[order.status] || 0;
         const targetPri = statusPriority[targetStatus] || 0;
 
         if (targetPri > currentPri) {
-          const oldStatus = order.status;
           try {
-            await this.prisma.order.update({
-              where: { id: order.id },
-              data: {
-                status: targetStatus,
-                ...(targetStatus === 'DELIVERED' && { deliveredAt: new Date() }),
+            await this.updateStatus(
+              order.id,
+              targetStatus,
+              'SYSTEM',
+              'SYSTEM',
+              {
+                notes: `Auto-updated to ${targetStatus} via live DTDC tracking scan ("${latest.status}" at ${latest.location || 'Hub'})`,
+                awbCode: order.awbCode,
+                courierName: order.courierName || 'DTDC',
+                trackingUrl: trackingUrl,
               },
-            });
+            );
             order.status = targetStatus;
-            await this.statusHistory.append({
-              orderId: order.id,
-              toStatus: targetStatus,
-              fromStatus: oldStatus,
-              actorRole: 'SYSTEM',
-              notes: `Auto-updated to ${targetStatus} via live Shiprocket tracking (event: "${latest.status}")`,
-            });
-            this.logger.log(`Order ${order.orderNumber}: ${oldStatus} → ${targetStatus} (event: "${latest.status}")`);
+            this.logger.log(
+              `Order ${order.orderNumber}: auto-updated to ${targetStatus} via DTDC scan ("${latest.status}") with notifications triggered`,
+            );
           } catch (err: any) {
             this.logger.error(`Status update failed for ${order.orderNumber}: ${err.message}`);
           }
@@ -1311,26 +1313,28 @@ export class OrdersService implements OnApplicationBootstrap {
     if (!label) return null;
     const s = label.toLowerCase().trim();
 
-    // DELIVERED
+    // DELIVERED (Final milestone)
     if (s.includes('delivered') && !s.includes('out for')) return 'DELIVERED';
     if (s === 'delivery done' || s === 'dlv') return 'DELIVERED';
 
-    // OUT_FOR_DELIVERY
+    // OUT_FOR_DELIVERY (Out with delivery rider today)
     if (s.includes('out for delivery') || s === 'outdlv') return 'OUT_FOR_DELIVERY';
+    if (s.includes('scheduled for delivery') || s === 'preperd') return 'OUT_FOR_DELIVERY';
     if (s.includes('with delivery') || s.includes('delivery boy')) return 'OUT_FOR_DELIVERY';
 
-    // IN_TRANSIT
+    // IN_TRANSIT (Second scan / Movement between transit hubs & delivery centers)
     if (s.includes('in transit') || s.includes('in-transit')) return 'IN_TRANSIT';
-    if (s.includes('reached') || s.includes('at destination')) return 'IN_TRANSIT';
-    if (s.includes('hub') || s.includes('sorting')) return 'IN_TRANSIT';
+    if (s.includes('reached at') || s.includes('at destination') || s === 'radcdin' || s === 'fdma') return 'IN_TRANSIT';
+    if (s.includes('hub') || s.includes('sorting') || s === 'obmn' || s === 'ibmn' || s === 'cdin' || s === 'cdout') return 'IN_TRANSIT';
     if (s.includes('dispatched') || s.includes('picked up') || s === 'pcup') return 'IN_TRANSIT';
     if (s.includes('on route') || s.includes('en route') || s.includes('in progress')) return 'IN_TRANSIT';
     if (s.includes('received at') || s.includes('arrived at') || s === 'received') return 'IN_TRANSIT';
     if (s.includes('consignment released') || s.includes('customs cleared')) return 'IN_TRANSIT';
 
-    // SHIPPED (initial scan events)
+    // SHIPPED (First DTDC scan / Origin booking)
     if (s.includes('accepted') || s.includes('booked') || s.includes('softdata') || s === 'bkd') return 'SHIPPED';
-    if (s.includes('pickup done') || s.includes('pickup successful') || s === 'pcsc' || s === 'pcra' || s === 'pcaw') return 'SHIPPED';
+    if (s.includes('pickup requested') || s === 'spl') return 'SHIPPED';
+    if (s.includes('pickup scheduled') || s.includes('pickup done') || s.includes('pickup successful') || s === 'pcsc' || s === 'pcra' || s === 'pcaw') return 'SHIPPED';
 
     return null;
   }

@@ -470,7 +470,7 @@ export default function OrderDetailPage() {
 
   const handleBookWithDtdc = async () => {
     if (!order) return;
-    if (!confirm(`Book Order #${order.orderNumber} with DTDC Direct API?\n\nThis will generate an official DTDC AWB, assign DTDC as courier, and set status to SHIPPED.`)) return;
+    if (!confirm(`Book Order #${order.orderNumber} with DTDC Direct API?\n\nThis will generate an official DTDC AWB, assign DTDC as courier, and set status to PACKED (ready for pickup).`)) return;
     setDtdcLoading(true);
     try {
       const res = await api.post(`/shipping/dtdc/orders/${order.id}/ship`);

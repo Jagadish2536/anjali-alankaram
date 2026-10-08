@@ -23,6 +23,8 @@ import { Public } from '../auth/decorators/public.decorator';
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'ORDER_MANAGER'];
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 @ApiTags('Shipping & DTDC')
 @Controller('shipping')
 export class ShippingController {
@@ -30,6 +32,7 @@ export class ShippingController {
     private readonly dtdcService: DtdcService,
     private readonly shippingService: ShippingService,
     private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -83,7 +86,7 @@ export class ShippingController {
     // Call DTDC Order Upload API
     const dtdcRes = await this.dtdcService.createShipment(order, body);
 
-    // Update order with AWB code, courierName, trackingUrl and status
+    // Update order with AWB code, courierName, trackingUrl and status PACKED
     const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
       data: {
@@ -91,13 +94,12 @@ export class ShippingController {
         courierName: 'DTDC',
         trackingUrl: dtdcRes.trackingUrl,
         courierTrackingId: dtdcRes.referenceNumber,
-        status: 'SHIPPED',
-        shippedAt: new Date(),
+        status: 'PACKED',
         statusHistory: {
           create: {
             fromStatus: order.status,
-            toStatus: 'SHIPPED',
-            notes: `Booked with DTDC API. AWB: ${dtdcRes.awb}`,
+            toStatus: 'PACKED',
+            notes: `Booked via DTDC API. Consignment Packed & Awaiting Pickup Scan. AWB: ${dtdcRes.awb}`,
             actorId: req.user?.id,
             actorRole: req.user?.role || 'ADMIN',
             metadata: { awbCode: dtdcRes.awb, courierName: 'DTDC' },
@@ -106,7 +108,14 @@ export class ShippingController {
       },
     });
 
-    // Proactively register with AfterShip if configured
+    // Send customer order update notification (WhatsApp, In-App, Push)
+    if (order.userId) {
+      await this.notificationsService
+        .sendOrderNotification(order.userId, 'ORDER_UPDATE' as any, orderId, order.orderNumber)
+        .catch(() => {});
+    }
+
+    // Proactively register with tracking provider
     this.shippingService.registerTracking(dtdcRes.awb, 'DTDC').catch(() => {});
 
     return {
