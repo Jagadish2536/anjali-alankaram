@@ -173,9 +173,9 @@ export class OrdersService implements OnApplicationBootstrap {
 
     const orderNumber = `AA${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-    // 9. Create order (status = PENDING_PAYMENT for Razorpay, PAYMENT_VERIFIED for COD)
+    // 9. Create order (status = PENDING_PAYMENT for Razorpay, CONFIRMED for COD)
     const initialStatus: OrderStatus =
-      dto.paymentMethod === 'COD' ? 'PAYMENT_VERIFIED' : 'PENDING_PAYMENT';
+      dto.paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING_PAYMENT';
 
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
@@ -246,11 +246,7 @@ export class OrdersService implements OnApplicationBootstrap {
       notes: `Order placed via ${dto.paymentMethod}`,
     });
 
-    if (initialStatus === 'PAYMENT_VERIFIED') {
-      this.scheduleAutoConfirmTimer(order.id);
-    }
-
-    // 12. For COD — immediately confirm inventory and advance pipeline
+    // 12. For COD — immediately confirm inventory and keep in CONFIRMED
     if (dto.paymentMethod === 'COD') {
       await this.advanceCodOrder(order.id, userId, order.orderNumber);
     }
@@ -260,9 +256,7 @@ export class OrdersService implements OnApplicationBootstrap {
       await this.notificationsService
         .sendOrderNotification(userId, 'ORDER_PLACED', order.id, orderNumber)
         .catch(() => { });
-    }
 
-    if (initialStatus === 'PAYMENT_VERIFIED') {
       this.notificationsService
         .sendAdminAlert('ORDER_PLACED', {
           orderId: order.id, orderNumber, totalAmount: order.totalAmount,
@@ -304,9 +298,6 @@ export class OrdersService implements OnApplicationBootstrap {
         }).catch(() => { });
     }
 
-    if (dto.paymentMethod === 'COD') {
-      this.shippingService.createShipment(order.id).catch(console.error);
-    }
 
     const rzpConfig = (this.paymentsService as any).getRazorpayConfig ? (this.paymentsService as any).getRazorpayConfig() : null;
     const razorpayKeyId = rzpConfig ? rzpConfig.keyId : undefined;
@@ -365,20 +356,14 @@ export class OrdersService implements OnApplicationBootstrap {
 
     // Log CONFIRMED
     await this.statusHistory.append({
-      orderId, toStatus: 'CONFIRMED', fromStatus: 'PAYMENT_VERIFIED',
-      actorRole: 'SYSTEM', notes: 'COD order auto-confirmed',
-    });
-
-    // Log INVENTORY_RESERVED
-    await this.statusHistory.append({
-      orderId, toStatus: 'INVENTORY_RESERVED', fromStatus: 'CONFIRMED',
-      actorRole: 'SYSTEM', notes: 'Inventory reserved for fulfillment',
+      orderId, toStatus: 'CONFIRMED',
+      actorRole: 'SYSTEM', notes: 'COD order confirmed',
     });
 
     // Update order status
     await this.prisma.order.update({
       where: { id: orderId },
-      data: { status: 'INVENTORY_RESERVED' },
+      data: { status: 'CONFIRMED' },
     });
 
     // Notify customer
