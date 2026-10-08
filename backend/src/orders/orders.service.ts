@@ -470,7 +470,29 @@ export class OrdersService implements OnApplicationBootstrap {
     if (order && events && events.length > 0) {
       const sortedEvents = [...events].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       const latest = sortedEvents[0];
-      const targetStatus = this.mapShiprocketStatus(latest.status);
+      const scanCount = events.length;
+
+      // Determine targetStatus based on scan count and latest scan content
+      let targetStatus: OrderStatus | null = null;
+      const latestMapped = this.mapShiprocketStatus(latest.status);
+
+      if (latestMapped === 'DELIVERED') {
+        targetStatus = 'DELIVERED';
+      } else if (latestMapped === 'OUT_FOR_DELIVERY') {
+        targetStatus = 'OUT_FOR_DELIVERY';
+      } else {
+        // Milestone logic per scan progression:
+        // Scans 1-2: PACKED (Consignment booked / Pickup requested at merchant)
+        // Scan 3:    SHIPPED (Third scan: parcel collected / dispatched from origin branch)
+        // Scan 4+:   IN_TRANSIT (Fourth scan onwards: moving between transit hubs / apex)
+        if (scanCount >= 4) {
+          targetStatus = 'IN_TRANSIT';
+        } else if (scanCount === 3) {
+          targetStatus = 'SHIPPED';
+        } else if (scanCount <= 2) {
+          targetStatus = 'PACKED';
+        }
+      }
 
       if (targetStatus && order.status !== targetStatus) {
         const statusPriority: Record<string, number> = {
@@ -487,13 +509,33 @@ export class OrdersService implements OnApplicationBootstrap {
 
         if (targetPri > currentPri) {
           try {
+            // If jumping directly to IN_TRANSIT, OUT_FOR_DELIVERY, or DELIVERED while still in PACKED/CONFIRMED,
+            // ensure the SHIPPED milestone is recorded so SHIPPED notifications & history are never skipped
+            if (
+              (order.status === 'PACKED' || order.status === 'CONFIRMED') &&
+              ['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(targetStatus)
+            ) {
+              await this.updateStatus(
+                order.id,
+                'SHIPPED',
+                'SYSTEM',
+                'SYSTEM',
+                {
+                  notes: `Auto-updated to SHIPPED (DTDC scan #${Math.min(3, scanCount)}: "${latest.status}")`,
+                  awbCode: order.awbCode,
+                  courierName: order.courierName || 'DTDC',
+                  trackingUrl: trackingUrl,
+                },
+              );
+            }
+
             await this.updateStatus(
               order.id,
               targetStatus,
               'SYSTEM',
               'SYSTEM',
               {
-                notes: `Auto-updated to ${targetStatus} via live DTDC tracking scan ("${latest.status}" at ${latest.location || 'Hub'})`,
+                notes: `Auto-updated to ${targetStatus} via DTDC scan #${scanCount} ("${latest.status}" at ${latest.location || 'Hub'})`,
                 awbCode: order.awbCode,
                 courierName: order.courierName || 'DTDC',
                 trackingUrl: trackingUrl,
@@ -501,7 +543,7 @@ export class OrdersService implements OnApplicationBootstrap {
             );
             order.status = targetStatus;
             this.logger.log(
-              `Order ${order.orderNumber}: auto-updated to ${targetStatus} via DTDC scan ("${latest.status}") with notifications triggered`,
+              `Order ${order.orderNumber}: auto-updated to ${targetStatus} via DTDC scan #${scanCount} ("${latest.status}") with notifications triggered`,
             );
           } catch (err: any) {
             this.logger.error(`Status update failed for ${order.orderNumber}: ${err.message}`);
@@ -1160,7 +1202,7 @@ export class OrdersService implements OnApplicationBootstrap {
     try {
       const activeOrders = await this.prisma.order.findMany({
         where: {
-          status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+          status: { in: ['PACKED', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
           awbCode: { not: null, notIn: ['', ' '] },
         },
         select: { id: true, orderNumber: true, status: true, awbCode: true, shippedAt: true, createdAt: true, courierName: true },
@@ -1270,7 +1312,7 @@ export class OrdersService implements OnApplicationBootstrap {
     const orders = await this.prisma.order.findMany({
       where: {
         userId,
-        status: { in: ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+        status: { in: ['PACKED', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
         awbCode: { not: null },
       },
       select: {
@@ -1322,19 +1364,22 @@ export class OrdersService implements OnApplicationBootstrap {
     if (s.includes('scheduled for delivery') || s === 'preperd') return 'OUT_FOR_DELIVERY';
     if (s.includes('with delivery') || s.includes('delivery boy')) return 'OUT_FOR_DELIVERY';
 
-    // IN_TRANSIT (Second scan / Movement between transit hubs & delivery centers)
+    // IN_TRANSIT (Fourth scan onwards / Movement between transit hubs & apex)
     if (s.includes('in transit') || s.includes('in-transit')) return 'IN_TRANSIT';
     if (s.includes('reached at') || s.includes('at destination') || s === 'radcdin' || s === 'fdma') return 'IN_TRANSIT';
-    if (s.includes('hub') || s.includes('sorting') || s === 'obmn' || s === 'ibmn' || s === 'cdin' || s === 'cdout') return 'IN_TRANSIT';
-    if (s.includes('dispatched') || s.includes('picked up') || s === 'pcup') return 'IN_TRANSIT';
+    if (s.includes('hub') || s.includes('sorting') || s === 'ibmn' || s === 'cdin' || s === 'cdout') return 'IN_TRANSIT';
     if (s.includes('on route') || s.includes('en route') || s.includes('in progress')) return 'IN_TRANSIT';
     if (s.includes('received at') || s.includes('arrived at') || s === 'received') return 'IN_TRANSIT';
     if (s.includes('consignment released') || s.includes('customs cleared')) return 'IN_TRANSIT';
 
-    // SHIPPED (First DTDC scan / Origin booking)
-    if (s.includes('accepted') || s.includes('booked') || s.includes('softdata') || s === 'bkd') return 'SHIPPED';
-    if (s.includes('pickup requested') || s === 'spl') return 'SHIPPED';
-    if (s.includes('pickup scheduled') || s.includes('pickup done') || s.includes('pickup successful') || s === 'pcsc' || s === 'pcra' || s === 'pcaw') return 'SHIPPED';
+    // SHIPPED (Third scan / Dispatched from origin branch)
+    if (s.includes('dispatched') || s.includes('picked up') || s === 'pcup' || s === 'obmn') return 'SHIPPED';
+    if (s.includes('shipped') || s.includes('in flight') || s.includes('departed')) return 'SHIPPED';
+
+    // PACKED / BOOKED (First & Second DTDC scans - softdata / booking created)
+    if (s.includes('accepted') || s.includes('booked') || s.includes('softdata') || s === 'bkd') return 'PACKED';
+    if (s.includes('pickup requested') || s === 'spl') return 'PACKED';
+    if (s.includes('pickup scheduled') || s.includes('pickup done') || s.includes('pickup successful') || s === 'pcsc' || s === 'pcra' || s === 'pcaw') return 'PACKED';
 
     return null;
   }
