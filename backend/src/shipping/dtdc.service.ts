@@ -89,7 +89,7 @@ export class DtdcService {
       originWarehouse: {
         name: this.config.get('DTDC_ORIGIN_NAME') || 'Anjali Alankaram',
         phone: this.config.get('DTDC_ORIGIN_PHONE') || '8919045363',
-        pincode: this.config.get('DTDC_ORIGIN_PINCODE') || '535002',
+        pincode: this.config.get('DTDC_ORIGIN_PINCODE') || '535003',
         city: this.config.get('DTDC_ORIGIN_CITY') || 'Vizianagaram',
         state: this.config.get('DTDC_ORIGIN_STATE') || 'Andhra Pradesh',
       },
@@ -146,7 +146,7 @@ export class DtdcService {
 
     const originName = this.config.get('DTDC_ORIGIN_NAME') || 'Anjali Alankaram';
     const originPhone = this.config.get('DTDC_ORIGIN_PHONE') || '8919045363';
-    const originPincode = this.config.get('DTDC_ORIGIN_PINCODE') || '535002';
+    const originPincode = this.config.get('DTDC_ORIGIN_PINCODE') || '535003';
     const originCity = this.config.get('DTDC_ORIGIN_CITY') || 'Vizianagaram';
     const originState = this.config.get('DTDC_ORIGIN_STATE') || 'Andhra Pradesh';
     const originAddress =
