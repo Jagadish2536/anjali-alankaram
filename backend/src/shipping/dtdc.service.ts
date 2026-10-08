@@ -92,6 +92,8 @@ export class DtdcService {
         pincode: this.config.get('DTDC_ORIGIN_PINCODE') || '535003',
         city: this.config.get('DTDC_ORIGIN_CITY') || 'Vizianagaram',
         state: this.config.get('DTDC_ORIGIN_STATE') || 'Andhra Pradesh',
+        addressLine1: this.config.get('DTDC_ORIGIN_ADDRESS_LINE1') || '1-9-19/A, Mayuri Junction Area, Beside VI store',
+        addressLine2: this.config.get('DTDC_ORIGIN_ADDRESS_LINE2') || 'Near Himagiri theatre',
       },
     };
   }
@@ -151,7 +153,10 @@ export class DtdcService {
     const originState = this.config.get('DTDC_ORIGIN_STATE') || 'Andhra Pradesh';
     const originAddress =
       this.config.get('DTDC_ORIGIN_ADDRESS_LINE1') ||
-      'Pusapatirega, Near DTDC Franchise VF1657';
+      '1-9-19/A, Mayuri Junction Area, Beside VI store';
+    const originAddress2 =
+      this.config.get('DTDC_ORIGIN_ADDRESS_LINE2') ||
+      'Near Himagiri theatre';
 
     // Destination address from order
     const dest = order.address || {};
@@ -184,7 +189,7 @@ export class DtdcService {
             phone: originPhone,
             alternate_phone: '',
             address_line_1: originAddress,
-            address_line_2: '',
+            address_line_2: originAddress2,
             pincode: originPincode,
             city: originCity,
             state: originState,
@@ -203,7 +208,7 @@ export class DtdcService {
             name: originName,
             phone: originPhone,
             address_line_1: originAddress,
-            address_line_2: '',
+            address_line_2: originAddress2,
             pincode: originPincode,
             city_name: originCity,
             state_name: originState,

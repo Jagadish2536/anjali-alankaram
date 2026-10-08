@@ -153,11 +153,12 @@ DTDC_TRACKING_USERNAME=VO1494_trk_json
 DTDC_TRACKING_PASSWORD=UbrMi
 DTDC_TRACKING_TOKEN=VO1494_trk_json:ab3095ff05d70972cadebeb1076980a7
 
-# Origin Warehouse Information (Mapped to DTDC Vizianagaram Hub 535003)
+# Origin Store / Warehouse Information (Mapped to DTDC Vizianagaram Hub 535003)
 DTDC_ORIGIN_NAME="Anjali Alankaram"
 DTDC_ORIGIN_PHONE="8919045363"
 DTDC_ORIGIN_PINCODE="535003"
 DTDC_ORIGIN_CITY="Vizianagaram"
 DTDC_ORIGIN_STATE="Andhra Pradesh"
-DTDC_ORIGIN_ADDRESS_LINE1="Pusapatirega, Near DTDC Franchise VF1657"
+DTDC_ORIGIN_ADDRESS_LINE1="1-9-19/A, Mayuri Junction Area, Beside VI store"
+DTDC_ORIGIN_ADDRESS_LINE2="Near Himagiri theatre"
 ```

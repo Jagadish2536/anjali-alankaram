@@ -255,7 +255,7 @@ function generate4x6CardHtml(order: any, storeAddress?: string, supportPhone?: s
       <div style="border:1px solid #d1d5db;border-radius:6px;padding:8px;background:#f9fafb;">
         <div style="font-size:9px;font-weight:800;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:3px;margin-bottom:4px;">RETURN ADDRESS (SHIP FROM)</div>
         <p style="margin:0 0 2px 0;font-weight:700;font-size:10.5px;color:#111;">Anjali Alankaram</p>
-        <p style="margin:0 0 2px 0;font-size:9px;line-height:1.3;color:#4b5563;white-space:pre-line;">${storeAddress || 'Main Warehouse, Hyderabad, AP/TS'}</p>
+        <p style="margin:0 0 2px 0;font-size:9px;line-height:1.3;color:#4b5563;white-space:pre-line;">${storeAddress || '1-9-19/A, Mayuri Junction Area, Beside VI store\nNear Himagiri theatre, Vizianagaram, Andhra Pradesh - 535003'}</p>
         <p style="margin:3px 0 0 0;font-size:9.5px;font-weight:700;color:#374151;">Support: ${supportPhone || '+91 8919045363'}</p>
       </div>
     </div>
@@ -382,7 +382,7 @@ function generateA4CardHtml(order: any, storeAddress?: string, supportPhone?: st
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px;">
       <div>
         <h1 style="margin:0;font-size:22px;font-weight:900;color:#111827;letter-spacing:-0.03em;">📦 ANJALI ALANKARAM</h1>
-        <p style="margin:4px 0 0 0;font-size:11px;color:#4b5563;white-space:pre-line;">${storeAddress || 'Hyderabad, Telangana, India'}</p>
+        <p style="margin:4px 0 0 0;font-size:11px;color:#4b5563;white-space:pre-line;">${storeAddress || '1-9-19/A, Mayuri Junction Area, Beside VI store, Near Himagiri theatre\nVizianagaram, Andhra Pradesh - 535003'}</p>
         <p style="margin:2px 0 0 0;font-size:11px;color:#4b5563;font-weight:600;">📞 Customer Support: ${supportPhone || '+91 8919045363'}</p>
       </div>
       <div style="text-align:right;">
