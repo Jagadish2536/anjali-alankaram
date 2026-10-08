@@ -166,7 +166,10 @@ export class DtdcService {
     const destCity = dest.city || 'Destination';
     const destState = dest.state || 'India';
     const destLine1 = dest.line1 || dest.address || 'Address line 1';
-    const destLine2 = dest.line2 || '';
+    let destLine2 = dest.line2 || '';
+    if (destPhone && destPhone.length === 10 && !destLine1.includes(destPhone) && !destLine2.includes(destPhone)) {
+      destLine2 = destLine2 ? `${destLine2}, Ph: ${destPhone}` : `Ph: ${destPhone}`;
+    }
 
     const consignmentPayload = {
       consignments: [
